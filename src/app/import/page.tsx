@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -178,10 +178,11 @@ export default function ImportPage() {
     const [currentIdx, setCurrentIdx] = useState(0);
     const [showAll, setShowAll] = useState(false);
 
-    if (!session) {
-        router.push('/login');
-        return null;
-    }
+    useEffect(() => {
+        if (session === null) router.push('/login');
+    }, [session, router]);
+
+    if (!session) return null;
 
     const setFile = (key: string, rows: Record<string, string>[]) => {
         setCsvData((prev) => ({ ...prev, [key]: rows }));

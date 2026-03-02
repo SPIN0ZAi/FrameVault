@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Film } from 'lucide-react';
@@ -20,7 +20,7 @@ interface Genre {
     slug: string;
 }
 
-export default function MoviesPage() {
+function MoviesInner() {
     const urlParams = useSearchParams();
     const initialSearch = urlParams.get('search') || '';
 
@@ -213,5 +213,13 @@ export default function MoviesPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function MoviesPage() {
+    return (
+        <Suspense fallback={<div className="page"><div className="container"><p style={{ color: 'var(--text-secondary)' }}>Loading…</p></div></div>}>
+            <MoviesInner />
+        </Suspense>
     );
 }
