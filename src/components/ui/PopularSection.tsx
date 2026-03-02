@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Film, Star, RefreshCw } from 'lucide-react';
+import ScrollRow from './ScrollRow';
 
 interface Movie {
     id: string;
@@ -97,15 +98,7 @@ export default function PopularSection() {
                 </div>
             </div>
 
-            <div style={{
-                display: 'flex', gap: 'var(--space-md)',
-                overflowX: 'auto', scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-                margin: '0 calc(var(--space-lg) * -1)',
-                padding: '0 var(--space-lg) var(--space-lg)',
-                opacity: fading ? 0 : 1,
-                transition: 'opacity 0.3s ease',
-            }}>
+            <ScrollRow style={{ opacity: fading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
                 {loading
                     ? Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} style={{ flex: '0 0 160px', height: 240, borderRadius: 'var(--radius-md)', background: 'var(--bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -131,7 +124,7 @@ export default function PopularSection() {
                             </div>
                         </Link>
                     ))}
-            </div>
+            </ScrollRow>
         </section>
     );
 }

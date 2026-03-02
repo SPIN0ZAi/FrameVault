@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import HeroCarousel from '@/components/ui/HeroCarousel';
 import PopularSection from '@/components/ui/PopularSection';
+import ScrollRow from '@/components/ui/ScrollRow';
 
 // Re-render on every request so random selections rotate
 export const dynamic = 'force-dynamic';
@@ -171,13 +172,7 @@ function SectionHead({
 
 function MovieScroll({ movies, badgeColor }: { movies: HeroMovie[]; badgeColor?: string }) {
     return (
-        <div style={{
-            display: 'flex', gap: 'var(--space-md)',
-            overflowX: 'auto', scrollbarWidth: 'none',
-            WebkitOverflowScrolling: 'touch',
-            margin: '0 calc(var(--space-lg) * -1)',
-            padding: '0 var(--space-lg) var(--space-lg)',
-        }}>
+        <ScrollRow>
             {movies.map((movie, i) => (
                 <Link href={`/movies/${movie.id}`} key={movie.id} className="movie-card" style={{ flex: '0 0 160px', cursor: 'pointer' }}>
                     {badgeColor && (
@@ -209,7 +204,7 @@ function MovieScroll({ movies, badgeColor }: { movies: HeroMovie[]; badgeColor?:
                     </div>
                 </Link>
             ))}
-        </div>
+        </ScrollRow>
     );
 }
 
@@ -362,13 +357,7 @@ export default async function HomePage() {
                             subtitle="Movies newly added to FrameVault"
                             accentColor="var(--brand)"
                         />
-                        <div style={{
-                            display: 'flex', gap: 'var(--space-md)',
-                            overflowX: 'auto', scrollbarWidth: 'none',
-                            WebkitOverflowScrolling: 'touch',
-                            margin: '0 calc(var(--space-lg) * -1)',
-                            padding: '0 var(--space-lg) var(--space-lg)',
-                        }}>
+                        <ScrollRow>
                             {recentlyDropped.map((movie) => {
                                 const isNew = (Date.now() - new Date(movie.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000;
                                 return (
@@ -398,7 +387,7 @@ export default async function HomePage() {
                                     </Link>
                                 );
                             })}
-                        </div>
+                        </ScrollRow>
                     </section>
                 )}
 
@@ -411,13 +400,7 @@ export default async function HomePage() {
                             subtitle="Recent reviews from the community"
                             accentColor="#06b6d4"
                         />
-                        <div style={{
-                            display: 'flex', gap: 'var(--space-md)',
-                            overflowX: 'auto', scrollbarWidth: 'none',
-                            WebkitOverflowScrolling: 'touch',
-                            margin: '0 calc(var(--space-lg) * -1)',
-                            padding: '0 var(--space-lg) var(--space-lg)',
-                        }}>
+                        <ScrollRow>
                             {friendsActivity.map((activity: any) => (
                                 <Link href={`/movies/${activity.movie.tmdbId ?? activity.movie.id}`} key={activity.id} className="movie-card" style={{ flex: '0 0 200px', cursor: 'pointer' }}>
                                     <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, background: 'rgba(26,29,33,0.85)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
@@ -450,7 +433,7 @@ export default async function HomePage() {
                                     </div>
                                 </Link>
                             ))}
-                        </div>
+                        </ScrollRow>
                     </section>
                 )}
 
