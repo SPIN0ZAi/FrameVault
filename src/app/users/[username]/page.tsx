@@ -1,10 +1,10 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock } from 'lucide-react';
+import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical } from 'lucide-react';
 
 //  Types 
 
@@ -76,6 +76,22 @@ interface UserList {
     _count: { movies: number };
 }
 
+interface Favorite {
+    id: string;
+    tmdbId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    position: number;
+}
+
+interface TMDBSearchResult {
+    tmdbId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+}
+
 //  Helpers 
 
 function MoviePosterCard({ href, posterUrl, title, year }: {
@@ -110,8 +126,199 @@ function StarRating({ value }: { value: number }) {
     );
 }
 
-function EmptyTab({ icon, text, cta }: { icon: React.ReactNode; text: string; cta?: { label: string; href: string } }) {
+// ─── Favorites ────────────────────────────────────────
+
+function FavoriteSearchModal({ onSelect, onClose, existing }: {
+    onSelect: (movie: TMDBSearchResult) => void;
+    onClose: () => void;
+    existing: number[];
+}) {
+    const [q, setQ] = useState('');
+    const [results, setResults] = useState<TMDBSearchResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => { inputRef.current?.focus(); }, []);
+    useEffect(() => {
+        if (q.length < 2) { setResults([]); return; }
+        const t = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/movies/tmdb-search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                if (data.success) setResults(data.data);
+            } finally { setLoading(false); }
+        }, 300);
+        return () => clearTimeout(t);
+    }, [q]);
+
     return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-md)' }} onClick={onClose}>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+                    <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                    <input ref={inputRef} className="input" placeholder="Search for a film…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none' }} />
+                    <button onClick={onClose} style={{ color: 'var(--text-tertiary)', background: 'none', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {loading && <div style={{ padding: 'var(--space-md)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Searching…</div>}
+                    {!loading && q.length >= 2 && results.length === 0 && <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>No results for &quot;{q}&quot;</div>}
+                    {!loading && q.length < 2 && <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Type to search TMDB…</div>}
+                    {results.map(r => {
+                        const alreadyAdded = existing.includes(r.tmdbId);
+                        return (
+                            <button key={r.tmdbId} disabled={alreadyAdded}
+                                onClick={() => { if (!alreadyAdded) { onSelect(r); onClose(); } }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)', background: 'none', cursor: alreadyAdded ? 'default' : 'pointer', opacity: alreadyAdded ? 0.4 : 1, borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', textAlign: 'left' }}
+                                onMouseEnter={e => !alreadyAdded && ((e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)')}
+                                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'none')}>
+                                {r.posterUrl
+                                    ? <img src={r.posterUrl} alt={r.title} style={{ width: 40, aspectRatio: '2/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)', flexShrink: 0 }} />
+                                    : <div style={{ width: 40, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Film size={16} style={{ opacity: 0.4 }} /></div>
+                                }
+                                <div>
+                                    <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{r.title}</p>
+                                    {r.year && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{r.year}</p>}
+                                </div>
+                                {alreadyAdded && <span style={{ marginLeft: 'auto', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Added</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function FavoritesSection({ username, isOwnProfile, accent }: { username: string; isOwnProfile: boolean; accent: string }) {
+    const [favorites, setFavorites] = useState<Favorite[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    const [draft, setDraft] = useState<Favorite[]>([]);
+
+    useEffect(() => {
+        fetch(`/api/users/${username}/favorites`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setFavorites(d.data); })
+            .finally(() => setLoading(false));
+    }, [username]);
+
+    const startEdit = () => { setDraft([...favorites]); setEditing(true); };
+    const cancelEdit = () => { setDraft([]); setEditing(false); };
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/users/me/favorites', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: draft.map((f, i) => ({ tmdbId: f.tmdbId, title: f.title, year: f.year, posterUrl: f.posterUrl, position: i })) }),
+            });
+            const data = await res.json();
+            if (data.success) { setFavorites(data.data); setEditing(false); setDraft([]); }
+        } finally { setSaving(false); }
+    };
+
+    const addToFavorites = (movie: TMDBSearchResult) => {
+        if (draft.length >= 5) return;
+        setDraft(prev => [...prev, { id: '', tmdbId: movie.tmdbId, title: movie.title, year: movie.year, posterUrl: movie.posterUrl, position: prev.length }]);
+    };
+
+    const removeFavorite = (idx: number) => { setDraft(prev => prev.filter((_, i) => i !== idx)); };
+
+    const handleDragStart = (idx: number) => setDragIdx(idx);
+    const handleDragOver = (e: React.DragEvent, idx: number) => {
+        e.preventDefault();
+        if (dragIdx === null || dragIdx === idx) return;
+        setDraft(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(dragIdx, 1);
+            next.splice(idx, 0, moved);
+            return next;
+        });
+        setDragIdx(idx);
+    };
+    const handleDragEnd = () => setDragIdx(null);
+
+    const list = editing ? draft : favorites;
+
+    if (loading) return <div className="skeleton" style={{ height: 160, borderRadius: 'var(--radius-lg)' }} />;
+    if (!isOwnProfile && favorites.length === 0) return null;
+
+    return (
+        <section>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Crown size={18} style={{ color: '#fbbf24' }} /> Top 5 Favorites
+                </h2>
+                {isOwnProfile && !editing && (
+                    <button onClick={startEdit} className="btn btn-ghost btn-sm">Edit</button>
+                )}
+                {editing && (
+                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                        <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
+                        <button onClick={save} disabled={saving} className="btn btn-primary btn-sm" style={{ background: accent, borderColor: accent }}>{saving ? 'Saving…' : 'Save'}</button>
+                    </div>
+                )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 4 }}>
+                {list.map((fav, idx) => (
+                    <div key={fav.tmdbId} draggable={editing} onDragStart={() => handleDragStart(idx)} onDragOver={e => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
+                        style={{ flexShrink: 0, width: 100, position: 'relative', cursor: editing ? 'grab' : 'default', opacity: dragIdx === idx ? 0.5 : 1, transition: 'opacity 0.1s' }}>
+                        <Link href={`/movies/${fav.tmdbId}`} onClick={e => editing && e.preventDefault()}>
+                            <div style={{ position: 'relative' }}>
+                                {fav.posterUrl
+                                    ? <img src={fav.posterUrl} alt={fav.title} style={{ width: 100, aspectRatio: '2/3', objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block', boxShadow: idx === 0 ? '0 0 20px rgba(251,191,36,0.5), 0 0 0 2px rgba(251,191,36,0.6)' : 'none' }} />
+                                    : <div style={{ width: 100, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Film size={24} style={{ opacity: 0.4 }} /></div>
+                                }
+                                {idx === 0 && (
+                                    <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: 20, lineHeight: 1 }}>👑</div>
+                                )}
+                                {editing && (
+                                    <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <GripVertical size={18} style={{ color: '#fff', opacity: 0.8 }} />
+                                    </div>
+                                )}
+                            </div>
+                        </Link>
+                        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{fav.title}</p>
+                        {editing && (
+                            <button onClick={() => removeFavorite(idx)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <X size={11} style={{ color: '#fff' }} />
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {editing && draft.length < 5 && (
+                    <button onClick={() => setShowModal(true)}
+                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent }}>
+                        <Plus size={20} />
+                        <span style={{ fontSize: 10, fontWeight: 600 }}>Add film</span>
+                    </button>
+                )}
+                {!editing && list.length === 0 && isOwnProfile && (
+                    <button onClick={startEdit}
+                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}44`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
+                        <Crown size={20} style={{ opacity: 0.4 }} />
+                        <span style={{ fontSize: 10 }}>Pick favorites</span>
+                    </button>
+                )}
+            </div>
+
+            {showModal && (
+                <FavoriteSearchModal onSelect={addToFavorites} onClose={() => setShowModal(false)} existing={draft.map(f => f.tmdbId)} />
+            )}
+        </section>
+    );
+}
+
+// ─────────────────────────────────────────────────────
+
+function EmptyTab({ icon, text, cta }: { icon: React.ReactNode; text: string; cta?: { label: string; href: string } }) {    return (
         <div style={{ textAlign: 'center', padding: 'var(--space-3xl) 0', color: 'var(--text-tertiary)' }}>
             <div style={{ margin: '0 auto var(--space-md)', opacity: 0.3 }}>{icon}</div>
             <p style={{ fontWeight: 600, fontSize: 'var(--text-base)' }}>{text}</p>
@@ -255,6 +462,11 @@ export default function UserProfilePage() {
     const [watchedMovies, setWatchedMovies] = useState<WatchedMovie[]>([]);
     const [allFilms, setAllFilms] = useState<WatchedMovie[]>([]);
     const [allFilmsLoaded, setAllFilmsLoaded] = useState(false);
+    const [filmsPage, setFilmsPage] = useState(1);
+    const [filmsTotalPages, setFilmsTotalPages] = useState(1);
+    const [filmsTotalCount, setFilmsTotalCount] = useState(0);
+    const [filmsSort, setFilmsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'rating_desc'>('date_desc');
+    const [filmsRatingFilter, setFilmsRatingFilter] = useState<number | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [reviewsLoaded, setReviewsLoaded] = useState(false);
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -298,10 +510,20 @@ export default function UserProfilePage() {
     }, [username]);
 
     useEffect(() => {
-        if (activeTab === 'Films' && !allFilmsLoaded) {
-            fetch(`/api/users/${username}/watched?limit=200`)
+        if (activeTab === 'Films') {
+            setAllFilmsLoaded(false);
+            const params = new URLSearchParams({ limit: '50', page: filmsPage.toString(), sort: filmsSort });
+            if (filmsRatingFilter) params.set('minRating', filmsRatingFilter.toString());
+            fetch(`/api/users/${username}/watched?${params}`)
                 .then(r => r.json())
-                .then(d => { if (d.success) setAllFilms(d.data); setAllFilmsLoaded(true); });
+                .then(d => {
+                    if (d.success) {
+                        setAllFilms(d.data);
+                        setFilmsTotalPages(d.meta?.totalPages ?? 1);
+                        setFilmsTotalCount(d.meta?.totalCount ?? 0);
+                    }
+                    setAllFilmsLoaded(true);
+                });
         }
         if (activeTab === 'Reviews' && !reviewsLoaded) {
             fetch(`/api/users/${username}/reviews?limit=50`)
@@ -323,7 +545,7 @@ export default function UserProfilePage() {
                 .then(r => r.json())
                 .then(d => { if (d.success) setUserLists(d.data); setListsLoaded(true); });
         }
-    }, [activeTab, username, allFilmsLoaded, reviewsLoaded, watchlistLoaded, networkLoaded]);
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, reviewsLoaded, watchlistLoaded, networkLoaded]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
@@ -394,7 +616,10 @@ export default function UserProfilePage() {
 
             <div className="container">
                 <div className="profile-header">
-                    <div className="profile-avatar" style={{ border: '4px solid var(--bg-primary)' }}>
+                    <div className="profile-avatar" style={{
+                        border: '4px solid var(--bg-primary)',
+                        boxShadow: accent !== 'var(--brand)' ? `0 0 0 3px ${accent}44, 0 0 24px ${accent}30` : undefined,
+                    }}>
                         {user.avatarUrl ? (
                             <img src={user.avatarUrl} alt={user.username} />
                         ) : (
@@ -473,6 +698,9 @@ export default function UserProfilePage() {
 
                 {activeTab === 'Profile' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)' }}>
+                        {/* Top 5 Favorites */}
+                        <FavoritesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
+
                         {watchedMovies.length > 0 && (
                             <section>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
@@ -505,24 +733,74 @@ export default function UserProfilePage() {
 
                 {activeTab === 'Films' && (
                     <div>
+                        {/* Sort + filter bar */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            {/* Sort */}
+                            <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+                                {([
+                                    { key: 'date_desc', label: 'Latest' },
+                                    { key: 'date_asc', label: 'Oldest' },
+                                    { key: 'rating_desc', label: 'Top Rated' },
+                                    { key: 'title_asc', label: 'A–Z' },
+                                ] as const).map(s => (
+                                    <button key={s.key} onClick={() => { setFilmsSort(s.key); setFilmsPage(1); }}
+                                        style={{ padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: filmsSort === s.key ? 700 : 500, background: filmsSort === s.key ? accent : 'transparent', color: filmsSort === s.key ? '#000' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.12s' }}>
+                                        {s.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Rating filter */}
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <button onClick={() => { setFilmsRatingFilter(null); setFilmsPage(1); }}
+                                    style={{ padding: '4px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: filmsRatingFilter === null ? 700 : 500, background: filmsRatingFilter === null ? 'var(--bg-secondary)' : 'transparent', border: filmsRatingFilter === null ? `1.5px solid ${accent}` : '1.5px solid transparent', color: filmsRatingFilter === null ? 'var(--text-primary)' : 'var(--text-tertiary)', cursor: 'pointer' }}>
+                                    All ★
+                                </button>
+                                {[10, 9, 8, 7, 6, 5].map(r => (
+                                    <button key={r} onClick={() => { setFilmsRatingFilter(filmsRatingFilter === r ? null : r); setFilmsPage(1); }}
+                                        style={{ padding: '4px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: filmsRatingFilter === r ? 700 : 400, background: filmsRatingFilter === r ? '#fbbf24' : 'transparent', border: filmsRatingFilter === r ? '1.5px solid #fbbf24' : '1.5px solid var(--border-subtle)', color: filmsRatingFilter === r ? '#000' : 'var(--text-tertiary)', cursor: 'pointer' }}>
+                                        {r}★+
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {!allFilmsLoaded ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
-                                {Array.from({ length: 12 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
+                                {Array.from({ length: 20 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
                             </div>
                         ) : allFilms.length === 0 ? (
-                            <EmptyTab icon={<Eye size={48} />} text="No films logged yet" cta={isOwnProfile ? { label: 'Browse Films', href: '/movies' } : undefined} />
+                            <EmptyTab icon={<Eye size={48} />} text={filmsRatingFilter ? `No films rated ${filmsRatingFilter}★ or higher` : 'No films logged yet'} cta={isOwnProfile && !filmsRatingFilter ? { label: 'Browse Films', href: '/movies' } : undefined} />
                         ) : (
                             <>
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{allFilms.length} film{allFilms.length !== 1 ? 's' : ''} watched</p>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)' }}>
+                                    {filmsTotalCount.toLocaleString()} film{filmsTotalCount !== 1 ? 's' : ''}
+                                    {filmsRatingFilter ? ` rated ${filmsRatingFilter}★+` : ' watched'}
+                                    {filmsTotalPages > 1 ? ` · Page ${filmsPage} of ${filmsTotalPages}` : ''}
+                                </p>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {allFilms.map(wm => (
-                                        <MoviePosterCard key={wm.id} href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
+                                        <div key={wm.id} style={{ position: 'relative' }}>
+                                            <MoviePosterCard href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
+                                            {(wm as WatchedMovie & { rating?: number }).rating && (
+                                                <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24' }}>
+                                                    {'★'.repeat(Math.round(((wm as WatchedMovie & { rating?: number }).rating! / 10) * 5))}
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
+                                {filmsTotalPages > 1 && (
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-sm)', marginTop: 'var(--space-2xl)', alignItems: 'center' }}>
+                                        <button className="btn btn-ghost btn-sm" disabled={filmsPage <= 1} onClick={() => setFilmsPage(p => p - 1)}>← Prev</button>
+                                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', padding: '0 var(--space-sm)' }}>{filmsPage} / {filmsTotalPages}</span>
+                                        <button className="btn btn-ghost btn-sm" disabled={filmsPage >= filmsTotalPages} onClick={() => setFilmsPage(p => p + 1)}>Next →</button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
                 )}
+
 
                 {activeTab === 'Reviews' && (
                     <div>

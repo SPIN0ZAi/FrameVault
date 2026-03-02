@@ -27,6 +27,7 @@ model User {
   followers     Follows[] @relation("following")
   following     Follows[] @relation("followers")
   lists         List[]
+  favorites     UserFavorite[]
 
   @@map("users")
 }
@@ -229,4 +230,24 @@ model ListMovie {
   @@unique([listId, tmdbId])
   @@index([listId])
   @@map("list_movies")
+}
+
+// ─── USER FAVORITES ──────────────────────────────────
+
+model UserFavorite {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tmdbId    Int      @map("tmdb_id")
+  title     String
+  year      Int?
+  posterUrl String?  @map("poster_url")
+  position  Int      @default(0)
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId])
+  @@unique([userId, position])
+  @@index([userId])
+  @@map("user_favorites")
 }

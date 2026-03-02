@@ -52,6 +52,9 @@ export default function Header() {
                     <Link href="/lists" className="header-nav-link">
                         Lists
                     </Link>
+                    <Link href="/members" className="header-nav-link">
+                        Members
+                    </Link>
                     {session && (
                         <>
                             <Link href={`/users/${session.user.username}`} className="header-nav-link">
