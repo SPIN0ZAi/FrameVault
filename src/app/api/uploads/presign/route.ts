@@ -20,7 +20,7 @@ export async function POST(req: Request) {
         const parsed = presignSchema.safeParse(body);
 
         if (!parsed.success) {
-            return validationError(parsed.error);
+            return validationError(parsed.error.errors[0]?.message ?? 'Invalid input');
         }
 
         const { type, movieId, contentType, extension } = parsed.data;
