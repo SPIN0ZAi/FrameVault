@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical } from 'lucide-react';
+import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2 } from 'lucide-react';
 
 //  Types 
 
@@ -115,13 +115,14 @@ function MoviePosterCard({ href, posterUrl, title, year }: {
     );
 }
 
-function StarRating({ value }: { value: number }) {
+function StarRating({ value, showNumber = false }: { value: number; showNumber?: boolean }) {
     const stars = Math.round((value / 10) * 5 * 2) / 2;
     return (
-        <div style={{ display: 'flex', gap: '2px', color: 'var(--star-filled)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: 'var(--star-filled)' }}>
             {[1, 2, 3, 4, 5].map(i => (
-                <Star key={i} size={13} fill={stars >= i ? 'currentColor' : 'none'} stroke="currentColor" style={{ opacity: stars >= i - 0.5 ? 1 : 0.25 }} />
+                <Star key={i} size={15} fill={stars >= i ? 'currentColor' : 'none'} stroke="currentColor" style={{ opacity: stars >= i - 0.5 ? 1 : 0.25 }} />
             ))}
+            {showNumber && <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, marginLeft: 2 }}>{value}/10</span>}
         </div>
     );
 }
@@ -456,11 +457,52 @@ function EmptyTab({ icon, text, cta }: { icon: React.ReactNode; text: string; ct
     );
 }
 
-function ReviewCard({ review, revealed, onReveal }: { review: Review; revealed: boolean; onReveal: () => void }) {
+function ReviewCard({
+    review, revealed, onReveal, isOwn, onUpdate, onDelete,
+}: {
+    review: Review; revealed: boolean; onReveal: () => void;
+    isOwn?: boolean;
+    onUpdate?: (updated: Review) => void;
+    onDelete?: (id: string) => void;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState(review.content);
+    const [editSpoiler, setEditSpoiler] = useState(review.containsSpoilers);
+    const [saving, setSaving] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
     const href = `/movies/${review.movie.tmdbId ?? review.movie.id}`;
+
+    const handleSaveEdit = async () => {
+        if (editText.trim().length < 10) return;
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/reviews/${review.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: editText.trim(), containsSpoilers: editSpoiler }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                onUpdate?.({ ...review, content: editText.trim(), containsSpoilers: editSpoiler });
+                setEditing(false);
+            }
+        } finally { setSaving(false); }
+    };
+
+    const handleDelete = async () => {
+        setDeleting(true);
+        try {
+            const res = await fetch(`/api/reviews/${review.id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) onDelete?.(review.id);
+        } finally { setDeleting(false); setConfirmDelete(false); }
+    };
+
     return (
         <div style={{ display: 'flex', gap: 'var(--space-md)', padding: 'var(--space-lg)', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
-            <Link href={href} style={{ flexShrink: 0, width: '64px' }}>
+            <Link href={href} style={{ flexShrink: 0, width: '64px' }} onClick={e => editing && e.preventDefault()}>
                 {review.movie.posterUrl ? (
                     <img src={review.movie.posterUrl} alt={review.movie.title} style={{ width: '64px', aspectRatio: '2/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
                 ) : (
@@ -470,17 +512,79 @@ function ReviewCard({ review, revealed, onReveal }: { review: Review; revealed: 
                 )}
             </Link>
             <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
                     <div>
                         <Link href={href} style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{review.movie.title}</Link>
                         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginLeft: '6px' }}>{review.movie.year}</span>
                     </div>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                        {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                            {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {isOwn && !editing && (
+                            <>
+                                <button
+                                    onClick={() => { setEditText(review.content); setEditSpoiler(review.containsSpoilers); setEditing(true); setConfirmDelete(false); }}
+                                    title="Edit review"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2, display: 'flex', alignItems: 'center', borderRadius: 4, transition: 'color 0.12s' }}
+                                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--brand)')}
+                                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                ><Pencil size={14} /></button>
+                                {!confirmDelete
+                                    ? <button
+                                        onClick={() => setConfirmDelete(true)}
+                                        title="Delete review"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2, display: 'flex', alignItems: 'center', borderRadius: 4, transition: 'color 0.12s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                    ><Trash2 size={14} /></button>
+                                    : <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 700 }}>Delete?</span>
+                                        <button onClick={handleDelete} disabled={deleting}
+                                            style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700 }}>
+                                            {deleting ? '…' : 'Yes'}
+                                        </button>
+                                        <button onClick={() => setConfirmDelete(false)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px 4px', fontSize: 11 }}>No</button>
+                                    </div>
+                                }
+                            </>
+                        )}
+                    </div>
                 </div>
-                {review.rating && <div style={{ marginBottom: 'var(--space-xs)' }}><StarRating value={review.rating} /></div>}
-                {review.containsSpoilers && !revealed ? (
+
+                {/* Stars + numeric rating */}
+                {review.rating != null && review.rating > 0 && (
+                    <div style={{ marginBottom: 'var(--space-sm)' }}>
+                        <StarRating value={review.rating} showNumber />
+                    </div>
+                )}
+
+                {/* Content or inline edit form */}
+                {editing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
+                        <textarea
+                            className="input"
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            autoFocus
+                            style={{ width: '100%', minHeight: 100, resize: 'vertical', fontSize: 'var(--text-sm)' }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={editSpoiler} onChange={e => setEditSpoiler(e.target.checked)} />
+                                Contains spoilers
+                            </label>
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--space-sm)' }}>
+                                <button onClick={() => setEditing(false)} className="btn btn-ghost btn-sm">Cancel</button>
+                                <button onClick={handleSaveEdit} disabled={saving || editText.trim().length < 10} className="btn btn-primary btn-sm">
+                                    {saving ? 'Saving…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : review.containsSpoilers && !revealed ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', padding: 'var(--space-sm)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius-sm)' }}>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--warning)' }}>Contains spoilers</span>
                         <button onClick={onReveal} style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>Reveal</button>
@@ -944,7 +1048,15 @@ export default function UserProfilePage() {
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                                     {reviews.map(review => (
-                                        <ReviewCard key={review.id} review={review} revealed={revealedSpoilers.has(review.id)} onReveal={() => setRevealedSpoilers(prev => new Set([...prev, review.id]))} />
+                                        <ReviewCard
+                                            key={review.id}
+                                            review={review}
+                                            revealed={revealedSpoilers.has(review.id)}
+                                            onReveal={() => setRevealedSpoilers(prev => new Set([...prev, review.id]))}
+                                            isOwn={isOwnProfile}
+                                            onUpdate={updated => setReviews(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r))}
+                                            onDelete={id => { setReviews(prev => prev.filter(r => r.id !== id)); setUser(prev => prev ? { ...prev, _count: { ...prev._count, reviews: prev._count.reviews - 1 } } : prev); }}
+                                        />
                                     ))}
                                 </div>
                             </>

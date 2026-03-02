@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2 } from 'lucide-react';
+import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 
 interface MovieDetail {
@@ -80,6 +80,12 @@ export default function MovieDetailPage() {
     const [listsLoading, setListsLoading] = useState(false);
     const [addingToListId, setAddingToListId] = useState<string | null>(null);
     const [listAddedId, setListAddedId] = useState<string | null>(null);
+    const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+    const [editReviewText, setEditReviewText] = useState('');
+    const [editReviewSpoiler, setEditReviewSpoiler] = useState(false);
+    const [savingEditReview, setSavingEditReview] = useState(false);
+    const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null);
+    const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
 
     const fetchMovie = useCallback(async () => {
         try {
@@ -193,6 +199,27 @@ export default function MovieDetailPage() {
         setAddingToListId(null);
         setListAddedId(listId);
         setTimeout(() => setListAddedId(null), 2000);
+    };
+
+    const handleSaveEditReview = async () => {
+        if (!editingReviewId || editReviewText.trim().length < 10) return;
+        setSavingEditReview(true);
+        try {
+            const res = await fetch(`/api/reviews/${editingReviewId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: editReviewText.trim(), containsSpoilers: editReviewSpoiler }),
+            });
+            if (res.ok) { setEditingReviewId(null); await fetchMovie(); }
+        } finally { setSavingEditReview(false); }
+    };
+
+    const handleDeleteReview = async (reviewId: string) => {
+        setDeletingReviewId(reviewId);
+        try {
+            const res = await fetch(`/api/reviews/${reviewId}`, { method: 'DELETE' });
+            if (res.ok) { setConfirmDeleteReviewId(null); await fetchMovie(); }
+        } finally { setDeletingReviewId(null); }
     };
 
     if (loading) {
@@ -490,55 +517,109 @@ export default function MovieDetailPage() {
                             Reviews
                         </h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-                            {movie.reviews.map((review) => (
+                            {movie.reviews.map((review) => {
+                                const isOwnReview = session?.user?.id === review.user.id;
+                                const isEditing = editingReviewId === review.id;
+                                const isConfirmingDelete = confirmDeleteReviewId === review.id;
+                                return (
                                 <div key={review.id} className="review-card">
-                                    <div className="review-header">
-                                        <div className="review-author-avatar">
-                                            {review.user.avatarUrl ? (
-                                                <img src={review.user.avatarUrl} alt={review.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            ) : (
-                                                <div style={{
-                                                    width: '100%', height: '100%',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)',
-                                                }}>
-                                                    {review.user.username.charAt(0).toUpperCase()}
+                                    <div className="review-header" style={{ justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                                            <div className="review-author-avatar">
+                                                {review.user.avatarUrl ? (
+                                                    <img src={review.user.avatarUrl} alt={review.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                                                        {review.user.username.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <Link href={`/users/${review.user.username}`} className="review-author-name">
+                                                    {review.user.username}
+                                                </Link>
+                                                <div className="review-date">
+                                                    {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </div>
+                                            </div>
+                                            {review.containsSpoilers && (
+                                                <span className="review-spoiler-tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <AlertTriangle size={14} /> Spoiler
+                                                </span>
                                             )}
                                         </div>
-                                        <div>
-                                            <Link href={`/users/${review.user.username}`} className="review-author-name">
-                                                {review.user.username}
-                                            </Link>
-                                            <div className="review-date">
-                                                {new Date(review.createdAt).toLocaleDateString('en-US', {
-                                                    year: 'numeric', month: 'short', day: 'numeric',
-                                                })}
+                                        {/* Edit / Delete controls for own review */}
+                                        {isOwnReview && !isEditing && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                <button
+                                                    onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.content); setEditReviewSpoiler(review.containsSpoilers); setConfirmDeleteReviewId(null); }}
+                                                    title="Edit review"
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4, borderRadius: 4, display: 'flex', transition: 'color 0.12s' }}
+                                                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--brand)')}
+                                                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                                ><Pencil size={15} /></button>
+                                                {!isConfirmingDelete
+                                                    ? <button
+                                                        onClick={() => setConfirmDeleteReviewId(review.id)}
+                                                        title="Delete review"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4, borderRadius: 4, display: 'flex', transition: 'color 0.12s' }}
+                                                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                                    ><Trash2 size={15} /></button>
+                                                    : <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 700 }}>Delete?</span>
+                                                        <button onClick={() => handleDeleteReview(review.id)} disabled={deletingReviewId === review.id}
+                                                            style={{ background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '3px 8px', fontSize: 11, fontWeight: 700 }}>
+                                                            {deletingReviewId === review.id ? '\u2026' : 'Yes'}
+                                                        </button>
+                                                        <button onClick={() => setConfirmDeleteReviewId(null)}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '3px 6px', fontSize: 11 }}>No</button>
+                                                    </div>
+                                                }
                                             </div>
-                                        </div>
-                                        {review.containsSpoilers && (
-                                            <span className="review-spoiler-tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <AlertTriangle size={14} /> Spoiler
-                                            </span>
                                         )}
                                     </div>
-                                    <div
-                                        className={`review-content ${review.containsSpoilers && !revealedSpoilers.has(review.id) ? 'blurred' : ''}`}
-                                        onClick={() => {
-                                            if (review.containsSpoilers && !revealedSpoilers.has(review.id)) {
-                                                setRevealedSpoilers(new Set([...revealedSpoilers, review.id]));
-                                            }
-                                        }}
-                                    >
-                                        {review.content}
-                                    </div>
-                                    {review.containsSpoilers && !revealedSpoilers.has(review.id) && (
-                                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>
-                                            Click to reveal spoiler
-                                        </p>
+                                    {/* Inline edit form */}
+                                    {isEditing ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+                                            <textarea
+                                                className="input textarea"
+                                                value={editReviewText}
+                                                onChange={e => setEditReviewText(e.target.value)}
+                                                autoFocus
+                                                style={{ minHeight: 120, resize: 'vertical' }}
+                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                                    <input type="checkbox" checked={editReviewSpoiler} onChange={e => setEditReviewSpoiler(e.target.checked)} />
+                                                    Contains spoilers
+                                                </label>
+                                                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingReviewId(null)}>Cancel</button>
+                                                    <button type="button" className="btn btn-primary btn-sm"
+                                                        disabled={editReviewText.trim().length < 10 || savingEditReview}
+                                                        onClick={handleSaveEditReview}>
+                                                        {savingEditReview ? 'Saving\u2026' : 'Save'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div
+                                                className={`review-content ${review.containsSpoilers && !revealedSpoilers.has(review.id) ? 'blurred' : ''}`}
+                                                onClick={() => { if (review.containsSpoilers && !revealedSpoilers.has(review.id)) setRevealedSpoilers(new Set([...revealedSpoilers, review.id])); }}
+                                            >
+                                                {review.content}
+                                            </div>
+                                            {review.containsSpoilers && !revealedSpoilers.has(review.id) && (
+                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>Click to reveal spoiler</p>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
                 )}
