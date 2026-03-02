@@ -586,7 +586,21 @@ export default function MovieDetailPage() {
                                 label="Upload Custom Artwork"
                                 aspectRatio="poster"
                                 currentImageUrl={movie.userInteraction?.customPosterUrl || movie.posterUrl || undefined}
-                                onUploadSuccess={() => {
+                                onFileSelect={async (file) => {
+                                    const ext = file.name.split('.').pop() ?? 'jpg';
+                                    const presignRes = await fetch('/api/uploads/presign', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ type: 'poster', movieId: movie.id, contentType: file.type, extension: ext }),
+                                    });
+                                    const presignData = await presignRes.json();
+                                    if (!presignData.success) return;
+                                    await fetch(presignData.data.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+                                    await fetch(`/api/movies/${movie.id}/custom-poster`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ posterUrl: presignData.data.publicUrl }),
+                                    });
                                     setShowPosterModal(false);
                                     fetchMovie();
                                 }}
