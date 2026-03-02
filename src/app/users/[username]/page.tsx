@@ -196,8 +196,16 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
     const [editing, setEditing] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [dragIdx, setDragIdx] = useState<number | null>(null);
     const [draft, setDraft] = useState<Favorite[]>([]);
+
+    // Drag state
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+    const [ghostPoster, setGhostPoster] = useState<string | null>(null);
+    const [ghostTitle, setGhostTitle] = useState('');
+    const dragIdxRef = useRef<number | null>(null);
+    const ghostOffsetRef = useRef({ x: 0, y: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetch(`/api/users/${username}/favorites`)
@@ -212,10 +220,13 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
     const save = async () => {
         setSaving(true);
         try {
+            // Send array directly — API expects a plain array
             const res = await fetch('/api/users/me/favorites', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: draft.map((f, i) => ({ tmdbId: f.tmdbId, title: f.title, year: f.year, posterUrl: f.posterUrl, position: i })) }),
+                body: JSON.stringify(
+                    draft.map((f, i) => ({ tmdbId: f.tmdbId, title: f.title, year: f.year, posterUrl: f.posterUrl, position: i }))
+                ),
             });
             const data = await res.json();
             if (data.success) { setFavorites(data.data); setEditing(false); setDraft([]); }
@@ -229,19 +240,60 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
 
     const removeFavorite = (idx: number) => { setDraft(prev => prev.filter((_, i) => i !== idx)); };
 
-    const handleDragStart = (idx: number) => setDragIdx(idx);
-    const handleDragOver = (e: React.DragEvent, idx: number) => {
+    // ── Pointer-based drag ──────────────────────────────────────────────
+    const startDrag = (e: React.PointerEvent<HTMLDivElement>, idx: number) => {
+        if (!editing) return;
         e.preventDefault();
-        if (dragIdx === null || dragIdx === idx) return;
-        setDraft(prev => {
-            const next = [...prev];
-            const [moved] = next.splice(dragIdx, 1);
-            next.splice(idx, 0, moved);
-            return next;
-        });
+        const rect = e.currentTarget.getBoundingClientRect();
+        ghostOffsetRef.current = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+        };
+        dragIdxRef.current = idx;
         setDragIdx(idx);
+        setGhostPos({ x: e.clientX, y: e.clientY });
+        setGhostPoster(draft[idx]?.posterUrl ?? null);
+        setGhostTitle(draft[idx]?.title ?? '');
+
+        const onMove = (me: PointerEvent) => {
+            setGhostPos({ x: me.clientX, y: me.clientY });
+
+            if (!containerRef.current || dragIdxRef.current === null) return;
+            const cards = containerRef.current.querySelectorAll<HTMLElement>('[data-fav-idx]');
+            let hovered: number | null = null;
+            cards.forEach(card => {
+                const r = card.getBoundingClientRect();
+                if (me.clientX >= r.left && me.clientX <= r.right && me.clientY >= r.top - 30 && me.clientY <= r.bottom + 30) {
+                    hovered = parseInt(card.dataset.favIdx!);
+                }
+            });
+            if (hovered !== null && hovered !== dragIdxRef.current) {
+                const from = dragIdxRef.current;
+                const to = hovered;
+                dragIdxRef.current = to;
+                setDragIdx(to);
+                setDraft(prev => {
+                    const next = [...prev];
+                    const [moved] = next.splice(from, 1);
+                    next.splice(to, 0, moved);
+                    return next;
+                });
+            }
+        };
+
+        const onUp = () => {
+            setDragIdx(null);
+            setGhostPos(null);
+            setGhostPoster(null);
+            setGhostTitle('');
+            dragIdxRef.current = null;
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
     };
-    const handleDragEnd = () => setDragIdx(null);
 
     const list = editing ? draft : favorites;
 
@@ -260,48 +312,125 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                 {editing && (
                     <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                         <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
-                        <button onClick={save} disabled={saving} className="btn btn-primary btn-sm" style={{ background: accent, borderColor: accent }}>{saving ? 'Saving…' : 'Save'}</button>
+                        <button onClick={save} disabled={saving} className="btn btn-primary btn-sm"
+                            style={{ background: accent, borderColor: accent }}>
+                            {saving ? 'Saving…' : 'Save'}
+                        </button>
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 4 }}>
-                {list.map((fav, idx) => (
-                    <div key={fav.tmdbId} draggable={editing} onDragStart={() => handleDragStart(idx)} onDragOver={e => handleDragOver(e, idx)} onDragEnd={handleDragEnd}
-                        style={{ flexShrink: 0, width: 100, position: 'relative', cursor: editing ? 'grab' : 'default', opacity: dragIdx === idx ? 0.5 : 1, transition: 'opacity 0.1s' }}>
-                        <Link href={`/movies/${fav.tmdbId}`} onClick={e => editing && e.preventDefault()}>
-                            <div style={{ position: 'relative' }}>
-                                {fav.posterUrl
-                                    ? <img src={fav.posterUrl} alt={fav.title} style={{ width: 100, aspectRatio: '2/3', objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block', boxShadow: idx === 0 ? '0 0 20px rgba(251,191,36,0.5), 0 0 0 2px rgba(251,191,36,0.6)' : 'none' }} />
-                                    : <div style={{ width: 100, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Film size={24} style={{ opacity: 0.4 }} /></div>
-                                }
-                                {idx === 0 && (
-                                    <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: 20, lineHeight: 1 }}>👑</div>
-                                )}
-                                {editing && (
-                                    <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <GripVertical size={18} style={{ color: '#fff', opacity: 0.8 }} />
-                                    </div>
-                                )}
-                            </div>
-                        </Link>
-                        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{fav.title}</p>
-                        {editing && (
-                            <button onClick={() => removeFavorite(idx)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <X size={11} style={{ color: '#fff' }} />
-                            </button>
-                        )}
-                    </div>
-                ))}
+            {/* Ghost image that follows the cursor */}
+            {ghostPos && (
+                <div style={{
+                    position: 'fixed',
+                    left: ghostPos.x - ghostOffsetRef.current.x,
+                    top: ghostPos.y - ghostOffsetRef.current.y,
+                    width: 100,
+                    aspectRatio: '2/3',
+                    zIndex: 9999,
+                    pointerEvents: 'none',
+                    transform: 'rotate(4deg) scale(1.08)',
+                    transformOrigin: `${ghostOffsetRef.current.x}px ${ghostOffsetRef.current.y}px`,
+                    boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden',
+                    border: `2px solid ${accent}`,
+                }}>
+                    {ghostPoster
+                        ? <img src={ghostPoster} alt={ghostTitle} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <div style={{ width: '100%', height: '100%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Film size={24} style={{ opacity: 0.4 }} />
+                        </div>
+                    }
+                </div>
+            )}
+
+            <div ref={containerRef} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 4, paddingTop: 12, userSelect: 'none' }}>
+                {list.map((fav, idx) => {
+                    const isDragged = editing && dragIdx === idx;
+                    return (
+                        <div
+                            key={fav.tmdbId}
+                            data-fav-idx={idx}
+                            onPointerDown={e => startDrag(e, idx)}
+                            style={{
+                                flexShrink: 0,
+                                width: 100,
+                                position: 'relative',
+                                cursor: editing ? (dragIdx !== null ? 'grabbing' : 'grab') : 'default',
+                                opacity: isDragged ? 0.25 : 1,
+                                transform: isDragged ? 'scale(0.95)' : 'scale(1)',
+                                transition: 'opacity 0.12s, transform 0.12s',
+                                touchAction: 'none',
+                            }}>
+                            <Link href={`/movies/${fav.tmdbId}`} onClick={e => editing && e.preventDefault()}>
+                                <div style={{ position: 'relative' }}>
+                                    {fav.posterUrl
+                                        ? <img
+                                            src={fav.posterUrl}
+                                            alt={fav.title}
+                                            draggable={false}
+                                            style={{
+                                                width: 100,
+                                                aspectRatio: '2/3',
+                                                objectFit: 'cover',
+                                                borderRadius: 'var(--radius-md)',
+                                                display: 'block',
+                                                boxShadow: idx === 0 && !isDragged
+                                                    ? '0 0 20px rgba(251,191,36,0.5), 0 0 0 2px rgba(251,191,36,0.6)'
+                                                    : '0 4px 12px rgba(0,0,0,0.3)',
+                                                transition: 'box-shadow 0.2s',
+                                            }}
+                                        />
+                                        : <div style={{ width: 100, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Film size={24} style={{ opacity: 0.4 }} />
+                                        </div>
+                                    }
+                                    {idx === 0 && !isDragged && (
+                                        <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 20, lineHeight: 1 }}>👑</div>
+                                    )}
+                                    {editing && (
+                                        <div style={{
+                                            position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)',
+                                            background: isDragged ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'background 0.12s',
+                                        }}>
+                                            <GripVertical size={20} style={{ color: '#fff', opacity: 0.9 }} />
+                                        </div>
+                                    )}
+                                </div>
+                            </Link>
+                            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                {fav.title}
+                            </p>
+                            {editing && (
+                                <button
+                                    onClick={() => removeFavorite(idx)}
+                                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', border: '2px solid var(--bg-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                    <X size={10} style={{ color: '#fff' }} />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+
                 {editing && draft.length < 5 && (
-                    <button onClick={() => setShowModal(true)}
-                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent }}>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent, transition: 'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = `${accent}22`)}
+                        onMouseLeave={e => (e.currentTarget.style.background = `${accent}11`)}
+                    >
                         <Plus size={20} />
                         <span style={{ fontSize: 10, fontWeight: 600 }}>Add film</span>
                     </button>
                 )}
+
                 {!editing && list.length === 0 && isOwnProfile && (
-                    <button onClick={startEdit}
+                    <button
+                        onClick={startEdit}
                         style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}44`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
                         <Crown size={20} style={{ opacity: 0.4 }} />
                         <span style={{ fontSize: 10 }}>Pick favorites</span>
