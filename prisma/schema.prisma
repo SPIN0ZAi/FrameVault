@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── USER ────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile       UserProfile?
+  reviews       Review[]
+  ratings       Rating[]
+  watchedMovies WatchedMovie[]
+  watchlist     WatchlistItem[]
+  customPosters CustomPoster[]
+  accounts      Account[]
+  followers     Follows[] @relation("following")
+  following     Follows[] @relation("followers")
+  lists         List[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model UserProfile {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  bio        String? @db.Text
+  location   String?
+  bannerUrl  String?
+  themeColor String  @default("#6366f1")
+  themeMode  String  @default("dark")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Follows {
+  follower    User     @relation("followers", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId  String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ─── MOVIE ───────────────────────────────────────────
+
+model Movie {
+  id          String   @id @default(cuid())
+  tmdbId      Int?     @unique
+  title       String
+  year        Int
+  posterUrl   String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  genres        MovieGenre[]
+  reviews       Review[]
+  ratings       Rating[]
+  watchedBy     WatchedMovie[]
+  watchlistBy   WatchlistItem[]
+  customPosters CustomPoster[]
+
+  @@index([title])
+  @@index([year])
+  @@map("movies")
+}
+
+model Genre {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+
+  movies MovieGenre[]
+
+  @@map("genres")
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+  @@map("movie_genres")
+}
+
+// ─── USER–MOVIE INTERACTIONS ─────────────────────────
+
+model WatchedMovie {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String
+  watchedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("watched_movies")
+}
+
+model WatchlistItem {
+  id      String   @id @default(cuid())
+  userId  String
+  movieId String
+  addedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("watchlist_items")
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("ratings")
+}
+
+model Review {
+  id               String   @id @default(cuid())
+  userId           String
+  movieId          String
+  content          String   @db.Text
+  containsSpoilers Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@index([movieId])
+  @@map("reviews")
+}
+
+model CustomPoster {
+  id        String @id @default(cuid())
+  userId    String
+  movieId   String
+  posterUrl String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("custom_posters")
+}
+
+// ─── LISTS ───────────────────────────────────────────
+
+model List {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  title       String      @db.VarChar(200)
+  description String?     @db.Text
+  isPublic    Boolean     @default(true) @map("is_public")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movies ListMovie[]
+
+  @@index([userId])
+  @@map("lists")
+}
+
+model ListMovie {
+  id        String   @id @default(cuid())
+  listId    String   @map("list_id")
+  tmdbId    Int      @map("tmdb_id")
+  title     String
+  year      Int?
+  posterUrl String?  @map("poster_url")
+  position  Int      @default(0)
+  note      String?  @db.Text
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, tmdbId])
+  @@index([listId])
+  @@map("list_movies")
+}

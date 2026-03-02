@@ -1,0 +1,715 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2 } from 'lucide-react';
+import ImageUploader from '@/components/ui/ImageUploader';
+
+interface MovieDetail {
+    id: string;
+    title: string;
+    year: number;
+    posterUrl: string | null;
+    backdropUrl: string | null;
+    description: string | null;
+    genres: { id: string; name: string; slug: string }[];
+    runtime: number | null;
+    language: string | null;
+    country: string | null;
+    averageRating: number | null;
+    ratingCount: number;
+    reviewCount: number;
+    watchedCount: number;
+    watchlistCount: number;
+    director: { id: number; name: string; profileUrl: string | null } | null;
+    cast: { id: number; name: string; character: string; profileUrl: string | null }[];
+    trailerKey: string | null;
+    similarMovies: { id: number; title: string; year: number; posterUrl: string | null }[];
+    reviews: {
+        id: string;
+        content: string;
+        containsSpoilers: boolean;
+        createdAt: string;
+        user: { id: string; username: string; avatarUrl: string | null };
+    }[];
+    userInteraction: {
+        watched: boolean;
+        watchlisted: boolean;
+        rating: number | null;
+        hasReview: boolean;
+        customPosterUrl: string | null;
+    } | null;
+}
+
+function formatRuntime(minutes: number | null): string | null {
+    if (!minutes) return null;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+}
+
+function getLanguageName(code: string | null): string | null {
+    if (!code) return null;
+    try {
+        return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase();
+    } catch {
+        return code.toUpperCase();
+    }
+}
+
+export default function MovieDetailPage() {
+    const { id } = useParams<{ id: string }>();
+    const { data: session } = useSession();
+    const router = useRouter();
+    const [movie, setMovie] = useState<MovieDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [actionLoading, setActionLoading] = useState('');
+    const [reviewText, setReviewText] = useState('');
+    const [spoiler, setSpoiler] = useState(false);
+    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [showPosterModal, setShowPosterModal] = useState(false);
+    const [showTrailerModal, setShowTrailerModal] = useState(false);
+    const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
+    const [showListModal, setShowListModal] = useState(false);
+    const [userLists, setUserLists] = useState<{ id: string; title: string; _count?: { movies: number } }[]>([]);
+    const [listsLoading, setListsLoading] = useState(false);
+    const [addingToListId, setAddingToListId] = useState<string | null>(null);
+    const [listAddedId, setListAddedId] = useState<string | null>(null);
+
+    const fetchMovie = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/movies/${id}`);
+            const data = await res.json();
+            if (data.success) {
+                setMovie(data.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch movie:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchMovie();
+    }, [fetchMovie]);
+
+    const handleWatch = async () => {
+        if (!session) { router.push('/login'); return; }
+        setActionLoading('watch');
+        try {
+            const isWatched = movie?.userInteraction?.watched;
+            await fetch(`/api/watched/${id}`, { method: isWatched ? 'DELETE' : 'POST' });
+            await fetchMovie();
+        } finally {
+            setActionLoading('');
+        }
+    };
+
+    const handleWatchlist = async () => {
+        if (!session) { router.push('/login'); return; }
+        setActionLoading('watchlist');
+        try {
+            const isWatchlisted = movie?.userInteraction?.watchlisted;
+            await fetch(`/api/watchlist/${id}`, { method: isWatchlisted ? 'DELETE' : 'POST' });
+            await fetchMovie();
+        } finally {
+            setActionLoading('');
+        }
+    };
+
+    const handleRate = async (value: number) => {
+        if (!session) { router.push('/login'); return; }
+        setActionLoading('rating');
+        try {
+            if (movie?.userInteraction?.rating === value) {
+                await fetch(`/api/movies/${id}/rating`, { method: 'DELETE' });
+            } else {
+                await fetch(`/api/movies/${id}/rating`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value }),
+                });
+            }
+            await fetchMovie();
+        } finally {
+            setActionLoading('');
+        }
+    };
+
+    const handleReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!session) { router.push('/login'); return; }
+        if (reviewText.trim().length < 10) return;
+
+        setActionLoading('review');
+        try {
+            const res = await fetch(`/api/movies/${id}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: reviewText, containsSpoilers: spoiler }),
+            });
+            if (res.ok) {
+                setReviewText('');
+                setSpoiler(false);
+                setShowReviewForm(false);
+                await fetchMovie();
+            }
+        } finally {
+            setActionLoading('');
+        }
+    };
+
+    const handleOpenListModal = async () => {
+        if (!session) { router.push('/login'); return; }
+        setShowListModal(true);
+        if (userLists.length === 0) {
+            setListsLoading(true);
+            const res = await fetch('/api/lists/mine');
+            const data = await res.json();
+            if (data.success) setUserLists(data.data);
+            setListsLoading(false);
+        }
+    };
+
+    const handleAddToList = async (listId: string) => {
+        if (!movie) return;
+        setAddingToListId(listId);
+        await fetch(`/api/lists/${listId}/movies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tmdbId: Number(id),
+                title: movie.title,
+                year: movie.year,
+                posterUrl: movie.userInteraction?.customPosterUrl || movie.posterUrl,
+            }),
+        });
+        setAddingToListId(null);
+        setListAddedId(listId);
+        setTimeout(() => setListAddedId(null), 2000);
+    };
+
+    if (loading) {
+        return (
+            <div className="page">
+                <div className="container">
+                    <div className="movie-detail">
+                        <div className="skeleton" style={{ aspectRatio: '2/3' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            <div className="skeleton" style={{ height: '48px', width: '60%' }} />
+                            <div className="skeleton" style={{ height: '20px', width: '30%' }} />
+                            <div className="skeleton" style={{ height: '100px' }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!movie) {
+        return (
+            <div className="page">
+                <div className="container" style={{ textAlign: 'center' }}>
+                    <h1 className="page-title">Movie Not Found</h1>
+                    <p className="page-subtitle mt-md">This movie doesn&apos;t exist or has been removed.</p>
+                    <Link href="/movies" className="btn btn-primary mt-lg">Browse Movies</Link>
+                </div>
+            </div>
+        );
+    }
+
+    const userRating = movie.userInteraction?.rating || 0;
+    const runtime = formatRuntime(movie.runtime);
+    const languageName = getLanguageName(movie.language);
+
+    return (
+        <>
+            {/* Backdrop Hero */}
+            {movie.backdropUrl && (
+                <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', marginTop: '-80px' }}>
+                    <img
+                        src={movie.backdropUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.4)' }}
+                    />
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'linear-gradient(to bottom, rgba(26,29,33,0) 0%, #1A1D21 88%)',
+                    }} />
+                </div>
+            )}
+
+            <div className="page" style={{
+                marginTop: movie.backdropUrl ? '-200px' : undefined,
+                position: 'relative',
+                zIndex: 1,
+            }}>
+                <div className="container">
+                    <div className="movie-detail">
+                    {/* Poster */}
+                    <div className="movie-poster-wrapper relative group">
+                        {movie.userInteraction?.customPosterUrl || movie.posterUrl ? (
+                            <img src={movie.userInteraction?.customPosterUrl || movie.posterUrl!} alt={movie.title} />
+                        ) : (
+                            <div style={{
+                                width: '100%', height: '100%',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-tertiary)',
+                            }}>
+                                <Film size={64} style={{ opacity: 0.5 }} />
+                            </div>
+                        )}
+
+                        {/* Edit Poster Overlay for Authenticated Users */}
+                        {session && (
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[var(--radius-lg)]">
+                                <button
+                                    onClick={() => setShowPosterModal(true)}
+                                    className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--background)] font-bold py-2 px-4 rounded-full transition-colors flex items-center gap-2"
+                                >
+                                    <ImagePlus size={18} />
+                                    Change Poster
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="movie-info">
+                        <div>
+                            <h1 className="movie-title">{movie.title}</h1>
+                            <div className="movie-meta mt-sm">
+                                        <span>{movie.year}</span>
+                                        {runtime && <span>{runtime}</span>}
+                                        {languageName && <span>{languageName}</span>}
+                                        {movie.country && <span>{movie.country}</span>}
+                                        {movie.genres.length > 0 && (
+                                            <div className="movie-genres">
+                                                {movie.genres.map((g) => (
+                                                    <span key={g.id} className="badge badge-brand">{g.name}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {movie.director && (
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-xs)' }}>
+                                            Directed by{' '}
+                                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                {movie.director.name}
+                                            </span>
+                                        </p>
+                                    )}
+                        </div>
+
+                        {/* Stats */}
+                        <div className="movie-stats">
+                            <div className="movie-stat">
+                                <div className="movie-stat-value" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {movie.averageRating ? <><Star size={24} fill="currentColor" className="text-brand" /> {movie.averageRating}</> : '—'}
+                                </div>
+                                <div className="movie-stat-label">
+                                    {movie.ratingCount} {movie.ratingCount === 1 ? 'rating' : 'ratings'}
+                                </div>
+                            </div>
+                            <div className="movie-stat">
+                                <div className="movie-stat-value">{movie.watchedCount}</div>
+                                <div className="movie-stat-label">watched</div>
+                            </div>
+                            <div className="movie-stat">
+                                <div className="movie-stat-value">{movie.reviewCount}</div>
+                                <div className="movie-stat-label">reviews</div>
+                            </div>
+                        </div>
+
+                        {movie.description && (
+                            <p className="movie-description">{movie.description}</p>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="movie-actions">
+                            <button
+                                className={`btn ${movie.userInteraction?.watched ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={handleWatch}
+                                disabled={actionLoading === 'watch'}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                id="watch-button"
+                            >
+                                {movie.userInteraction?.watched ? (
+                                    <><CheckCircle2 size={18} /> Watched</>
+                                ) : (
+                                    <><Eye size={18} /> Mark as Watched</>
+                                )}
+                            </button>
+                            <button
+                                className={`btn ${movie.userInteraction?.watchlisted ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={handleWatchlist}
+                                disabled={actionLoading === 'watchlist'}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                id="watchlist-button"
+                            >
+                                {movie.userInteraction?.watchlisted ? (
+                                    <><Check size={18} /> In Watchlist</>
+                                ) : (
+                                    <><BookmarkPlus size={18} /> Watchlist</>
+                                )}
+                            </button>
+                            {session && (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={handleOpenListModal}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                    <ListPlus size={18} /> Add to List
+                                </button>
+                            )}
+                            {session && !movie.userInteraction?.hasReview && (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowReviewForm(!showReviewForm)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    id="write-review-button"
+                                >
+                                    <Edit3 size={18} /> Write Review
+                                </button>
+                            )}
+                            {movie.trailerKey && (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowTrailerModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                    <Play size={18} /> Watch Trailer
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Rating */}
+                        <div>
+                            <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 'var(--space-sm)' }}>
+                                Your Rating
+                            </h3>
+                            <div className="rating-picker">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                                    <button
+                                        key={star}
+                                        className={`rating-star ${star <= (hoverRating || userRating) ? 'filled' : ''}`}
+                                        onMouseEnter={() => setHoverRating(star)}
+                                        onMouseLeave={() => setHoverRating(0)}
+                                        onClick={() => handleRate(star)}
+                                        disabled={actionLoading === 'rating'}
+                                        aria-label={`Rate ${star} out of 10`}
+                                    >
+                                        <Star size={24} fill="currentColor" />
+                                    </button>
+                                ))}
+                                <span className="rating-value">
+                                    {hoverRating || userRating || '—'} / 10
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Review Form */}
+                        {showReviewForm && (
+                            <form onSubmit={handleReview} className="card" style={{ marginTop: 'var(--space-md)' }}>
+                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, marginBottom: 'var(--space-md)' }}>
+                                    Write Your Review
+                                </h3>
+                                <textarea
+                                    className="input textarea"
+                                    placeholder="What did you think about this movie? (min 10 characters)"
+                                    value={reviewText}
+                                    onChange={(e) => setReviewText(e.target.value)}
+                                    style={{ minHeight: '150px', marginBottom: 'var(--space-md)' }}
+                                    id="review-textarea"
+                                />
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={spoiler}
+                                            onChange={(e) => setSpoiler(e.target.checked)}
+                                        />
+                                        Contains spoilers
+                                    </label>
+                                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowReviewForm(false)}>
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary btn-sm"
+                                            disabled={reviewText.trim().length < 10 || actionLoading === 'review'}
+                                            id="submit-review"
+                                        >
+                                            {actionLoading === 'review' ? 'Posting...' : 'Post Review'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+
+                {/* Cast & Crew */}
+                {movie.cast.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
+                            Cast &amp; Crew
+                        </h2>
+                        <div style={{ display: 'flex', gap: 'var(--space-lg)', overflowX: 'auto', paddingBottom: 'var(--space-md)', scrollbarWidth: 'thin' }}>
+                            {movie.cast.map((actor) => (
+                                <div key={actor.id} style={{ flexShrink: 0, width: '90px', textAlign: 'center' }}>
+                                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                        {actor.profileUrl ? (
+                                            <img src={actor.profileUrl} alt={actor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                                                {actor.name.charAt(0)}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3, marginBottom: '2px' }}>{actor.name}</p>
+                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{actor.character}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Reviews section */}
+                {movie.reviews.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
+                            Reviews
+                        </h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            {movie.reviews.map((review) => (
+                                <div key={review.id} className="review-card">
+                                    <div className="review-header">
+                                        <div className="review-author-avatar">
+                                            {review.user.avatarUrl ? (
+                                                <img src={review.user.avatarUrl} alt={review.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <div style={{
+                                                    width: '100%', height: '100%',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)',
+                                                }}>
+                                                    {review.user.username.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <Link href={`/users/${review.user.username}`} className="review-author-name">
+                                                {review.user.username}
+                                            </Link>
+                                            <div className="review-date">
+                                                {new Date(review.createdAt).toLocaleDateString('en-US', {
+                                                    year: 'numeric', month: 'short', day: 'numeric',
+                                                })}
+                                            </div>
+                                        </div>
+                                        {review.containsSpoilers && (
+                                            <span className="review-spoiler-tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <AlertTriangle size={14} /> Spoiler
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div
+                                        className={`review-content ${review.containsSpoilers && !revealedSpoilers.has(review.id) ? 'blurred' : ''}`}
+                                        onClick={() => {
+                                            if (review.containsSpoilers && !revealedSpoilers.has(review.id)) {
+                                                setRevealedSpoilers(new Set([...revealedSpoilers, review.id]));
+                                            }
+                                        }}
+                                    >
+                                        {review.content}
+                                    </div>
+                                    {review.containsSpoilers && !revealedSpoilers.has(review.id) && (
+                                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>
+                                            Click to reveal spoiler
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+                {/* Similar Movies */}
+                {movie.similarMovies.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)', marginBottom: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
+                            More Like This
+                        </h2>
+                        <div style={{ display: 'flex', gap: 'var(--space-md)', overflowX: 'auto', paddingBottom: 'var(--space-md)', scrollbarWidth: 'thin' }}>
+                            {movie.similarMovies.map((m) => (
+                                <Link
+                                    key={m.id}
+                                    href={`/movies/${m.id}`}
+                                    style={{ flexShrink: 0, width: '120px', textDecoration: 'none', color: 'inherit' }}
+                                >
+                                    <div style={{ width: '120px', aspectRatio: '2/3', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--bg-secondary)', marginBottom: '8px' }}>
+                                        {m.posterUrl && (
+                                            <img src={m.posterUrl} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3, marginBottom: '2px' }}>{m.title}</p>
+                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{m.year}</p>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
+
+            {/* Upload Poster Modal */}
+            {showPosterModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[var(--surface-light)] border border-[var(--border)] rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface)]">
+                            <h3 className="font-bold text-lg">Custom Poster</h3>
+                            <button onClick={() => setShowPosterModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <ImageUploader
+                                type="poster"
+                                movieId={movie.id}
+                                label="Upload Custom Artwork"
+                                aspectRatio="poster"
+                                currentImageUrl={movie.userInteraction?.customPosterUrl || movie.posterUrl || undefined}
+                                onUploadSuccess={() => {
+                                    setShowPosterModal(false);
+                                    fetchMovie();
+                                }}
+                            />
+
+                            {movie.userInteraction?.customPosterUrl && (
+                                <button
+                                    onClick={async () => {
+                                        await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' });
+                                        setShowPosterModal(false);
+                                        fetchMovie();
+                                    }}
+                                    className="w-full mt-4 text-sm text-red-400 hover:text-red-300 transition-colors py-2"
+                                >
+                                    Remove Custom Poster
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* Trailer Modal */}
+        {showTrailerModal && movie.trailerKey && (
+            <div
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 200,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.95)',
+                }}
+                onClick={() => setShowTrailerModal(false)}
+            >
+                <button
+                    onClick={() => setShowTrailerModal(false)}
+                    style={{
+                        position: 'absolute', top: '20px', right: '20px',
+                        color: 'white', background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '50%', width: '44px', height: '44px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <X size={24} />
+                </button>
+                <div
+                    style={{ width: 'min(90vw, 900px)', aspectRatio: '16/9' }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <iframe
+                        src={`https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1`}
+                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-lg)' }}
+                        allow="autoplay; fullscreen"
+                        allowFullScreen
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* Add to List Modal */}
+        {showListModal && (
+            <div
+                style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}
+                onClick={() => setShowListModal(false)}
+            >
+                <div
+                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', width: '100%', maxWidth: 400 }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                        <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Add to List</h3>
+                        <button onClick={() => setShowListModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+                    </div>
+                    {listsLoading ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-xl)' }}>
+                            <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
+                        </div>
+                    ) : userLists.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-secondary)' }}>
+                            <p style={{ marginBottom: 'var(--space-md)' }}>You have no lists yet.</p>
+                            <a href="/lists" style={{ color: 'var(--brand)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>Create a list →</a>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxHeight: 320, overflowY: 'auto' }}>
+                            {userLists.map((list) => (
+                                <button
+                                    key={list.id}
+                                    onClick={() => handleAddToList(list.id)}
+                                    disabled={addingToListId === list.id}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '12px var(--space-md)',
+                                        background: listAddedId === list.id ? 'rgba(34,197,94,0.1)' : 'var(--bg-primary)',
+                                        border: `1px solid ${listAddedId === list.id ? 'rgba(34,197,94,0.4)' : 'var(--border-default)'}`,
+                                        borderRadius: 'var(--radius-md)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        textAlign: 'left',
+                                    }}
+                                >
+                                    <div>
+                                        <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 2 }}>{list.title}</p>
+                                        {list._count && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{list._count.movies} film{list._count.movies !== 1 ? 's' : ''}</p>}
+                                    </div>
+                                    {addingToListId === list.id
+                                        ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)', flexShrink: 0 }} />
+                                        : listAddedId === list.id
+                                            ? <Check size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                                            : <ListPlus size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                                    }
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-default)' }}>
+                        <a href="/lists" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
+                            <ListPlus size={15} /> Manage My Lists
+                        </a>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
+    );
+}

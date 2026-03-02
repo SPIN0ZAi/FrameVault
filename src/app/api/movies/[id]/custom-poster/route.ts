@@ -1,0 +1,63 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { syncTMDBMovie } from '@/lib/sync-movie';
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return unauthorizedError();
+
+        const { id } = await params;
+        const { posterUrl } = await req.json();
+        if (!posterUrl) return NextResponse.json({ success: false, error: { message: 'posterUrl is required' } }, { status: 400 });
+
+        // Ensure the movie exists locally using the lazy-save ID
+        const internalMovieId = await syncTMDBMovie(id);
+
+        await prisma.customPoster.upsert({
+            where: {
+                userId_movieId: {
+                    userId: session.user.id,
+                    movieId: internalMovieId,
+                }
+            },
+            update: { posterUrl },
+            create: {
+                userId: session.user.id,
+                movieId: internalMovieId,
+                posterUrl,
+            }
+        });
+
+        return successResponse({ updated: true, posterUrl });
+    } catch (error) {
+        console.error('Custom Poster Error:', error);
+        return serverError('Failed to save custom poster');
+    }
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return unauthorizedError();
+
+        const { id } = await params;
+        const internalMovieId = await syncTMDBMovie(id);
+
+        await prisma.customPoster.delete({
+            where: {
+                userId_movieId: {
+                    userId: session.user.id,
+                    movieId: internalMovieId,
+                }
+            }
+        });
+
+        return successResponse({ deleted: true });
+    } catch (error) {
+        // Ignore if error is 'Record to delete does not exist'
+        return successResponse({ deleted: true });
+    }
+}
