@@ -7,39 +7,40 @@ interface ScrollRowProps {
     style?: React.CSSProperties;
 }
 
-/**
- * A horizontal scroll container that supports drag-to-scroll on desktop.
- * - Pointer capture keeps the drag active even when the cursor leaves the element.
- * - onClickCapture cancels child link clicks when the user actually dragged.
- * - Touch devices use native momentum scroll (overflow-x: auto + WebkitOverflowScrolling).
- */
+const DRAG_THRESHOLD = 6; // px before we treat it as a scroll drag
+
 export default function ScrollRow({ children, style }: ScrollRowProps) {
     const ref = useRef<HTMLDivElement>(null);
-    const activeRef = useRef(false);
-    const drag = useRef({ x: 0, left: 0, moved: false });
+    const drag = useRef({ pointerId: -1, x: 0, left: 0, moved: false });
     const [grabbing, setGrabbing] = useState(false);
 
     const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        activeRef.current = true;
-        drag.current = { x: e.clientX, left: ref.current?.scrollLeft ?? 0, moved: false };
-        // Capture so pointermove keeps firing even when the cursor leaves the element
-        ref.current?.setPointerCapture(e.pointerId);
-        setGrabbing(true);
+        // Only left-button / touch; ignore if already tracking
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        drag.current = { pointerId: e.pointerId, x: e.clientX, left: ref.current?.scrollLeft ?? 0, moved: false };
     };
 
     const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!activeRef.current || !ref.current) return;
+        if (drag.current.pointerId !== e.pointerId || !ref.current) return;
         const dx = e.clientX - drag.current.x;
-        if (Math.abs(dx) > 5) drag.current.moved = true;
-        if (drag.current.moved) ref.current.scrollLeft = drag.current.left - dx;
+        if (!drag.current.moved && Math.abs(dx) > DRAG_THRESHOLD) {
+            // Only capture + switch cursor once we know it's a real drag
+            drag.current.moved = true;
+            ref.current.setPointerCapture(e.pointerId);
+            setGrabbing(true);
+        }
+        if (drag.current.moved) {
+            ref.current.scrollLeft = drag.current.left - dx;
+        }
     };
 
-    const onPointerUp = () => {
-        activeRef.current = false;
+    const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (drag.current.pointerId !== e.pointerId) return;
+        drag.current.pointerId = -1;
         setGrabbing(false);
     };
 
-    // Block child link / button clicks when the pointer actually moved (i.e. it was a drag, not a tap)
+    // Block child link / button clicks only when the pointer actually scrolled
     const onClickCapture = (e: React.MouseEvent) => {
         if (drag.current.moved) {
             e.preventDefault();
@@ -64,7 +65,8 @@ export default function ScrollRow({ children, style }: ScrollRowProps) {
                 WebkitOverflowScrolling: 'touch',
                 margin: '0 calc(var(--space-lg) * -1)',
                 padding: '0 var(--space-lg) var(--space-lg)',
-                cursor: grabbing ? 'grabbing' : 'grab',
+                // Only show grabbing during an active scroll; otherwise let children define their own cursor
+                cursor: grabbing ? 'grabbing' : 'default',
                 userSelect: 'none',
                 ...style,
             }}
