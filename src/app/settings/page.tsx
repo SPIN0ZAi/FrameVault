@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download,
 } from 'lucide-react';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
@@ -76,6 +76,10 @@ export default function SettingsPage() {
     const [showNewPw, setShowNewPw] = useState(false);
     const [isSavingPw, setIsSavingPw] = useState(false);
     const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Export
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Danger zone
     const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -169,6 +173,30 @@ export default function SettingsPage() {
             setPwMsg({ type: 'error', text: (e as Error).message });
         } finally {
             setIsSavingPw(false);
+        }
+    };
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        setExportMsg(null);
+        try {
+            const res = await fetch('/api/users/me/export');
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const date = new Date().toISOString().slice(0, 10);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `framevault-${username}-${date}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setExportMsg({ type: 'success', text: 'Export downloaded — upload letterboxd-import.csv at letterboxd.com/import/' });
+        } catch {
+            setExportMsg({ type: 'error', text: 'Export failed. Please try again.' });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -563,6 +591,67 @@ export default function SettingsPage() {
                                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Upload your CSV export to sync watched films, ratings &amp; reviews</p>
                                             </div>
                                         </Link>
+                                    </div>
+                                </div>
+
+                                <div style={card}>
+                                    <div style={cardHead}>
+                                        <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Export Data</h2>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>Download your full watch history, ratings, and reviews in Letterboxd-compatible format</p>
+                                    </div>
+                                    <div style={cardBody}>
+                                        {/* What's included */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--space-sm)' }}>
+                                            {[
+                                                { file: 'letterboxd-import.csv', desc: 'Upload directly to Letterboxd', highlight: true },
+                                                { file: 'diary.csv',             desc: 'Watch history + ratings' },
+                                                { file: 'ratings.csv',           desc: 'All your film ratings' },
+                                                { file: 'reviews.csv',           desc: 'All your written reviews' },
+                                                { file: 'watched.csv',           desc: 'Complete watched list' },
+                                                { file: 'watchlist.csv',         desc: 'Your saved watchlist' },
+                                            ].map(({ file, desc, highlight }) => (
+                                                <div key={file} style={{ padding: '10px var(--space-md)', background: highlight ? 'rgba(0,209,193,0.06)' : 'var(--bg-primary)', border: `1px solid ${highlight ? 'rgba(0,209,193,0.25)' : 'var(--border-subtle)'}`, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: highlight ? 'var(--brand)' : 'var(--text-tertiary)', marginTop: 5, flexShrink: 0 }} />
+                                                    <div>
+                                                        <p style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', fontWeight: 700, color: highlight ? 'var(--brand)' : 'var(--text-primary)' }}>{file}</p>
+                                                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{desc}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Letterboxd import instructions */}
+                                        <div style={{ padding: 'var(--space-md)', background: 'rgba(0,209,193,0.04)', border: '1px solid rgba(0,209,193,0.15)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start' }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'rgba(0,209,193,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                <span style={{ fontSize: 18 }}>🎞</span>
+                                            </div>
+                                            <div>
+                                                <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 4 }}>Importing into Letterboxd</p>
+                                                <ol style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', paddingLeft: 16, lineHeight: 1.8, margin: 0 }}>
+                                                    <li>Download your export below</li>
+                                                    <li>Go to <a href="https://letterboxd.com/import/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>letterboxd.com/import/</a></li>
+                                                    <li>Upload <code style={{ background: 'rgba(0,209,193,0.12)', padding: '1px 5px', borderRadius: 3, fontFamily: 'var(--font-mono)' }}>letterboxd-import.csv</code></li>
+                                                </ol>
+                                            </div>
+                                        </div>
+
+                                        {exportMsg && (
+                                            <div style={{ padding: '10px var(--space-md)', borderRadius: 'var(--radius-md)', background: exportMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${exportMsg.type === 'success' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, fontSize: 'var(--text-sm)', color: exportMsg.type === 'success' ? '#10b981' : 'var(--error)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                {exportMsg.type === 'success' ? <Check size={15} /> : <AlertTriangle size={15} />}
+                                                {exportMsg.text}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={handleExport}
+                                            disabled={isExporting}
+                                            style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}
+                                        >
+                                            {isExporting
+                                                ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Preparing export…</>
+                                                : <><Download size={15} /> Download Export (.zip)</>}
+                                        </button>
                                     </div>
                                 </div>
                             </>
