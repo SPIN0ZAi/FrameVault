@@ -127,6 +127,60 @@ function StarRating({ value, showNumber = false }: { value: number; showNumber?:
     );
 }
 
+function RatingHistogramCard({ counts, average, total }: {
+    counts: number[];
+    average: number | null;
+    total: number;
+}) {
+    if (total === 0) return null;
+    const maxCount = Math.max(...counts, 1);
+    const avgStars = average !== null ? +(average / 2).toFixed(2) : null;
+    return (
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--text-tertiary)' }}>RATINGS</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{total.toLocaleString()} {total === 1 ? 'RATING' : 'RATINGS'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', height: 56, gap: 3 }}>
+                        {counts.map((count, i) => {
+                            const h = Math.max(3, Math.round((count / maxCount) * 52));
+                            return (
+                                <div key={i} style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end' }}>
+                                    <div
+                                        title={`${((i + 1) / 2).toFixed(1)}\u2605 (${i + 1}/10): ${count} rating${count !== 1 ? 's' : ''}`}
+                                        style={{ width: '100%', height: h, background: 'var(--bg-tertiary)', borderRadius: '2px 2px 0 0', cursor: 'default', transition: 'background 0.12s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--border-subtle)' }}>
+                        <Star size={11} style={{ color: 'var(--star-filled)', opacity: 0.4 }} />
+                        <div style={{ display: 'flex', gap: 1 }}>
+                            {[1, 2, 3, 4, 5].map(i => <Star key={i} size={11} fill="currentColor" style={{ color: 'var(--star-filled)', opacity: 0.7 }} />)}
+                        </div>
+                    </div>
+                </div>
+                {avgStars !== null && (
+                    <div style={{ flexShrink: 0, textAlign: 'center', paddingBottom: 22 }}>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--star-filled)', lineHeight: 1 }}>{avgStars.toFixed(1)}</div>
+                        <div style={{ display: 'flex', gap: 2, marginTop: 4, justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Star key={i} size={10} fill={avgStars >= i ? 'currentColor' : 'none'} stroke="currentColor"
+                                    style={{ color: 'var(--star-filled)', opacity: avgStars >= i - 0.5 ? 1 : 0.3 }} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ─── Favorites ────────────────────────────────────────
 
 function FavoriteSearchModal({ onSelect, onClose, existing }: {
@@ -710,6 +764,7 @@ export default function UserProfilePage() {
     const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
     const [userLists, setUserLists] = useState<UserList[]>([]);
     const [listsLoaded, setListsLoaded] = useState(false);
+    const [userRatingHistogram, setUserRatingHistogram] = useState<{ counts: number[]; average: number | null; total: number } | null>(null);
 
     const isOwnProfile = session?.user?.username === username;
     const TABS = ['Profile', 'Films', 'Reviews', 'Watchlist', 'Lists', 'Network'] as const;
@@ -718,12 +773,14 @@ export default function UserProfilePage() {
     useEffect(() => {
         async function fetchProfile() {
             try {
-                const [userRes, watchedRes] = await Promise.all([
+                const [userRes, watchedRes, histRes] = await Promise.all([
                     fetch(`/api/users/${username}`),
                     fetch(`/api/users/${username}/watched?limit=8`),
+                    fetch(`/api/users/${username}/rating-histogram`),
                 ]);
                 const userData = await userRes.json();
                 const watchedData = await watchedRes.json();
+                const histData = await histRes.json();
                 if (userData.success) {
                     setUser(userData.data);
                     setIsFollowing(userData.data.isFollowing || false);
@@ -733,6 +790,7 @@ export default function UserProfilePage() {
                     setError('server_error');
                 }
                 if (watchedData.success) setWatchedMovies(watchedData.data);
+                if (histData.success) setUserRatingHistogram(histData.data);
             } catch {
                 setError('server_error');
             } finally {
@@ -933,6 +991,11 @@ export default function UserProfilePage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)' }}>
                         {/* Top 5 Favorites */}
                         <FavoritesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
+
+                        {/* Rating Distribution */}
+                        {userRatingHistogram && userRatingHistogram.total > 0 && (
+                            <RatingHistogramCard counts={userRatingHistogram.counts} average={userRatingHistogram.average} total={userRatingHistogram.total} />
+                        )}
 
                         {watchedMovies.length > 0 && (
                             <section>

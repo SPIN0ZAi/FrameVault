@@ -61,6 +61,113 @@ function getLanguageName(code: string | null): string | null {
     }
 }
 
+// ─── Rating Histogram Card ────────────────────────────────────────────────────
+function RatingHistogramCard({ counts, average, total }: {
+    counts: number[];
+    average: number | null;
+    total: number;
+}) {
+    if (total === 0) return null;
+    const maxCount = Math.max(...counts, 1);
+    const avgStars = average !== null ? +(average / 2).toFixed(2) : null;
+    return (
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>RATINGS</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{total.toLocaleString()} {total === 1 ? 'FAN' : 'FANS'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', height: 64, gap: 3 }}>
+                        {counts.map((count, i) => {
+                            const h = Math.max(3, Math.round((count / maxCount) * 60));
+                            return (
+                                <div key={i} style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end' }}>
+                                    <div
+                                        title={`${((i + 1) / 2).toFixed(1)}★  (${i + 1}/10): ${count} rating${count !== 1 ? 's' : ''}`}
+                                        style={{ width: '100%', height: h, background: 'var(--bg-tertiary)', borderRadius: '2px 2px 0 0', cursor: 'default', transition: 'background 0.12s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
+                        <Star size={12} style={{ color: 'var(--star-filled)', opacity: 0.4 }} />
+                        <div style={{ display: 'flex', gap: 1 }}>
+                            {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} fill="currentColor" style={{ color: 'var(--star-filled)', opacity: 0.7 }} />)}
+                        </div>
+                    </div>
+                </div>
+                {avgStars !== null && (
+                    <div style={{ flexShrink: 0, textAlign: 'center', paddingBottom: 24 }}>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--star-filled)', lineHeight: 1 }}>{avgStars.toFixed(1)}</div>
+                        <div style={{ display: 'flex', gap: 2, marginTop: 4, justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Star key={i} size={11} fill={avgStars >= i ? 'currentColor' : 'none'} stroke="currentColor"
+                                    style={{ color: 'var(--star-filled)', opacity: avgStars >= i - 0.5 ? 1 : 0.3 }} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Friends Activity Row ─────────────────────────────────────────────────────
+function FriendsActivityRow({
+    watched, watchlisted,
+}: {
+    watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
+    watchlisted: { user: { id: string; username: string; avatarUrl: string | null } }[];
+}) {
+    const all: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null; watchlistOnly: boolean }[] = [
+        ...watched.map(w => ({ ...w, watchlistOnly: false })),
+        ...watchlisted.map(w => ({ user: w.user, rating: null, watchlistOnly: true })),
+    ];
+    if (all.length === 0) return null;
+    return (
+        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 6, scrollbarWidth: 'thin' as const }}>
+            {all.map(item => {
+                const stars = item.rating !== null ? Math.round((item.rating / 10) * 5 * 2) / 2 : 0;
+                return (
+                    <Link key={item.user.id} href={`/users/${item.user.username}`}
+                        style={{ flexShrink: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit', width: 60 }}>
+                        <div style={{ position: 'relative', width: 54, height: 54, margin: '0 auto 5px' }}>
+                            <div style={{ width: 54, height: 54, borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+                                {item.user.avatarUrl
+                                    ? <img src={item.user.avatarUrl} alt={item.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--text-tertiary)' }}>{item.user.username.charAt(0).toUpperCase()}</div>
+                                }
+                            </div>
+                            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, borderRadius: '50%', background: 'var(--bg-primary)', border: '1.5px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {item.watchlistOnly
+                                    ? <BookmarkPlus size={9} style={{ color: 'var(--brand)' }} />
+                                    : <Eye size={9} style={{ color: 'var(--brand)' }} />
+                                }
+                            </div>
+                        </div>
+                        <p style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.user.username}
+                        </p>
+                        <div style={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Star key={i} size={9}
+                                    fill={!item.watchlistOnly && stars >= i ? 'currentColor' : 'none'}
+                                    stroke="currentColor"
+                                    style={{ color: 'var(--star-filled)', opacity: !item.watchlistOnly && stars >= i - 0.5 ? 1 : 0.2 }}
+                                />
+                            ))}
+                        </div>
+                    </Link>
+                );
+            })}
+        </div>
+    );
+}
+
 export default function MovieDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
@@ -86,6 +193,11 @@ export default function MovieDetailPage() {
     const [savingEditReview, setSavingEditReview] = useState(false);
     const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null);
     const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+    const [ratingHistogram, setRatingHistogram] = useState<{ counts: number[]; average: number | null; total: number } | null>(null);
+    const [friendsActivity, setFriendsActivity] = useState<{
+        watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
+        watchlisted: { user: { id: string; username: string; avatarUrl: string | null } }[];
+    } | null>(null);
 
     const fetchMovie = useCallback(async () => {
         try {
@@ -104,6 +216,21 @@ export default function MovieDetailPage() {
     useEffect(() => {
         fetchMovie();
     }, [fetchMovie]);
+
+    useEffect(() => {
+        fetch(`/api/movies/${id}/rating-histogram`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setRatingHistogram(d.data); })
+            .catch(() => {});
+    }, [id]);
+
+    useEffect(() => {
+        if (!session) return;
+        fetch(`/api/movies/${id}/friends-activity`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setFriendsActivity(d.data); })
+            .catch(() => {});
+    }, [id, session]);
 
     const handleWatch = async () => {
         if (!session) { router.push('/login'); return; }
@@ -483,6 +610,28 @@ export default function MovieDetailPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Activity from Friends */}
+                {session && friendsActivity && (friendsActivity.watched.length > 0 || friendsActivity.watchlisted.length > 0) && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            <h2 style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>ACTIVITY FROM FRIENDS</h2>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                {friendsActivity.watched.length > 0 && `${friendsActivity.watched.length} WATCHED`}
+                                {friendsActivity.watched.length > 0 && friendsActivity.watchlisted.length > 0 && ' \u2022 '}
+                                {friendsActivity.watchlisted.length > 0 && `${friendsActivity.watchlisted.length} WANT${friendsActivity.watchlisted.length === 1 ? 'S' : ''} TO WATCH`}
+                            </span>
+                        </div>
+                        <FriendsActivityRow watched={friendsActivity.watched} watchlisted={friendsActivity.watchlisted} />
+                    </section>
+                )}
+
+                {/* Site-wide Rating Distribution */}
+                {ratingHistogram && ratingHistogram.total > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <RatingHistogramCard counts={ratingHistogram.counts} average={ratingHistogram.average} total={ratingHistogram.total} />
+                    </section>
+                )}
 
                 {/* Cast & Crew */}
                 {movie.cast.length > 0 && (
