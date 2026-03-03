@@ -848,10 +848,18 @@ export default function MovieDetailPage() {
 
             {/* Poster Modal */}
             {showPosterModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 200,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: 16,
+                }}
                     onClick={() => setShowPosterModal(false)}>
-                    <div className="bg-[var(--surface-light)] border border-[var(--border)] rounded-2xl w-full overflow-hidden shadow-2xl relative"
-                        style={{ maxWidth: posterTab === 'pick' ? 640 : 400 }}
+                    <div style={{
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-xl)', width: '100%',
+                        maxWidth: posterTab === 'pick' ? 640 : 400,
+                        overflow: 'hidden', boxShadow: 'var(--shadow-xl)', position: 'relative',
+                    }}
                         onClick={e => e.stopPropagation()}>
                         {/* Header */}
                         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -904,7 +912,7 @@ export default function MovieDetailPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className="p-6">
+                            <div style={{ padding: 24 }}>
                                 <ImageUploader
                                     type="poster"
                                     movieId={movie.id}
@@ -932,7 +940,7 @@ export default function MovieDetailPage() {
                                 />
                                 {movie.userInteraction?.customPosterUrl && (
                                     <button onClick={async () => { await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchMovie(); }}
-                                        className="w-full mt-4 text-sm text-red-400 hover:text-red-300 transition-colors py-2">
+                                        style={{ marginTop: 16, width: '100%', fontSize: 'var(--text-sm)', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0' }}>
                                         Remove Custom Poster
                                     </button>
                                 )}
