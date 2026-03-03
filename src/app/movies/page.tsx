@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Film, Search, SlidersHorizontal, X } from 'lucide-react';
 
@@ -70,20 +70,33 @@ const GENRE_COLORS: Record<string, string> = {
 
 function MoviesInner() {
     const urlParams = useSearchParams();
-    const initialSearch = urlParams.get('search') || '';
+    const router = useRouter();
 
+    // Initialize all state from URL params so back-navigation restores position
     const [movies, setMovies] = useState<Movie[]>([]);
     const [genres, setGenres] = useState<Genre[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchInput, setSearchInput] = useState(initialSearch);
-    const [search, setSearch] = useState(initialSearch);
-    const [selectedGenre, setSelectedGenre] = useState('');
-    const [sort, setSort] = useState('popular');
-    const [decade, setDecade] = useState('');
-    const [page, setPage] = useState(1);
+    const [searchInput, setSearchInput] = useState(urlParams.get('search') || '');
+    const [search, setSearch] = useState(urlParams.get('search') || '');
+    const [selectedGenre, setSelectedGenre] = useState(urlParams.get('genre') || '');
+    const [sort, setSort] = useState(urlParams.get('sort') || 'popular');
+    const [decade, setDecade] = useState(urlParams.get('decade') || '');
+    const [page, setPage] = useState(parseInt(urlParams.get('page') || '1'));
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
+
+    // Keep URL in sync with state so back/forward works
+    useEffect(() => {
+        const p = new URLSearchParams();
+        if (page > 1) p.set('page', page.toString());
+        if (search) p.set('search', search);
+        if (selectedGenre) p.set('genre', selectedGenre);
+        if (sort !== 'popular') p.set('sort', sort);
+        if (decade) p.set('decade', decade);
+        const qs = p.toString();
+        router.replace(`/movies${qs ? `?${qs}` : ''}`, { scroll: false });
+    }, [page, search, selectedGenre, sort, decade]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchMovies = useCallback(async () => {
         setLoading(true);
