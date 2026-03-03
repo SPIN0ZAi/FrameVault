@@ -185,6 +185,7 @@ export default function MovieDetailPage() {
     const [tmdbPostersLoading, setTmdbPostersLoading] = useState(false);
     const [applyingPoster, setApplyingPoster] = useState<string | null>(null);
     const [posterHover, setPosterHover] = useState(false);
+    const [showWatchPrompt, setShowWatchPrompt] = useState(false);
     const [showTrailerModal, setShowTrailerModal] = useState(false);
     const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
     const [showListModal, setShowListModal] = useState(false);
@@ -262,6 +263,7 @@ export default function MovieDetailPage() {
     const handleWatch = async () => {
         if (!session) { router.push('/login'); return; }
         setActionLoading('watch');
+        setShowWatchPrompt(false);
         try {
             const isWatched = movie?.userInteraction?.watched;
             await fetch(`/api/watched/${id}`, { method: isWatched ? 'DELETE' : 'POST' });
@@ -295,6 +297,10 @@ export default function MovieDetailPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ value }),
                 });
+                // Prompt to mark as watched if not already
+                if (!movie?.userInteraction?.watched) {
+                    setShowWatchPrompt(true);
+                }
             }
             await fetchMovie();
         } finally {
@@ -588,6 +594,38 @@ export default function MovieDetailPage() {
                                 </button>
                             )}
                         </div>
+
+                        {/* Watch prompt after rating */}
+                        {showWatchPrompt && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                gap: 'var(--space-md)', flexWrap: 'wrap',
+                                padding: '10px 16px',
+                                background: 'rgba(0,209,193,0.08)',
+                                border: '1px solid rgba(0,209,193,0.25)',
+                                borderRadius: 'var(--radius-md)',
+                            }}>
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Eye size={15} style={{ color: 'var(--brand)' }} />
+                                    Mark <strong>{movie.title}</strong> as watched?
+                                </span>
+                                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                    <button
+                                        onClick={handleWatch}
+                                        disabled={actionLoading === 'watch'}
+                                        className="btn btn-primary btn-sm"
+                                    >
+                                        Yes, mark watched
+                                    </button>
+                                    <button
+                                        onClick={() => setShowWatchPrompt(false)}
+                                        className="btn btn-ghost btn-sm"
+                                    >
+                                        No thanks
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Rating */}
                         <div>

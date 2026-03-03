@@ -23,6 +23,11 @@ export async function POST(
             update: { watchedAt: new Date() },
         });
 
+        // Auto-remove from watchlist when marking as watched
+        await prisma.watchlistItem.deleteMany({
+            where: { userId: session.user.id, movieId: localMovieId },
+        });
+
         return successResponse(watched);
     } catch (error) {
         console.error('POST watched error:', error);
