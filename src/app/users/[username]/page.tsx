@@ -381,7 +381,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                     position: 'fixed',
                     left: ghostPos.x - ghostOffsetRef.current.x,
                     top: ghostPos.y - ghostOffsetRef.current.y,
-                    width: 100,
+                    width: 125,
                     aspectRatio: '2/3',
                     zIndex: 9999,
                     pointerEvents: 'none',
@@ -411,7 +411,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                             onPointerDown={e => startDrag(e, idx)}
                             style={{
                                 flexShrink: 0,
-                                width: 100,
+                                width: 125,
                                 position: 'relative',
                                 cursor: editing ? (dragIdx !== null ? 'grabbing' : 'grab') : 'default',
                                 opacity: isDragged ? 0.25 : 1,
@@ -427,7 +427,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                                             alt={fav.title}
                                             draggable={false}
                                             style={{
-                                                width: 100,
+                                                width: 125,
                                                 aspectRatio: '2/3',
                                                 objectFit: 'cover',
                                                 borderRadius: 'var(--radius-md)',
@@ -438,7 +438,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                                                 transition: 'box-shadow 0.2s',
                                             }}
                                         />
-                                        : <div style={{ width: 100, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        : <div style={{ width: 125, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Film size={24} style={{ opacity: 0.4 }} />
                                         </div>
                                     }
@@ -474,7 +474,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                 {editing && draft.length < 5 && (
                     <button
                         onClick={() => setShowModal(true)}
-                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent, transition: 'background 0.15s' }}
+                        style={{ flexShrink: 0, width: 125, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent, transition: 'background 0.15s' }}
                         onMouseEnter={e => (e.currentTarget.style.background = `${accent}22`)}
                         onMouseLeave={e => (e.currentTarget.style.background = `${accent}11`)}
                     >
@@ -1063,7 +1063,7 @@ export default function UserProfilePage() {
                         </div>
 
                         {!allFilmsLoaded ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                 {Array.from({ length: 20 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
                             </div>
                         ) : allFilms.length === 0 ? (
@@ -1075,7 +1075,7 @@ export default function UserProfilePage() {
                                     {filmsRatingFilter ? ` rated ${filmsRatingFilter}★+` : ' watched'}
                                     {filmsTotalPages > 1 ? ` · Page ${filmsPage} of ${filmsTotalPages}` : ''}
                                 </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {allFilms.map(wm => (
                                         <div key={wm.id} style={{ position: 'relative' }}>
                                             <MoviePosterCard href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
@@ -1132,7 +1132,7 @@ export default function UserProfilePage() {
                 {activeTab === 'Watchlist' && (
                     <div>
                         {!watchlistLoaded ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                 {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
                             </div>
                         ) : watchlist.length === 0 ? (
@@ -1140,7 +1140,7 @@ export default function UserProfilePage() {
                         ) : (
                             <>
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{watchlist.length} film{watchlist.length !== 1 ? 's' : ''} saved</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {watchlist.map(item => (
                                         <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
                                     ))}
