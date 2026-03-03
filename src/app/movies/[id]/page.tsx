@@ -846,38 +846,67 @@ export default function MovieDetailPage() {
                 )}
             </div>
 
-            {/* Poster Modal */}
+            {/* Poster Side Drawer */}
             {showPosterModal && (
-                <div style={{
-                    position: 'fixed', inset: 0, zIndex: 200,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: 16,
-                }}
-                    onClick={() => setShowPosterModal(false)}>
+                <>
+                    {/* Backdrop */}
+                    <div
+                        onClick={() => setShowPosterModal(false)}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 199,
+                            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
+                            animation: 'fadeInBackdrop 0.2s ease',
+                        }}
+                    />
+                    {/* Drawer */}
                     <div style={{
-                        background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-xl)', width: '100%',
-                        maxWidth: posterTab === 'pick' ? 640 : 400,
-                        overflow: 'hidden', boxShadow: 'var(--shadow-xl)', position: 'relative',
-                    }}
-                        onClick={e => e.stopPropagation()}>
-                        {/* Header */}
-                        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)' }}>Change Poster</h3>
-                            <button onClick={() => setShowPosterModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}><X size={20} /></button>
+                        position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 200,
+                        width: posterTab === 'pick' ? 420 : 360,
+                        background: 'var(--bg-primary)',
+                        borderRight: '1px solid var(--border-subtle)',
+                        boxShadow: '4px 0 32px rgba(0,0,0,0.5)',
+                        display: 'flex', flexDirection: 'column',
+                        animation: 'slideInLeft 0.25s cubic-bezier(0.4,0,0.2,1)',
+                        overflowY: 'auto',
+                    }}>
+                        {/* Drawer Header */}
+                        <div style={{
+                            padding: '16px 20px',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            flexShrink: 0,
+                            position: 'sticky', top: 0,
+                            background: 'var(--bg-primary)', zIndex: 1,
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <ImagePlus size={18} style={{ color: 'var(--brand)' }} />
+                                <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', margin: 0 }}>Change Poster</h3>
+                            </div>
+                            <button onClick={() => setShowPosterModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4, borderRadius: 'var(--radius-sm)' }}>
+                                <X size={20} />
+                            </button>
                         </div>
+
                         {/* Tabs */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                             {(['pick', 'upload'] as const).map(tab => (
                                 <button key={tab} onClick={() => setPosterTab(tab)}
-                                    style={{ flex: 1, padding: '10px 16px', fontSize: 'var(--text-sm)', fontWeight: posterTab === tab ? 700 : 500, color: posterTab === tab ? 'var(--brand)' : 'var(--text-tertiary)', borderBottom: posterTab === tab ? '2px solid var(--brand)' : '2px solid transparent', marginBottom: -1, background: 'none', cursor: 'pointer', transition: 'color 0.12s' }}>
+                                    style={{
+                                        flex: 1, padding: '11px 16px',
+                                        fontSize: 'var(--text-sm)', fontWeight: posterTab === tab ? 700 : 500,
+                                        color: posterTab === tab ? 'var(--brand)' : 'var(--text-tertiary)',
+                                        borderBottom: posterTab === tab ? '2px solid var(--brand)' : '2px solid transparent',
+                                        marginBottom: -1, background: 'none', cursor: 'pointer',
+                                        transition: 'color 0.12s',
+                                    }}>
                                     {tab === 'pick' ? '🎬 Pick from TMDB' : '📁 Upload Your Own'}
                                 </button>
                             ))}
                         </div>
 
+                        {/* Content */}
                         {posterTab === 'pick' ? (
-                            <div style={{ padding: '16px 20px', maxHeight: '70vh', overflowY: 'auto' }}>
+                            <div style={{ padding: '16px 20px', flex: 1 }}>
                                 {tmdbPostersLoading ? (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
                                         {Array.from({ length: 12 }).map((_, i) => (
@@ -891,7 +920,7 @@ export default function MovieDetailPage() {
                                         {tmdbPosters.map((p, i) => (
                                             <button key={i} onClick={() => p.full && handlePickTmdbPoster(p.full)}
                                                 disabled={applyingPoster === p.full}
-                                                style={{ padding: 0, border: applyingPoster === p.full ? '2px solid var(--brand)' : '2px solid transparent', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'none', overflow: 'hidden', aspectRatio: '2/3', transition: 'border-color 0.12s, transform 0.1s', transform: 'scale(1)' }}
+                                                style={{ padding: 0, border: applyingPoster === p.full ? '2px solid var(--brand)' : '2px solid transparent', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'none', overflow: 'hidden', aspectRatio: '2/3', transition: 'border-color 0.12s, transform 0.1s', transform: 'scale(1)', position: 'relative' }}
                                                 onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
                                                 onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                                                 title="Click to use this poster"
@@ -906,13 +935,13 @@ export default function MovieDetailPage() {
                                 )}
                                 {movie.userInteraction?.customPosterUrl && (
                                     <button onClick={async () => { await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchMovie(); }}
-                                        style={{ marginTop: 16, width: '100%', fontSize: 'var(--text-xs)', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0' }}>
+                                        style={{ marginTop: 20, width: '100%', fontSize: 'var(--text-xs)', color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', cursor: 'pointer', padding: '8px 0' }}>
                                         Remove Custom Poster
                                     </button>
                                 )}
                             </div>
                         ) : (
-                            <div style={{ padding: 24 }}>
+                            <div style={{ padding: 24, flex: 1 }}>
                                 <ImageUploader
                                     type="poster"
                                     movieId={movie.id}
@@ -940,14 +969,14 @@ export default function MovieDetailPage() {
                                 />
                                 {movie.userInteraction?.customPosterUrl && (
                                     <button onClick={async () => { await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchMovie(); }}
-                                        style={{ marginTop: 16, width: '100%', fontSize: 'var(--text-sm)', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0' }}>
+                                        style={{ marginTop: 16, width: '100%', fontSize: 'var(--text-sm)', color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', cursor: 'pointer', padding: '8px 0' }}>
                                         Remove Custom Poster
                                     </button>
                                 )}
                             </div>
                         )}
                     </div>
-                </div>
+                </>
             )}
         </div>
 
