@@ -994,7 +994,9 @@ export default function UserProfilePage() {
 
                         {/* Rating Distribution */}
                         {userRatingHistogram && userRatingHistogram.total > 0 && (
-                            <RatingHistogramCard counts={userRatingHistogram.counts} average={userRatingHistogram.average} total={userRatingHistogram.total} />
+                            <div style={{ maxWidth: 340 }}>
+                                <RatingHistogramCard counts={userRatingHistogram.counts} average={userRatingHistogram.average} total={userRatingHistogram.total} />
+                            </div>
                         )}
 
                         {watchedMovies.length > 0 && (
