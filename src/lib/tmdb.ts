@@ -101,6 +101,7 @@ export async function discoverMovies(options: {
         page: (options.page || 1).toString(),
         sort_by: TMDB_SORT_MAP[options.sort || 'popular'] || 'popularity.desc',
         'vote_count.gte': '50', // filter out obscure entries
+        include_adult: 'false',
     };
     if (options.genre) params.with_genres = options.genre;
     return fetchFromTMDB<TMDBResponse<TMDBMovie>>('/discover/movie', params);
