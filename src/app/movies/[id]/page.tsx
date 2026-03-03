@@ -87,7 +87,7 @@ function RatingHistogramCard({ counts, average, total }: {
                                         title={`${((i + 1) / 2).toFixed(1)}★  (${i + 1}/10): ${count} rating${count !== 1 ? 's' : ''}`}
                                         style={{ width: '100%', height: h, background: 'rgba(255,255,255,0.13)', borderRadius: '2px 2px 0 0', cursor: 'default', transition: 'background 0.12s' }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand)')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.13)')}}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.13)')}
                                     />
                                 </div>
                             );
