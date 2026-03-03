@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut } from 'lucide-react';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen } from 'lucide-react';
 
 export default function Header() {
     const { data: session } = useSession();
@@ -57,6 +57,9 @@ export default function Header() {
                     </Link>
                     {session && (
                         <>
+                            <Link href="/diary" className="header-nav-link">
+                                Diary
+                            </Link>
                             <Link href={`/users/${session.user.username}`} className="header-nav-link">
                                 Profile
                             </Link>
@@ -129,6 +132,13 @@ export default function Header() {
                                         onClick={() => setDropdownOpen(false)}
                                     >
                                         <User size={16} /> My Profile
+                                    </Link>
+                                    <Link
+                                        href="/diary"
+                                        className="user-dropdown-item"
+                                        onClick={() => setDropdownOpen(false)}
+                                    >
+                                        <BookOpen size={16} /> Diary
                                     </Link>
                                     <Link
                                         href={`/users/${session.user.username}`}

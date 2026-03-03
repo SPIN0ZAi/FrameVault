@@ -629,7 +629,9 @@ export default function MovieDetailPage() {
                 {/* Site-wide Rating Distribution */}
                 {ratingHistogram && ratingHistogram.total > 0 && (
                     <section style={{ marginTop: 'var(--space-3xl)' }}>
-                        <RatingHistogramCard counts={ratingHistogram.counts} average={ratingHistogram.average} total={ratingHistogram.total} />
+                        <div style={{ maxWidth: 340 }}>
+                            <RatingHistogramCard counts={ratingHistogram.counts} average={ratingHistogram.average} total={ratingHistogram.total} />
+                        </div>
                     </section>
                 )}
 
