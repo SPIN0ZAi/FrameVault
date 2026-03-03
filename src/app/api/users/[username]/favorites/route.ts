@@ -17,7 +17,31 @@ export async function GET(
             where: { userId: user.id },
             orderBy: { position: 'asc' },
         });
-        return successResponse(favorites);
+
+        // Overlay custom posters: look up Movie by tmdbId and check if user has a custom poster
+        const tmdbIds = favorites.map(f => f.tmdbId);
+        const movies = await prisma.movie.findMany({
+            where: { tmdbId: { in: tmdbIds } },
+            select: {
+                tmdbId: true,
+                customPosters: {
+                    where: { userId: user.id },
+                    select: { posterUrl: true },
+                },
+            },
+        });
+        const customPosterMap = new Map(
+            movies
+                .filter(m => m.customPosters.length > 0)
+                .map(m => [m.tmdbId!, m.customPosters[0].posterUrl])
+        );
+
+        const data = favorites.map(f => ({
+            ...f,
+            posterUrl: customPosterMap.get(f.tmdbId) ?? f.posterUrl,
+        }));
+
+        return successResponse(data);
     } catch {
         return serverError();
     }
