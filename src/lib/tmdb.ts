@@ -8,6 +8,7 @@ export interface TMDBMovie {
     backdrop_path: string | null;
     release_date: string;
     vote_average: number;
+    adult?: boolean;
     genre_ids?: number[];
     genres?: { id: number; name: string }[];
     runtime?: number;
@@ -69,7 +70,12 @@ export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, 
 }
 
 export async function getPopularMovies(page = 1): Promise<TMDBResponse<TMDBMovie>> {
-    return fetchFromTMDB<TMDBResponse<TMDBMovie>>('/movie/popular', { page: page.toString() });
+    const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/movie/popular', {
+        page: page.toString(),
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(m => !m.adult);
+    return data;
 }
 
 export async function searchMovies(query: string, page = 1): Promise<TMDBResponse<TMDBMovie>> {
@@ -125,11 +131,20 @@ export async function getSimilarMovies(id: string | number): Promise<TMDBRespons
 }
 
 export async function getTrendingMovies(): Promise<TMDBResponse<TMDBMovie>> {
-    return fetchFromTMDB<TMDBResponse<TMDBMovie>>('/trending/movie/week');
+    const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/trending/movie/week', {
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(m => !m.adult);
+    return data;
 }
 
 export async function getTopRatedMovies(page = 1): Promise<TMDBResponse<TMDBMovie>> {
-    return fetchFromTMDB<TMDBResponse<TMDBMovie>>('/movie/top_rated', { page: page.toString() });
+    const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/movie/top_rated', {
+        page: page.toString(),
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(m => !m.adult);
+    return data;
 }
 
 export function getTMDBImageUrl(path: string | null, size: 'w185' | 'w342' | 'w500' | 'original' = 'w500') {
