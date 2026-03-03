@@ -72,31 +72,40 @@ function MoviesInner() {
     const urlParams = useSearchParams();
     const router = useRouter();
 
-    // Initialize all state from URL params so back-navigation restores position
+    // URL is the single source of truth — no local state for filters/page
+    const page = parseInt(urlParams.get('page') || '1');
+    const search = urlParams.get('search') || '';
+    const selectedGenre = urlParams.get('genre') || '';
+    const sort = urlParams.get('sort') || 'popular';
+    const decade = urlParams.get('decade') || '';
+
     const [movies, setMovies] = useState<Movie[]>([]);
     const [genres, setGenres] = useState<Genre[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchInput, setSearchInput] = useState(urlParams.get('search') || '');
-    const [search, setSearch] = useState(urlParams.get('search') || '');
-    const [selectedGenre, setSelectedGenre] = useState(urlParams.get('genre') || '');
-    const [sort, setSort] = useState(urlParams.get('sort') || 'popular');
-    const [decade, setDecade] = useState(urlParams.get('decade') || '');
-    const [page, setPage] = useState(parseInt(urlParams.get('page') || '1'));
+    const [searchInput, setSearchInput] = useState(search);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
 
-    // Keep URL in sync with state so back/forward works
-    useEffect(() => {
+    // Keep search input in sync with URL (e.g. after back/forward navigation)
+    useEffect(() => { setSearchInput(search); }, [search]);
+
+    // Navigate: push a new URL, creating a real history entry the back button can restore
+    const go = useCallback((overrides: { page?: number; search?: string; genre?: string; sort?: string; decade?: string }) => {
         const p = new URLSearchParams();
-        if (page > 1) p.set('page', page.toString());
-        if (search) p.set('search', search);
-        if (selectedGenre) p.set('genre', selectedGenre);
-        if (sort !== 'popular') p.set('sort', sort);
-        if (decade) p.set('decade', decade);
+        const pg = overrides.page !== undefined ? overrides.page : page;
+        const sr = overrides.search !== undefined ? overrides.search : search;
+        const gn = overrides.genre !== undefined ? overrides.genre : selectedGenre;
+        const st = overrides.sort !== undefined ? overrides.sort : sort;
+        const dc = overrides.decade !== undefined ? overrides.decade : decade;
+        if (pg > 1) p.set('page', pg.toString());
+        if (sr) p.set('search', sr);
+        if (gn) p.set('genre', gn);
+        if (st !== 'popular') p.set('sort', st);
+        if (dc) p.set('decade', dc);
         const qs = p.toString();
-        router.replace(`/movies${qs ? `?${qs}` : ''}`, { scroll: false });
-    }, [page, search, selectedGenre, sort, decade]); // eslint-disable-line react-hooks/exhaustive-deps
+        router.push(`/movies${qs ? `?${qs}` : ''}`, { scroll: false });
+    }, [page, search, selectedGenre, sort, decade, router]);
 
     const fetchMovies = useCallback(async () => {
         setLoading(true);
@@ -120,13 +129,16 @@ function MoviesInner() {
     useEffect(() => {
         fetch('/api/genres').then(r => r.json()).then(d => { if (d.success) setGenres(d.data); }).catch(() => { });
     }, []);
+
+    // Debounced search → push URL
     useEffect(() => {
-        const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 380);
+        if (searchInput === search) return;
+        const t = setTimeout(() => { go({ search: searchInput, page: 1 }); }, 380);
         return () => clearTimeout(t);
-    }, [searchInput]);
+    }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const hasFilters = !!(selectedGenre || decade || sort !== 'popular');
-    const clearAll = () => { setSelectedGenre(''); setDecade(''); setSort('popular'); setSearchInput(''); setPage(1); };
+    const clearAll = () => { setSearchInput(''); router.push('/movies', { scroll: false }); };
 
     return (
         <div className="page">
@@ -166,22 +178,22 @@ function MoviesInner() {
                         <div>
                             <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Sort by</p>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {SORT_OPTIONS.map(s => <Chip key={s.key} label={s.label} active={sort === s.key} onClick={() => { setSort(s.key); setPage(1); }} />)}
+                                {SORT_OPTIONS.map(s => <Chip key={s.key} label={s.label} active={sort === s.key} onClick={() => go({ sort: s.key, page: 1 })} />)}
                             </div>
                         </div>
                         <div>
                             <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Decade</p>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                <Chip label="All Time" active={!decade} onClick={() => { setDecade(''); setPage(1); }} />
-                                {DECADES.map(d => <Chip key={d.value} label={d.label} active={decade === d.value} onClick={() => { setDecade(d.value === decade ? '' : d.value); setPage(1); }} />)}
+                                <Chip label="All Time" active={!decade} onClick={() => go({ decade: '', page: 1 })} />
+                                {DECADES.map(d => <Chip key={d.value} label={d.label} active={decade === d.value} onClick={() => go({ decade: d.value === decade ? '' : d.value, page: 1 })} />)}
                             </div>
                         </div>
                         {genres.length > 0 && (
                             <div>
                                 <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Genre</p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                    <Chip label="All Genres" active={!selectedGenre} onClick={() => { setSelectedGenre(''); setPage(1); }} />
-                                    {genres.map(g => <Chip key={g.id} label={g.name} active={selectedGenre === g.slug} onClick={() => { setSelectedGenre(selectedGenre === g.slug ? '' : g.slug); setPage(1); }} color={GENRE_COLORS[g.slug]} />)}
+                                    <Chip label="All Genres" active={!selectedGenre} onClick={() => go({ genre: '', page: 1 })} />
+                                    {genres.map(g => <Chip key={g.id} label={g.name} active={selectedGenre === g.slug} onClick={() => go({ genre: selectedGenre === g.slug ? '' : g.slug, page: 1 })} color={GENRE_COLORS[g.slug]} />)}
                                 </div>
                             </div>
                         )}
@@ -192,9 +204,9 @@ function MoviesInner() {
                 {/* Active filter pills */}
                 {!showFilters && hasFilters && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--space-lg)', alignItems: 'center' }}>
-                        {sort !== 'popular' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'var(--brand)', color: '#000', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{SORT_OPTIONS.find(s => s.key === sort)?.label}<button onClick={() => setSort('popular')} style={{ background: 'none', cursor: 'pointer' }}><X size={10} /></button></span>}
-                        {selectedGenre && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: GENRE_COLORS[selectedGenre] || 'var(--brand)', color: '#fff', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{genres.find(g => g.slug === selectedGenre)?.name}<button onClick={() => setSelectedGenre('')} style={{ background: 'none', cursor: 'pointer', color: '#fff' }}><X size={10} /></button></span>}
-                        {decade && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{DECADES.find(d => d.value === decade)?.label}<button onClick={() => setDecade('')} style={{ background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={10} /></button></span>}
+                        {sort !== 'popular' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'var(--brand)', color: '#000', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{SORT_OPTIONS.find(s => s.key === sort)?.label}<button onClick={() => go({ sort: 'popular', page: 1 })} style={{ background: 'none', cursor: 'pointer' }}><X size={10} /></button></span>}
+                        {selectedGenre && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: GENRE_COLORS[selectedGenre] || 'var(--brand)', color: '#fff', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{genres.find(g => g.slug === selectedGenre)?.name}<button onClick={() => go({ genre: '', page: 1 })} style={{ background: 'none', cursor: 'pointer', color: '#fff' }}><X size={10} /></button></span>}
+                        {decade && <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', fontWeight: 700 }}>{DECADES.find(d => d.value === decade)?.label}<button onClick={() => go({ decade: '', page: 1 })} style={{ background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={10} /></button></span>}
                         <button onClick={clearAll} style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', background: 'none', cursor: 'pointer' }}>Clear all</button>
                     </div>
                 )}
@@ -241,14 +253,14 @@ function MoviesInner() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-sm)', marginTop: 'var(--space-2xl)', alignItems: 'center' }}>
-                        <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Previous</button>
+                        <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => go({ page: page - 1 })}>← Previous</button>
                         <div style={{ display: 'flex', gap: 4 }}>
                             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                                 const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i;
-                                return <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', fontWeight: p === page ? 800 : 400, fontSize: 'var(--text-xs)', background: p === page ? 'var(--brand)' : 'var(--bg-secondary)', color: p === page ? '#000' : 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>{p}</button>;
+                                return <button key={p} onClick={() => go({ page: p })} style={{ width: 32, height: 32, borderRadius: 'var(--radius-sm)', fontWeight: p === page ? 800 : 400, fontSize: 'var(--text-xs)', background: p === page ? 'var(--brand)' : 'var(--bg-secondary)', color: p === page ? '#000' : 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>{p}</button>;
                             })}
                         </div>
-                        <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                        <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => go({ page: page + 1 })}>Next →</button>
                     </div>
                 )}
             </div>
