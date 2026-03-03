@@ -356,8 +356,8 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
     if (!isOwnProfile && favorites.length === 0) return null;
 
     return (
-        <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+        <section style={{ width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 'var(--space-md)', gap: 'var(--space-md)' }}>
                 <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Crown size={18} style={{ color: '#fbbf24' }} /> Top 5 Favorites
                 </h2>
@@ -401,7 +401,7 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
                 </div>
             )}
 
-            <div ref={containerRef} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 4, paddingTop: 12, userSelect: 'none' }}>
+            <div ref={containerRef} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: 4, paddingTop: 12, userSelect: 'none', flexWrap: 'wrap' }}>
                 {list.map((fav, idx) => {
                     const isDragged = editing && dragIdx === idx;
                     return (
@@ -989,15 +989,17 @@ export default function UserProfilePage() {
 
                 {activeTab === 'Profile' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)' }}>
-                        {/* Top 5 Favorites */}
-                        <FavoritesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
+                        {/* Top 5 Favorites + Histogram centered together */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <FavoritesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
 
-                        {/* Rating Distribution */}
-                        {userRatingHistogram && userRatingHistogram.total > 0 && (
-                            <div style={{ maxWidth: 340 }}>
-                                <RatingHistogramCard counts={userRatingHistogram.counts} average={userRatingHistogram.average} total={userRatingHistogram.total} />
-                            </div>
-                        )}
+                            {/* Rating Distribution — right below, same center alignment */}
+                            {userRatingHistogram && userRatingHistogram.total > 0 && (
+                                <div style={{ width: '100%', maxWidth: 660, marginTop: 'var(--space-xl)' }}>
+                                    <RatingHistogramCard counts={userRatingHistogram.counts} average={userRatingHistogram.average} total={userRatingHistogram.total} />
+                                </div>
+                            )}
+                        </div>
 
                         {watchedMovies.length > 0 && (
                             <section>
