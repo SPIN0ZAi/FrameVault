@@ -29,6 +29,10 @@ export async function GET(
                             title: true,
                             year: true,
                             posterUrl: true,
+                            customPosters: {
+                                where: { userId: user.id },
+                                select: { posterUrl: true },
+                            },
                         },
                     },
                 },

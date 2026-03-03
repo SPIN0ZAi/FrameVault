@@ -25,7 +25,8 @@ export async function GET(_req: NextRequest) {
                 where: { userId: { in: followingIds }, watchedAt: { gte: since } },
                 include: {
                     user: { select: { id: true, username: true, avatarUrl: true } },
-                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true } },
+                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true,
+                        customPosters: { where: { userId: { in: followingIds } }, select: { userId: true, posterUrl: true } } } },
                 },
                 orderBy: { watchedAt: 'desc' },
                 take: 40,
@@ -34,7 +35,8 @@ export async function GET(_req: NextRequest) {
                 where: { userId: { in: followingIds }, createdAt: { gte: since } },
                 include: {
                     user: { select: { id: true, username: true, avatarUrl: true } },
-                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true } },
+                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true,
+                        customPosters: { where: { userId: { in: followingIds } }, select: { userId: true, posterUrl: true } } } },
                 },
                 orderBy: { createdAt: 'desc' },
                 take: 40,
@@ -43,12 +45,17 @@ export async function GET(_req: NextRequest) {
                 where: { userId: { in: followingIds }, createdAt: { gte: since } },
                 include: {
                     user: { select: { id: true, username: true, avatarUrl: true } },
-                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true } },
+                    movie: { select: { id: true, tmdbId: true, title: true, year: true, posterUrl: true,
+                        customPosters: { where: { userId: { in: followingIds } }, select: { userId: true, posterUrl: true } } } },
                 },
                 orderBy: { createdAt: 'desc' },
                 take: 40,
             }),
         ]);
+
+        // Helper: resolve the event user's custom poster, or fall back to default
+        const resolveposter = (movie: { posterUrl: string | null; customPosters: { userId: string; posterUrl: string }[] }, userId: string) =>
+            movie.customPosters.find(cp => cp.userId === userId)?.posterUrl ?? movie.posterUrl;
 
         type ActivityEvent = {
             id: string;
@@ -67,14 +74,14 @@ export async function GET(_req: NextRequest) {
                 type: 'watched' as const,
                 date: w.watchedAt.toISOString(),
                 user: w.user,
-                movie: w.movie,
+                movie: { ...w.movie, posterUrl: resolveposter(w.movie, w.user.id) },
             })),
             ...ratings.map(r => ({
                 id: `rated-${r.id}`,
                 type: 'rated' as const,
                 date: r.createdAt.toISOString(),
                 user: r.user,
-                movie: r.movie,
+                movie: { ...r.movie, posterUrl: resolveposter(r.movie, r.user.id) },
                 rating: r.value,
             })),
             ...reviews.map(r => ({
@@ -82,7 +89,7 @@ export async function GET(_req: NextRequest) {
                 type: 'reviewed' as const,
                 date: r.createdAt.toISOString(),
                 user: r.user,
-                movie: r.movie,
+                movie: { ...r.movie, posterUrl: resolveposter(r.movie, r.user.id) },
                 reviewContent: r.content,
                 containsSpoilers: r.containsSpoilers,
             })),

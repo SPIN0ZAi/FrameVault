@@ -56,7 +56,7 @@ interface Review {
 interface WatchlistItem {
     id: string;
     addedAt: string;
-    movie: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null };
+    movie: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null; customPosters?: { posterUrl: string }[] };
 }
 
 interface NetworkUser {
@@ -1142,7 +1142,7 @@ export default function UserProfilePage() {
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{watchlist.length} film{watchlist.length !== 1 ? 's' : ''} saved</p>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {watchlist.map(item => (
-                                        <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
+                                        <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
                                     ))}
                                 </div>
                             </>
