@@ -184,6 +184,7 @@ export default function MovieDetailPage() {
     const [tmdbPosters, setTmdbPosters] = useState<{ thumb: string | null; full: string | null }[]>([]);
     const [tmdbPostersLoading, setTmdbPostersLoading] = useState(false);
     const [applyingPoster, setApplyingPoster] = useState<string | null>(null);
+    const [posterHover, setPosterHover] = useState(false);
     const [showTrailerModal, setShowTrailerModal] = useState(false);
     const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
     const [showListModal, setShowListModal] = useState(false);
@@ -433,7 +434,11 @@ export default function MovieDetailPage() {
                 <div className="container">
                     <div className="movie-detail">
                     {/* Poster */}
-                    <div className="movie-poster-wrapper relative group">
+                    <div
+                        className="movie-poster-wrapper"
+                        onMouseEnter={() => setPosterHover(true)}
+                        onMouseLeave={() => setPosterHover(false)}
+                    >
                         {movie.userInteraction?.customPosterUrl || movie.posterUrl ? (
                             <img src={movie.userInteraction?.customPosterUrl || movie.posterUrl!} alt={movie.title} />
                         ) : (
@@ -449,10 +454,24 @@ export default function MovieDetailPage() {
 
                         {/* Edit Poster Overlay for Authenticated Users */}
                         {session && (
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[var(--radius-lg)]">
+                            <div style={{
+                                position: 'absolute', inset: 0,
+                                background: 'rgba(0,0,0,0.65)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                borderRadius: 'var(--radius-lg)',
+                                opacity: posterHover ? 1 : 0,
+                                transition: 'opacity 0.2s ease',
+                                backdropFilter: 'blur(3px)',
+                            }}>
                                 <button
                                     onClick={() => setShowPosterModal(true)}
-                                    className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--background)] font-bold py-2 px-4 rounded-full transition-colors flex items-center gap-2"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        background: 'var(--brand)', color: '#fff',
+                                        border: 'none', borderRadius: 999,
+                                        padding: '8px 16px', fontWeight: 700,
+                                        fontSize: 'var(--text-sm)', cursor: 'pointer',
+                                    }}
                                 >
                                     <ImagePlus size={18} />
                                     Change Poster
