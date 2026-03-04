@@ -18,46 +18,20 @@
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td><img src="docs/screenshots/home-hero.png" alt="Hero Carousel" /></td>
-    <td><img src="docs/screenshots/home-recs.png" alt="Personalized Recommendations" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Hero Carousel — trending films with backdrop</em></td>
-    <td align="center"><em>"Picked For You" — genre-based personalized recs</em></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/home-sections.png" alt="Trending & Top Rated sections" /></td>
-    <td><img src="docs/screenshots/profile.png" alt="Profile Page" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Trending This Week + And the Oscar Goes to…</em></td>
-    <td align="center"><em>Profile — Top 5 Favorites + Ratings Histogram</em></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/films.png" alt="Films Tab" /></td>
-    <td><img src="docs/screenshots/reviews.png" alt="Reviews Tab" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Films tab — full watched history with rating filters</em></td>
-    <td align="center"><em>Reviews tab — all written reviews</em></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/diary.png" alt="Diary" /></td>
-    <td><img src="docs/screenshots/activity.png" alt="Activity Feed" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Diary — chronological film log by year/month</em></td>
-    <td align="center"><em>Activity — what people you follow are watching</em></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="docs/screenshots/members.png" alt="Members Page" /></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><em>Members — discover and follow other film lovers</em></td>
-  </tr>
-</table>
+> **To add screenshots:** go to [github.com/SPIN0ZAi/FrameVault](https://github.com/SPIN0ZAi/FrameVault), open this README, click the ✏️ edit button, and drag your images directly into the editor. GitHub will host them automatically and insert the correct URLs.
+
+| | |
+|---|---|
+| ![Home – Hero Carousel](docs/screenshots/home-hero.png) | ![Personalized Picks](docs/screenshots/home-recs.png) |
+| *Hero Carousel — trending films with backdrop* | *"Picked For You" — genre-based recommendations* |
+| ![Trending sections](docs/screenshots/home-sections.png) | ![Profile](docs/screenshots/profile.png) |
+| *Trending This Week + And the Oscar Goes to…* | *Profile — Top 5 Favorites + Ratings Histogram* |
+| ![Films tab](docs/screenshots/films.png) | ![Reviews](docs/screenshots/reviews.png) |
+| *Films tab — full watched history with filters* | *Reviews tab* |
+| ![Diary](docs/screenshots/diary.png) | ![Activity](docs/screenshots/activity.png) |
+| *Diary — chronological film log* | *Activity — social feed* |
+| ![Members](docs/screenshots/members.png) | |
+| *Members — discover and follow film lovers* | |
 
 ---
 
