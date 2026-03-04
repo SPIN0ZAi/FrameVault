@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import HeroCarousel from '@/components/ui/HeroCarousel';
 import PopularSection from '@/components/ui/PopularSection';
+import PersonalizedRecs from '@/components/ui/PersonalizedRecs';
 import ScrollRow from '@/components/ui/ScrollRow';
 
 // Re-render on every request so random selections rotate
@@ -259,6 +260,9 @@ export default async function HomePage() {
 
                 {/* ── Popular Right Now (client component — truly live) ── */}
                 <PopularSection />
+
+                {/* ── Personalized Recommendations (logged-in only) ── */}
+                {session && <PersonalizedRecs />}
 
                 {/* ── Trending This Week ── */}
                 {trending.length > 0 && (
