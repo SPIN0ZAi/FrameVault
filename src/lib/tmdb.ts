@@ -89,21 +89,54 @@ export async function getMovieDetails(id: string | number): Promise<TMDBMovie> {
     return fetchFromTMDB<TMDBMovie>(`/movie/${id}`);
 }
 
-// ─── Adult content filter ─────────────────────────────────────────────────────
-// TMDB's include_adult=false flag is unreliable; many explicit titles slip
-// through because they are not flagged as adult in TMDB's own database.
-// We apply a secondary keyword check on title + overview as a safety net.
-const ADULT_KEYWORDS = [
-    'sex', 'porn', 'xxx', 'erotic', 'erotica', 'nude', 'nudist', 'hentai',
-    'milf', 'jav ', ' jav', 'av idol', 'adult film', 'adult video',
-    'japanese mom', 'asian mom', 'stepmom', 'stepmother fantasy',
-    '온리팬', '일본엄마', '섹시',
+// ─── Adult / explicit content filter ─────────────────────────────────────────
+// TMDB's include_adult flag is unreliable — many explicitly sexual titles are
+// not tagged as adult in TMDB's own database.  We apply a two-tier keyword
+// check against title + overview as a safety net.
+//
+// Philosophy: block movies whose PRIMARY theme is sexual/explicit.
+// A war film with an R-rated scene is fine; a film whose entire premise is
+// sexual should not appear on the site unless the user explicitly searches.
+
+// Short words matched as whole-words only (avoid false positives like
+// "Essex" or "Middlesex").
+const ADULT_WHOLE_WORDS = new Set([
+    'sex', 'porn', 'porno', 'xxx', 'hentai', 'erotic', 'erotica',
+    'nude', 'nudist', 'nudity', 'milf', 'gilf', 'incest', 'fetish',
+    'bondage', 'bdsm', 'nympho', 'nymphomaniac', 'brothel',
+    'prostitute', 'prostitution', 'stripper', 'strippers',
+    'camgirl', 'camboy', 'onlyfans', 'sexploitation', 'softcore', 'hardcore',
+    'orgy', 'voyeur', 'exhibitionist',
+]);
+
+// Phrases matched as substrings (order matters — more specific first).
+const ADULT_PHRASES = [
+    'japanese mom', 'asian mom', 'stepmom', 'step-mom', 'step mom',
+    'stepmother fantasy', 'av idol', 'jav idol', 'jav model',
+    'adult film', 'adult video', 'adult movie', 'adult content',
+    'adult entertainer', 'adult star', 'sex tape', 'sex scene', 'sex life',
+    'sex worker', 'sex club', 'sex party', 'sex tourism',
+    'erotic thriller', 'erotic drama', 'sexual fantasy', 'sexual encounter',
+    'sexual content', 'explicit sex', 'graphic sex', 'explicit content',
+    'sexually explicit', 'gratuitous nudity',
+    // Non-Latin scripts for common offenders
+    '일본엄마', '섹시', '온리팬', '낮에는 청순',
 ];
 
-export function isAdultContent(m: TMDBMovie): boolean {
+function isAdultWord(word: string): boolean {
+    return ADULT_WHOLE_WORDS.has(word);
+}
+
+export function isAdultContent(m: { title: string; overview: string; adult?: boolean }): boolean {
     if (m.adult) return true;
-    const haystack = `${m.title} ${m.overview}`.toLowerCase();
-    return ADULT_KEYWORDS.some(kw => haystack.includes(kw));
+    const text = `${m.title} ${m.overview}`.toLowerCase();
+
+    // Phrase check (substring)
+    if (ADULT_PHRASES.some(p => text.includes(p))) return true;
+
+    // Whole-word check using a simple token split on non-alpha characters
+    const words = text.split(/[^a-z]+/);
+    return words.some(w => isAdultWord(w));
 }
 
 const TMDB_SORT_MAP: Record<string, string> = {
@@ -123,7 +156,7 @@ export async function discoverMovies(options: {
     const params: Record<string, string> = {
         page: (options.page || 1).toString(),
         sort_by: TMDB_SORT_MAP[options.sort || 'popular'] || 'popularity.desc',
-        'vote_count.gte': '50', // filter out obscure entries
+        'vote_count.gte': '150', // filters out obscure/explicit low-engagement titles
         include_adult: 'false',
     };
     if (options.genre) params.with_genres = options.genre;
@@ -147,7 +180,8 @@ export async function getMovieVideos(id: string | number): Promise<{ results: TM
 
 export async function getSimilarMovies(id: string | number): Promise<TMDBResponse<TMDBMovie>> {
     const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>(`/movie/${id}/similar`);
-    data.results = data.results.filter(m => !isAdultContent(m));
+    // vote_count.gte not available on /similar endpoint, so filter manually
+    data.results = data.results.filter(m => !isAdultContent(m) && (m.vote_average ?? 0) > 0);
     return data;
 }
 
@@ -202,6 +236,6 @@ export async function getPersonDetails(id: string | number): Promise<TMDBPersonD
 
 export async function getPersonMovieCredits(id: string | number): Promise<{ cast: TMDBMovieCredit[] }> {
     const data = await fetchFromTMDB<{ cast: TMDBMovieCredit[] }>(`/person/${id}/movie_credits`);
-    data.cast = data.cast.filter(m => !m.adult);
+    data.cast = data.cast.filter(m => !isAdultContent({ title: m.title, overview: '', adult: m.adult }));
     return data;
 }
