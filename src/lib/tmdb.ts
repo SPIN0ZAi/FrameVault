@@ -74,7 +74,7 @@ export async function getPopularMovies(page = 1): Promise<TMDBResponse<TMDBMovie
         page: page.toString(),
         include_adult: 'false',
     });
-    data.results = data.results.filter(m => !m.adult);
+    data.results = data.results.filter(m => !isAdultContent(m));
     return data;
 }
 
@@ -87,6 +87,23 @@ export async function searchMovies(query: string, page = 1): Promise<TMDBRespons
 
 export async function getMovieDetails(id: string | number): Promise<TMDBMovie> {
     return fetchFromTMDB<TMDBMovie>(`/movie/${id}`);
+}
+
+// ─── Adult content filter ─────────────────────────────────────────────────────
+// TMDB's include_adult=false flag is unreliable; many explicit titles slip
+// through because they are not flagged as adult in TMDB's own database.
+// We apply a secondary keyword check on title + overview as a safety net.
+const ADULT_KEYWORDS = [
+    'sex', 'porn', 'xxx', 'erotic', 'erotica', 'nude', 'nudist', 'hentai',
+    'milf', 'jav ', ' jav', 'av idol', 'adult film', 'adult video',
+    'japanese mom', 'asian mom', 'stepmom', 'stepmother fantasy',
+    '온리팬', '일본엄마', '섹시',
+];
+
+export function isAdultContent(m: TMDBMovie): boolean {
+    if (m.adult) return true;
+    const haystack = `${m.title} ${m.overview}`.toLowerCase();
+    return ADULT_KEYWORDS.some(kw => haystack.includes(kw));
 }
 
 const TMDB_SORT_MAP: Record<string, string> = {
@@ -110,7 +127,9 @@ export async function discoverMovies(options: {
         include_adult: 'false',
     };
     if (options.genre) params.with_genres = options.genre;
-    return fetchFromTMDB<TMDBResponse<TMDBMovie>>('/discover/movie', params);
+    const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/discover/movie', params);
+    data.results = data.results.filter(m => !isAdultContent(m));
+    return data;
 }
 
 export async function getTMDBGenres(): Promise<{ id: number; name: string }[]> {
@@ -127,14 +146,16 @@ export async function getMovieVideos(id: string | number): Promise<{ results: TM
 }
 
 export async function getSimilarMovies(id: string | number): Promise<TMDBResponse<TMDBMovie>> {
-    return fetchFromTMDB<TMDBResponse<TMDBMovie>>(`/movie/${id}/similar`);
+    const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>(`/movie/${id}/similar`);
+    data.results = data.results.filter(m => !isAdultContent(m));
+    return data;
 }
 
 export async function getTrendingMovies(): Promise<TMDBResponse<TMDBMovie>> {
     const data = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/trending/movie/week', {
         include_adult: 'false',
     });
-    data.results = data.results.filter(m => !m.adult);
+    data.results = data.results.filter(m => !isAdultContent(m));
     return data;
 }
 
@@ -143,7 +164,7 @@ export async function getTopRatedMovies(page = 1): Promise<TMDBResponse<TMDBMovi
         page: page.toString(),
         include_adult: 'false',
     });
-    data.results = data.results.filter(m => !m.adult);
+    data.results = data.results.filter(m => !isAdultContent(m));
     return data;
 }
 
