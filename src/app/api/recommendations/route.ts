@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { fetchFromTMDB, getTMDBImageUrl, isAdultContent } from '@/lib/tmdb';
 
-interface TMDBRecMovie {
+interface TMDBMovie {
     id: number;
     title: string;
     poster_path: string | null;
@@ -11,11 +11,17 @@ interface TMDBRecMovie {
     vote_average: number;
     vote_count: number;
     overview: string;
+    genre_ids?: number[];
     adult?: boolean;
 }
 
-interface TMDBRecResponse {
-    results: TMDBRecMovie[];
+interface TMDBMovieDetail {
+    id: number;
+    genres: { id: number; name: string }[];
+}
+
+interface TMDBDiscoverResponse {
+    results: TMDBMovie[];
 }
 
 export async function GET() {
@@ -27,70 +33,104 @@ export async function GET() {
 
         const userId = session.user.id;
 
-        // Get user's top-rated movies (rating >= 7/10), ordered by rating desc
-        const topRatings = await prisma.rating.findMany({
-            where: { userId, value: { gte: 7 } },
+        // ── Step 1: get user's rated movies (any rating) to understand taste ──
+        const allRatings = await prisma.rating.findMany({
+            where: { userId },
             orderBy: { value: 'desc' },
-            take: 5,
-            include: {
-                movie: { select: { tmdbId: true, title: true } },
-            },
+            include: { movie: { select: { tmdbId: true, title: true } } },
         });
 
-        if (topRatings.length === 0) {
-            // User has no high ratings yet — fall back to their watched movies
-            const watched = await prisma.watchedMovie.findMany({
-                where: { userId },
-                orderBy: { watchedAt: 'desc' },
-                take: 5,
-                include: { movie: { select: { tmdbId: true, title: true } } },
-            });
-            if (watched.length === 0) {
-                return NextResponse.json({ success: true, data: [] });
-            }
-            // Use watched as source
-            topRatings.push(
-                ...watched.map(w => ({ movie: w.movie, value: 0 })) as typeof topRatings
-            );
+        // Also collect watched (to exclude from results)
+        const allWatched = await prisma.watchedMovie.findMany({
+            where: { userId },
+            select: { movie: { select: { tmdbId: true } } },
+        });
+
+        const seenTmdbIds = new Set<number>([
+            ...allRatings.map(r => r.movie.tmdbId).filter(Boolean) as number[],
+            ...allWatched.map(w => w.movie.tmdbId).filter(Boolean) as number[],
+        ]);
+
+        // High-rated movies (≥7) are the taste signal sources
+        const highRated = allRatings.filter(r => r.value >= 7 && r.movie.tmdbId);
+
+        if (highRated.length === 0) {
+            // Not enough signal yet
+            return NextResponse.json({ success: true, data: [] });
         }
 
-        // Collect IDs of movies the user has already rated or watched (to exclude from recs)
-        const [allRatedIds, allWatchedIds] = await Promise.all([
-            prisma.rating.findMany({ where: { userId }, select: { movie: { select: { tmdbId: true } } } }),
-            prisma.watchedMovie.findMany({ where: { userId }, select: { movie: { select: { tmdbId: true } } } }),
-        ]);
-        const seenTmdbIds = new Set<number>([
-            ...allRatedIds.map(r => r.movie.tmdbId).filter(Boolean) as number[],
-            ...allWatchedIds.map(w => w.movie.tmdbId).filter(Boolean) as number[],
-        ]);
+        // ── Step 2: fetch TMDB genre list for each high-rated movie ──
+        // Take top 6 by rating (already sorted desc)
+        const sources = highRated.slice(0, 6);
 
-        // Fetch TMDB recommendations for each source movie (parallel)
-        const sources = topRatings
-            .filter(r => r.movie.tmdbId)
-            .slice(0, 4); // max 4 sources
-
-        const recResults = await Promise.allSettled(
+        const genreResults = await Promise.allSettled(
             sources.map(r =>
-                fetchFromTMDB<TMDBRecResponse>(`/movie/${r.movie.tmdbId}/recommendations`, {
-                    page: '1',
-                })
-                    .then(data => ({ title: r.movie.title, results: data.results }))
+                fetchFromTMDB<TMDBMovieDetail>(`/movie/${r.movie.tmdbId}`)
+                    .then(d => ({ rating: r.value, genres: d.genres.map(g => g.id), title: r.movie.title }))
             )
         );
 
-        // Merge all results — deduplicate and filter
-        const seen = new Set<number>();
-        const merged: Array<{ id: number; title: string; year: number; posterUrl: string | null; rating: number | null; basedOn: string }> = [];
+        // ── Step 3: build a weighted genre score ──
+        // Each genre gets (rating / 10) points per movie it appears in
+        const genreScore: Record<number, number> = {};
+        const genreSources: Record<number, string[]> = {}; // genre → source titles
 
-        for (const result of recResults) {
-            if (result.status !== 'fulfilled') continue;
-            const { title: basedOn, results } = result.value;
+        for (const res of genreResults) {
+            if (res.status !== 'fulfilled') continue;
+            const { rating, genres, title } = res.value;
+            for (const gid of genres) {
+                genreScore[gid] = (genreScore[gid] ?? 0) + rating;
+                if (!genreSources[gid]) genreSources[gid] = [];
+                if (!genreSources[gid].includes(title)) genreSources[gid].push(title);
+            }
+        }
+
+        if (Object.keys(genreScore).length === 0) {
+            return NextResponse.json({ success: true, data: [] });
+        }
+
+        // Pick top 3 genres by score
+        const topGenres = Object.entries(genreScore)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([id]) => parseInt(id));
+
+        // Build "based on" label from the top genre's source movies
+        const topGenreId = topGenres[0];
+        const basedOnTitles = (genreSources[topGenreId] ?? []).slice(0, 2);
+        const basedOnLabel = basedOnTitles.join(', ');
+
+        // ── Step 4: discover movies for each top genre ──
+        // Fetch pages in parallel for top 3 genres
+        const discoverResults = await Promise.allSettled(
+            topGenres.map(gid =>
+                fetchFromTMDB<TMDBDiscoverResponse>('/discover/movie', {
+                    with_genres: gid.toString(),
+                    sort_by: 'vote_average.desc',
+                    'vote_count.gte': '500',       // quality filter — only well-known films
+                    'vote_average.gte': '6.5',     // min quality threshold
+                    include_adult: 'false',
+                    page: String(Math.ceil(Math.random() * 3)), // some variety each load
+                }).then(d => ({ gid, results: d.results }))
+            )
+        );
+
+        // ── Step 5: merge, deduplicate, filter ──
+        const seen = new Set<number>();
+        const merged: Array<{
+            id: number; title: string; year: number;
+            posterUrl: string | null; rating: number | null; basedOn: string;
+        }> = [];
+
+        for (const res of discoverResults) {
+            if (res.status !== 'fulfilled') continue;
+            const { results } = res.value;
 
             for (const m of results) {
                 if (seen.has(m.id)) continue;
-                if (seenTmdbIds.has(m.id)) continue; // already seen by user
+                if (seenTmdbIds.has(m.id)) continue;   // user already seen it
                 if (isAdultContent(m)) continue;
-                if (m.vote_count < 50) continue; // skip obscure
+                if ((m.vote_count ?? 0) < 500) continue;
 
                 seen.add(m.id);
                 merged.push({
@@ -99,13 +139,15 @@ export async function GET() {
                     year: m.release_date ? parseInt(m.release_date.substring(0, 4)) : 0,
                     posterUrl: getTMDBImageUrl(m.poster_path, 'w342'),
                     rating: m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : null,
-                    basedOn,
+                    basedOn: basedOnLabel,
                 });
             }
         }
 
-        // Shuffle slightly then take 24
-        const shuffled = merged.sort(() => Math.random() - 0.3).slice(0, 24);
+        // Shuffle for variety and cap at 24
+        const shuffled = merged
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 24);
 
         return NextResponse.json({ success: true, data: shuffled });
     } catch (e) {
