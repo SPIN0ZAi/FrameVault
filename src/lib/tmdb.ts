@@ -151,3 +151,36 @@ export function getTMDBImageUrl(path: string | null, size: 'w185' | 'w342' | 'w5
     if (!path) return null;
     return `https://image.tmdb.org/t/p/${size}${path}`;
 }
+
+export interface TMDBPersonDetails {
+    id: number;
+    name: string;
+    biography: string;
+    birthday: string | null;
+    deathday: string | null;
+    place_of_birth: string | null;
+    profile_path: string | null;
+    known_for_department: string;
+    popularity: number;
+}
+
+export interface TMDBMovieCredit {
+    id: number;
+    title: string;
+    character: string;
+    poster_path: string | null;
+    release_date: string;
+    vote_average: number;
+    vote_count: number;
+    adult?: boolean;
+}
+
+export async function getPersonDetails(id: string | number): Promise<TMDBPersonDetails> {
+    return fetchFromTMDB<TMDBPersonDetails>(`/person/${id}`);
+}
+
+export async function getPersonMovieCredits(id: string | number): Promise<{ cast: TMDBMovieCredit[] }> {
+    const data = await fetchFromTMDB<{ cast: TMDBMovieCredit[] }>(`/person/${id}/movie_credits`);
+    data.cast = data.cast.filter(m => !m.adult);
+    return data;
+}

@@ -726,8 +726,10 @@ export default function MovieDetailPage() {
                         </h2>
                         <div style={{ display: 'flex', gap: 'var(--space-lg)', overflowX: 'auto', paddingBottom: 'var(--space-md)', scrollbarWidth: 'thin' }}>
                             {movie.cast.map((actor) => (
-                                <div key={actor.id} style={{ flexShrink: 0, width: '90px', textAlign: 'center' }}>
-                                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                <Link href={`/actors/${actor.id}`} key={actor.id} style={{ flexShrink: 0, width: '90px', textAlign: 'center', textDecoration: 'none', color: 'inherit' }}>
+                                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)', transition: 'border-color 0.15s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-default)')}>
                                         {actor.profileUrl ? (
                                             <img src={actor.profileUrl} alt={actor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
@@ -738,7 +740,7 @@ export default function MovieDetailPage() {
                                     </div>
                                     <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3, marginBottom: '2px' }}>{actor.name}</p>
                                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{actor.character}</p>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </section>
