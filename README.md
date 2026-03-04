@@ -1,4 +1,256 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+
+<img src="public/logo.png" alt="FrameVault Logo" width="72" />
+
+# FrameVault
+
+**A social film-tracking platform — discover, rate, review, and share every movie you watch.**
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-frame--vault--xi.vercel.app-00D1C1?style=for-the-badge&logo=vercel&logoColor=white)](https://frame-vault-xi.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js%2016-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+
+</div>
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/home-hero.png" alt="Hero Carousel" /></td>
+    <td><img src="docs/screenshots/home-recs.png" alt="Personalized Recommendations" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Hero Carousel — trending films with backdrop</em></td>
+    <td align="center"><em>"Picked For You" — genre-based personalized recs</em></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/home-sections.png" alt="Trending & Top Rated sections" /></td>
+    <td><img src="docs/screenshots/profile.png" alt="Profile Page" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Trending This Week + And the Oscar Goes to…</em></td>
+    <td align="center"><em>Profile — Top 5 Favorites + Ratings Histogram</em></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/films.png" alt="Films Tab" /></td>
+    <td><img src="docs/screenshots/reviews.png" alt="Reviews Tab" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Films tab — full watched history with rating filters</em></td>
+    <td align="center"><em>Reviews tab — all written reviews</em></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/diary.png" alt="Diary" /></td>
+    <td><img src="docs/screenshots/activity.png" alt="Activity Feed" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Diary — chronological film log by year/month</em></td>
+    <td align="center"><em>Activity — what people you follow are watching</em></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/members.png" alt="Members Page" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Members — discover and follow other film lovers</em></td>
+  </tr>
+</table>
+
+---
+
+## Features
+
+### 🎬 Film Discovery
+- **Hero Carousel** — rotating backdrop showcase of trending films
+- **Personalized "Picked For You"** — genre-weighted recommendations based on your highest-rated movies (updates as you rate more)
+- **Trending This Week** — live TMDB trending data
+- **Top Rated All Time** — randomly sampled from TMDB's highest-rated films
+- **Family-friendly filtering** — multi-layer adult content filter (TMDB flag + keyword/phrase blocklist)
+- **Browse & Filter** — discover movies by genre, decade, sort order with URL-persisted state (back button works)
+- **Actor Pages** — click any cast member to see their full filmography
+
+### 👤 User Profiles
+- **Top 5 Favorites** — pin your all-time favourites with custom poster support
+- **Films tab** — paginated watched history with sort (Latest, Oldest, Top Rated, A–Z) and rating filters
+- **Reviews tab** — all your written reviews in one place
+- **Watchlist tab** — movies saved to watch later
+- **Lists tab** — curated custom film lists
+- **Network tab** — followers and following
+- **Ratings histogram** — visual breakdown of all your ratings
+- **Stats bar** — films, ratings, reviews, watchlist, followers, following, avg rating
+
+### 📓 Diary
+- Chronological film log grouped by year and month
+- Navigate between years with prev/next arrows
+- Shows star rating for each logged film
+
+### 🎭 Social
+- **Follow users** — see what friends are watching
+- **Activity feed** — real-time stream of watches, ratings, and reviews from people you follow
+- **Members page** — discover popular members, search by username, filter by newest or most films
+- **Reviews** — write and read reviews with optional spoiler tags
+
+### ⭐ Rating System
+- Rate movies 1–10 (displayed as 0.5–5 stars)
+- "Mark as watched?" prompt after rating
+- Rating histogram per movie
+- Friends' activity overlay on movie pages
+
+### 🖼️ Custom Posters (Letterboxd-style)
+- Upload your own poster or pick from TMDB alternatives
+- Custom posters appear everywhere: profile, watchlist, activity feed, Top 5 Favorites
+
+### 📋 Lists
+- Create public or private curated film lists
+- Add notes per film, reorder entries
+- Browse community lists on the home page
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Framework** | [Next.js 16](https://nextjs.org) (App Router, React 19) |
+| **Language** | TypeScript |
+| **Database** | PostgreSQL via [Supabase](https://supabase.com) |
+| **ORM** | [Prisma 7](https://www.prisma.io) |
+| **Auth** | [NextAuth.js v5](https://authjs.dev) (credentials + OAuth) |
+| **Storage** | Supabase Storage (S3-compatible) for custom posters |
+| **Movie Data** | [TMDB API](https://www.themoviedb.org/documentation/api) |
+| **Rate Limiting** | [Upstash Redis](https://upstash.com) |
+| **Icons** | [Lucide React](https://lucide.dev) |
+| **Deployment** | [Vercel](https://vercel.com) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL database (or a free [Supabase](https://supabase.com) project)
+- [TMDB API key](https://www.themoviedb.org/settings/api) (free)
+
+### 1. Clone & install
+
+```bash
+git clone https://github.com/SPIN0ZAi/FrameVault.git
+cd FrameVault
+npm install
+```
+
+### 2. Environment variables
+
+Create a `.env` file in the project root:
+
+```env
+# Database
+DATABASE_URL="postgresql://..."
+
+# NextAuth
+NEXTAUTH_SECRET="your-secret-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# TMDB (use the Bearer token, not the API key)
+TMDB_API_KEY="your-tmdb-bearer-token"
+
+# Supabase Storage (for custom poster uploads)
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+# Upstash Redis (optional — for rate limiting)
+UPSTASH_REDIS_REST_URL="https://..."
+UPSTASH_REDIS_REST_TOKEN="..."
+```
+
+### 3. Database setup
+
+```bash
+npx prisma migrate dev
+npx prisma db seed   # optional: seed genres
+```
+
+### 4. Run development server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Home page
+│   ├── movies/               # Browse + movie detail pages
+│   ├── actors/[id]/          # Actor filmography pages
+│   ├── users/[username]/     # User profile pages
+│   ├── diary/                # Film diary
+│   ├── activity/             # Activity feed
+│   ├── members/              # Members directory
+│   ├── lists/                # Community lists
+│   └── api/                  # All API routes
+│       ├── movies/           # Movie CRUD, ratings, reviews, watched
+│       ├── actors/[id]/      # Actor details + filmography
+│       ├── users/            # User profiles, follow, watchlist
+│       ├── recommendations/  # Personalized genre-based recs
+│       ├── activity/         # Activity feed
+│       └── auth/             # NextAuth routes
+├── components/
+│   ├── layout/               # Header, Footer
+│   ├── providers/            # NextAuth + SWR providers
+│   └── ui/                   # Reusable components
+│       ├── HeroCarousel      # Home page hero
+│       ├── PopularSection    # Live "Popular Right Now"
+│       ├── PersonalizedRecs  # "Picked For You"
+│       ├── ScrollRow         # Horizontal scroll container
+│       └── ImageUploader     # Custom poster uploader
+├── lib/
+│   ├── tmdb.ts               # TMDB API client + adult content filter
+│   ├── prisma.ts             # Prisma client singleton
+│   ├── auth/                 # NextAuth config
+│   └── sync-movie.ts         # TMDB → local DB sync utility
+└── types/
+    └── next-auth.d.ts        # Session type augmentation
+prisma/
+├── schema.prisma             # Database schema
+├── seed.ts                   # Genre seed data
+└── migrations/               # Migration history
+```
+
+---
+
+## Deployment
+
+The app is deployed on **Vercel** with auto-deploy on push to `main`.
+
+```bash
+# Production build (also runs prisma generate)
+npm run build
+```
+
+All environment variables are configured in the Vercel dashboard.
+
+---
+
+## License
+
+MIT — do whatever you want with it.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by <a href="https://github.com/SPIN0ZAi">SPIN0ZAi</a></sub>
+</div>
+
 
 ## Getting Started
 
