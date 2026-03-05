@@ -33,6 +33,8 @@ interface MovieDetail {
         containsSpoilers: boolean;
         createdAt: string;
         user: { id: string; username: string; avatarUrl: string | null };
+        likeCount: number;
+        likedByMe: boolean;
     }[];
     userInteraction: {
         watched: boolean;
@@ -199,6 +201,7 @@ export default function MovieDetailPage() {
     const [savingEditReview, setSavingEditReview] = useState(false);
     const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null);
     const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+    const [reviewLikes, setReviewLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
     const [ratingHistogram, setRatingHistogram] = useState<{ counts: number[]; average: number | null; total: number } | null>(null);
     const [friendsActivity, setFriendsActivity] = useState<{
         watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
@@ -244,6 +247,35 @@ export default function MovieDetailPage() {
     useEffect(() => {
         fetchMovie();
     }, [fetchMovie]);
+
+    // Initialize reviewLikes map whenever movie data loads
+    useEffect(() => {
+        if (!movie) return;
+        const map: Record<string, { count: number; liked: boolean }> = {};
+        movie.reviews.forEach(r => { map[r.id] = { count: r.likeCount, liked: r.likedByMe }; });
+        setReviewLikes(map);
+    }, [movie]);
+
+    const handleLikeReview = async (reviewId: string) => {
+        if (!session) { router.push('/login'); return; }
+        const current = reviewLikes[reviewId] ?? { count: 0, liked: false };
+        // Optimistic update
+        setReviewLikes(prev => ({
+            ...prev,
+            [reviewId]: { count: current.liked ? current.count - 1 : current.count + 1, liked: !current.liked },
+        }));
+        try {
+            const method = current.liked ? 'DELETE' : 'POST';
+            const res = await fetch(`/api/reviews/${reviewId}/like`, { method });
+            const data = await res.json();
+            if (data.success) {
+                setReviewLikes(prev => ({ ...prev, [reviewId]: { count: data.data.likeCount, liked: data.data.likedByMe } }));
+            }
+        } catch {
+            // Revert on error
+            setReviewLikes(prev => ({ ...prev, [reviewId]: current }));
+        }
+    };
 
     useEffect(() => {
         fetch(`/api/movies/${id}/rating-histogram`)
@@ -851,6 +883,29 @@ export default function MovieDetailPage() {
                                             {review.containsSpoilers && !revealedSpoilers.has(review.id) && (
                                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>Click to reveal spoiler</p>
                                             )}
+                                            {/* Like button */}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-sm)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border-subtle)' }}>
+                                                <button
+                                                    onClick={() => handleLikeReview(review.id)}
+                                                    title={session ? (reviewLikes[review.id]?.liked ? 'Unlike this review' : 'Like this review') : 'Sign in to like reviews'}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 5,
+                                                        background: 'none', border: 'none',
+                                                        cursor: session ? 'pointer' : 'default',
+                                                        color: reviewLikes[review.id]?.liked ? '#ef4444' : 'var(--text-tertiary)',
+                                                        fontSize: 'var(--text-sm)', fontWeight: 600,
+                                                        padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+                                                        transition: 'color 0.15s',
+                                                    }}
+                                                    onMouseEnter={e => { if (session) e.currentTarget.style.color = '#ef4444'; }}
+                                                    onMouseLeave={e => { if (!reviewLikes[review.id]?.liked) e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+                                                >
+                                                    <span style={{ fontSize: 15, lineHeight: 1 }}>{reviewLikes[review.id]?.liked ? '❤️' : '🤍'}</span>
+                                                    {(reviewLikes[review.id]?.count ?? 0) > 0 && (
+                                                        <span>{reviewLikes[review.id]?.count}</span>
+                                                    )}
+                                                </button>
+                                            </div>
                                         </>
                                     )}
                                 </div>

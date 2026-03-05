@@ -60,6 +60,7 @@ export async function GET(
                 reviews: {
                     include: {
                         user: { select: { id: true, username: true, avatarUrl: true } },
+                        likes: { select: { userId: true } },
                     },
                     orderBy: { createdAt: 'desc' },
                     take: 10,
@@ -132,7 +133,15 @@ export async function GET(
             reviewCount: localMovie ? localMovie._count.reviews : 0,
             watchedCount: localMovie ? localMovie._count.watchedBy : 0,
             watchlistCount: localMovie ? localMovie._count.watchlistBy : 0,
-            reviews: localMovie ? localMovie.reviews : [],
+            reviews: localMovie ? localMovie.reviews.map(r => ({
+                id: r.id,
+                content: r.content,
+                containsSpoilers: r.containsSpoilers,
+                createdAt: r.createdAt,
+                user: r.user,
+                likeCount: r.likes.length,
+                likedByMe: session?.user?.id ? r.likes.some(l => l.userId === session.user.id) : false,
+            })) : [],
             userInteraction,
         });
     } catch (error) {

@@ -28,6 +28,7 @@ model User {
   following     Follows[] @relation("followers")
   lists         List[]
   favorites     UserFavorite[]
+  reviewLikes   ReviewLike[]
 
   @@map("users")
 }
@@ -177,10 +178,25 @@ model Review {
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  likes ReviewLike[]
 
   @@unique([userId, movieId])
   @@index([movieId])
   @@map("reviews")
+}
+
+model ReviewLike {
+  id        String   @id @default(cuid())
+  userId    String
+  reviewId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@index([reviewId])
+  @@map("review_likes")
 }
 
 model CustomPoster {
