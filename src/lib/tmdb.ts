@@ -52,8 +52,6 @@ export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, 
         ...params,
     });
 
-    console.log("TMDB_API_KEY is:", process.env.TMDB_API_KEY ? "Present" : "Missing", process.env.TMDB_API_KEY ? `(Length: ${process.env.TMDB_API_KEY.length})` : "");
-
     const response = await fetch(`${TMDB_BASE_URL}${endpoint}?${urlParams.toString()}`, {
         headers: {
             Authorization: `Bearer ${process.env.TMDB_API_KEY}`,

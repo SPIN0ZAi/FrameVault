@@ -3,7 +3,18 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { searchMovies } from '@/lib/tmdb';
 import { syncTMDBMovie } from '@/lib/sync-movie';
-import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { successResponse, unauthorizedError, serverError, validationError } from '@/lib/api-response';
+import { z } from 'zod';
+
+const importSchema = z.object({
+    title: z.string().min(1).max(500, 'Title too long'),
+    year: z.number().int().min(1888).max(new Date().getFullYear() + 2),
+    watched: z.boolean().optional(),
+    watchedDate: z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+    rating: z.number().int().min(1).max(10).optional(),
+    review: z.string().max(10000, 'Review too long').optional(),
+    watchlist: z.boolean().optional(),
+});
 
 /**
  * POST /api/import/letterboxd
@@ -24,10 +35,11 @@ export async function POST(request: NextRequest) {
         const session = await auth();
         if (!session?.user) return unauthorizedError();
 
-        const { title, year, watched, watchedDate, rating, review, watchlist } =
-            await request.json();
+        const body = await request.json();
+        const parsed = importSchema.safeParse(body);
+        if (!parsed.success) return validationError(parsed.error.issues[0].message);
 
-        if (!title) return serverError('title is required');
+        const { title, year, watched, watchedDate, rating, review, watchlist } = parsed.data;
 
         // 1. Search TMDB by title; pick closest year match
         const results = await searchMovies(title, 1);

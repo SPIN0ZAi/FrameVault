@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { successResponse, unauthorizedError, serverError, validationError } from '@/lib/api-response';
+import { z } from 'zod';
+
+const updateMeSchema = z.object({
+    bio: z.string().max(500, 'Bio must be at most 500 characters').optional(),
+    location: z.string().max(100, 'Location must be at most 100 characters').optional(),
+    avatarUrl: z.string().url('Invalid avatar URL').max(2048).optional().nullable(),
+    bannerUrl: z.string().url('Invalid banner URL').max(2048).optional().nullable(),
+    themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color').optional(),
+    themeMode: z.enum(['light', 'dark', 'system']).optional(),
+});
 
 export async function GET() {
     try {
@@ -33,8 +43,12 @@ export async function PATCH(req: Request) {
         const session = await auth();
         if (!session?.user?.id) return unauthorizedError();
 
-        const body = await req.json();
-        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode } = body;
+        const raw = await req.json();
+        const parsed = updateMeSchema.safeParse(raw);
+        if (!parsed.success) {
+            return validationError(parsed.error.issues[0].message);
+        }
+        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode } = parsed.data;
 
         const userId = session.user.id;
 
