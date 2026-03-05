@@ -1,24 +1,18 @@
+require('dotenv').config();
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     try {
-        const user = await prisma.user.findUnique({
-            where: { username: 'Admin' },
-            select: {
-                id: true,
-                _count: {
-                    select: {
-                        followers: true,
-                        following: true
-                    }
-                }
-            }
-        });
-        console.log("Success:", user);
+        const n = await prisma.reviewLike.count();
+        console.log("review_likes TABLE EXISTS, count:", n);
     } catch (e) {
-        console.error("Prisma Error:\n", e.message || e);
+        console.error("review_likes TABLE MISSING:", e.message);
     } finally {
         await prisma.$disconnect();
     }
