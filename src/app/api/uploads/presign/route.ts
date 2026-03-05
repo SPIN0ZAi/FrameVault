@@ -6,9 +6,9 @@ import { z } from 'zod';
 
 const presignSchema = z.object({
     type: z.enum(['avatar', 'banner', 'poster']),
-    movieId: z.string().optional(),
+    movieId: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid movieId').max(50).optional(),
     contentType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'Only images are allowed'),
-    extension: z.string().regex(/^[a-zA-Z0-9]+$/, 'Invalid extension'),
+    extension: z.string().regex(/^(jpg|jpeg|png|webp|gif)$/, 'Invalid extension'),
 });
 
 export async function POST(req: Request) {
