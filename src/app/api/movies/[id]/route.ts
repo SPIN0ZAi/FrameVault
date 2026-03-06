@@ -59,7 +59,7 @@ export async function GET(
                 ratings: { select: { value: true, userId: true } },
                 reviews: {
                     include: {
-                        user: { select: { id: true, username: true, avatarUrl: true } },
+                        user: { select: { id: true, username: true, avatarUrl: true, role: true } },
                         likes: { select: { userId: true } },
                     },
                     orderBy: { createdAt: 'desc' },

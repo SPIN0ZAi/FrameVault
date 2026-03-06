@@ -17,6 +17,7 @@ export async function GET(
                 id: true,
                 username: true,
                 avatarUrl: true,
+                role: true,
                 createdAt: true,
                 profile: true,
                 _count: {

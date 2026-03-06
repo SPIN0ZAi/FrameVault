@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 
 interface MovieDetail {
@@ -32,7 +32,7 @@ interface MovieDetail {
         content: string;
         containsSpoilers: boolean;
         createdAt: string;
-        user: { id: string; username: string; avatarUrl: string | null };
+        user: { id: string; username: string; avatarUrl: string | null; role: string };
         likeCount: number;
         likedByMe: boolean;
     }[];
@@ -803,9 +803,23 @@ export default function MovieDetailPage() {
                                                 )}
                                             </div>
                                             <div>
-                                                <Link href={`/users/${review.user.username}`} className="review-author-name">
-                                                    {review.user.username}
-                                                </Link>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <Link href={`/users/${review.user.username}`} className="review-author-name">
+                                                        {review.user.username}
+                                                    </Link>
+                                                    {review.user.role === 'owner' && (
+                                                        <span style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                                                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                                            color: '#fff', fontSize: 9, fontWeight: 800,
+                                                            letterSpacing: '0.08em', textTransform: 'uppercase',
+                                                            padding: '2px 7px', borderRadius: 20,
+                                                            boxShadow: '0 1px 4px rgba(245,158,11,0.4)',
+                                                        }}>
+                                                            <Crown size={8} /> Owner
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="review-date">
                                                     {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </div>

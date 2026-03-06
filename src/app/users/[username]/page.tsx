@@ -12,6 +12,7 @@ interface UserProfile {
     id: string;
     username: string;
     avatarUrl: string | null;
+    role: string;
     createdAt: string;
     averageRating: number | null;
     isFollowing?: boolean;
@@ -922,6 +923,18 @@ export default function UserProfilePage() {
                     <div className="profile-info">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
                             <h1 className="profile-username">{user.username}</h1>
+                            {user.role === 'owner' && (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#fff', fontSize: 11, fontWeight: 800,
+                                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                                    padding: '3px 10px', borderRadius: 20,
+                                    boxShadow: '0 2px 8px rgba(245,158,11,0.4)',
+                                }}>
+                                    <Crown size={11} /> Owner
+                                </span>
+                            )}
                             {isOwnProfile ? (
                                 <Link href="/settings" className="btn btn-ghost btn-sm">Edit Profile</Link>
                             ) : session && (
