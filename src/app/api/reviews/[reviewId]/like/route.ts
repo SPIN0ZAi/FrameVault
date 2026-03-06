@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 export async function POST(
     _req: NextRequest,
@@ -15,6 +16,7 @@ export async function POST(
             data: { userId: session.user.id, reviewId },
         });
         const count = await prisma.reviewLike.count({ where: { reviewId } });
+        checkAndAwardAchievements(session.user.id).catch(() => null);
         return NextResponse.json({ success: true, data: { likeCount: count, likedByMe: true } });
     } catch {
         // Already liked — ignore unique constraint violation

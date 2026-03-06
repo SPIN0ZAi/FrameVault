@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { successResponse, unauthorizedError, notFoundError, serverError } from '@/lib/api-response';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 export async function POST(
     req: Request,
@@ -40,6 +41,10 @@ export async function POST(
                 followingId: targetUser.id,
             }
         });
+
+        // Check achievements for both the follower and the followed user
+        checkAndAwardAchievements(currentUser.id).catch(() => null);
+        checkAndAwardAchievements(targetUser.id).catch(() => null);
 
         return successResponse({ following: true });
     } catch (error) {

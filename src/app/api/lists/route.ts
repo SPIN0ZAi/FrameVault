@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 // GET /api/lists — all public lists + current user's private lists
 export async function GET() {
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
                 isPublic: isPublic !== false,
             },
         });
+
+        checkAndAwardAchievements(session.user.id).catch(() => null);
 
         return successResponse(list);
     } catch (error) {

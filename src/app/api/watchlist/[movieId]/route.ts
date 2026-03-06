@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
 import { syncTMDBMovie } from '@/lib/sync-movie';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 // POST /api/watchlist/[movieId] — add to watchlist
 export async function POST(
@@ -22,6 +23,8 @@ export async function POST(
             create: { userId: session.user.id, movieId: localMovieId },
             update: {},
         });
+
+        checkAndAwardAchievements(session.user.id).catch(() => null);
 
         return successResponse(item);
     } catch (error) {

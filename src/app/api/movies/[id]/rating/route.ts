@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { ratingSchema } from '@/lib/validators';
 import { successResponse, validationError, unauthorizedError, serverError } from '@/lib/api-response';
 import { syncTMDBMovie } from '@/lib/sync-movie';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 // POST /api/movies/[id]/rating — upsert rating
 export async function POST(
@@ -28,6 +29,8 @@ export async function POST(
             create: { userId: session.user.id, movieId: localMovieId, value: result.data.value },
             update: { value: result.data.value },
         });
+
+        checkAndAwardAchievements(session.user.id).catch(() => null);
 
         return successResponse(rating);
     } catch (error) {

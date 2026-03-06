@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { reviewSchema } from '@/lib/validators';
 import { successResponse, validationError, unauthorizedError, errorResponse, serverError } from '@/lib/api-response';
 import { syncTMDBMovie } from '@/lib/sync-movie';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 // GET /api/movies/[id]/reviews — list reviews
 export async function GET(
@@ -97,6 +98,8 @@ export async function POST(
                 user: { select: { id: true, username: true, avatarUrl: true } },
             },
         });
+
+        checkAndAwardAchievements(session.user.id).catch(() => null);
 
         return successResponse(review);
     } catch (error) {

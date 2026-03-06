@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
 import { syncTMDBMovie } from '@/lib/sync-movie';
+import { checkAndAwardAchievements } from '@/lib/achievements';
 
 // POST /api/watched/[movieId] — mark as watched
 export async function POST(
@@ -27,6 +28,8 @@ export async function POST(
         await prisma.watchlistItem.deleteMany({
             where: { userId: session.user.id, movieId: localMovieId },
         });
+
+        checkAndAwardAchievements(session.user.id).catch(() => null);
 
         return successResponse(watched);
     } catch (error) {

@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievements';
 
 //  Types 
 
@@ -734,6 +735,14 @@ function RecentReviewsPreview({ username, onViewAll }: { username: string; onVie
     );
 }
 
+// ─── Achievement icon lookup ──────────────────────────────────────────────────
+const ACHIEVEMENT_ICON_MAP = {
+    Film, Trophy, Shield, Sparkles, Crown, PenLine, BookOpen, BookMarked, Award,
+    Star, BarChart3, Gem, Users, Heart, Flame, LayoutList, Archive, CheckCircle2,
+    Sunrise, Clapperboard,
+} as const;
+type AchievementIconKey = keyof typeof ACHIEVEMENT_ICON_MAP;
+
 //  Main Page 
 
 export default function UserProfilePage() {
@@ -743,7 +752,7 @@ export default function UserProfilePage() {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<'not_found' | 'server_error' | null>(null);
-    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network'>('Profile');
+    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>('Profile');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
 
@@ -767,8 +776,29 @@ export default function UserProfilePage() {
     const [listsLoaded, setListsLoaded] = useState(false);
     const [userRatingHistogram, setUserRatingHistogram] = useState<{ counts: number[]; average: number | null; total: number } | null>(null);
 
+    // ── Achievements state ──────────────────────────────────────────────────
+    type EarnedMap = Record<string, { earnedAt: string }>;
+    const [earnedMap, setEarnedMap] = useState<EarnedMap>({});
+    const [earnedCount, setEarnedCount] = useState(0);
+    const [achievementsLoaded, setAchievementsLoaded] = useState(false);
+    const [hoveredAchievement, setHoveredAchievement] = useState<string | null>(null);
+
+    // ── Oscar vote state ────────────────────────────────────────────────────
+    type PollNominee = { title: string; year: number };
+    type VoteResult = { movieTitle: string; votes: number; pct: number };
+    type PollData = {
+        poll: { id: string; year: number; nominees: PollNominee[]; isOpen: boolean } | null;
+        userVote: { movieTitle: string } | null;
+        results: VoteResult[] | null;
+        totalVotes: number;
+    };
+    const [pollData, setPollData] = useState<PollData | null>(null);
+    const [pollLoaded, setPollLoaded] = useState(false);
+    const [votingFor, setVotingFor] = useState<string | null>(null);
+    const [voteLoading, setVoteLoading] = useState(false);
+
     const isOwnProfile = session?.user?.username === username;
-    const TABS = ['Profile', 'Films', 'Reviews', 'Watchlist', 'Lists', 'Network'] as const;
+    const TABS = ['Profile', 'Films', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'] as const;
     const accent = user?.profile?.themeColor || 'var(--brand)';
 
     useEffect(() => {
@@ -837,7 +867,27 @@ export default function UserProfilePage() {
                 .then(r => r.json())
                 .then(d => { if (d.success) setUserLists(d.data); setListsLoaded(true); });
         }
-    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, reviewsLoaded, watchlistLoaded, networkLoaded]);
+        if (activeTab === 'Achievements' && !achievementsLoaded) {
+            fetch(`/api/users/${username}/achievements`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        const map: Record<string, { earnedAt: string }> = {};
+                        for (const a of d.data.achievements) {
+                            if (a.earned) map[a.id] = a.earned;
+                        }
+                        setEarnedMap(map);
+                        setEarnedCount(d.data.earnedCount);
+                    }
+                    setAchievementsLoaded(true);
+                });
+            if (!pollLoaded) {
+                fetch('/api/votes')
+                    .then(r => r.json())
+                    .then(d => { if (d.success) setPollData(d.data); setPollLoaded(true); });
+            }
+        }
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
@@ -855,6 +905,34 @@ export default function UserProfilePage() {
             }
         } finally {
             setFollowLoading(false);
+        }
+    };
+
+    const handleVoteSelect = (title: string) => setVotingFor(prev => prev === title ? null : title);
+
+    const handleVoteSubmit = async () => {
+        if (!votingFor || voteLoading) return;
+        setVoteLoading(true);
+        try {
+            const res = await fetch('/api/votes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ movieTitle: votingFor }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setPollData(prev => prev ? {
+                    ...prev,
+                    userVote: { movieTitle: votingFor },
+                    results: data.data.results,
+                    totalVotes: data.data.totalVotes,
+                } : null);
+                setVotingFor(null);
+                // Refresh achievements since oscar_voter_2026 may now be earned
+                setAchievementsLoaded(false);
+            }
+        } finally {
+            setVoteLoading(false);
         }
     };
 
@@ -1231,6 +1309,222 @@ export default function UserProfilePage() {
                                 currentUserId={session?.user?.id}
                             />
                         )}
+                    </div>
+                )}
+
+                {/* ─── Achievements Tab ─────────────────────────────────────────── */}
+                {activeTab === 'Achievements' && (
+                    <div>
+                        {/* Header + progress */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2xl)', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+                            <div>
+                                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>Achievements</h2>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                    {achievementsLoaded ? `${earnedCount} of ${ACHIEVEMENTS.length} unlocked` : 'Loading…'}
+                                </p>
+                            </div>
+                            {achievementsLoaded && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                                        {Math.round((earnedCount / ACHIEVEMENTS.length) * 100)}% complete
+                                    </div>
+                                    <div style={{ width: 200, height: 8, background: 'var(--bg-secondary)', borderRadius: 4, overflow: 'hidden' }}>
+                                        <div style={{ width: `${(earnedCount / ACHIEVEMENTS.length) * 100}%`, height: '100%', background: accent, borderRadius: 4, transition: 'width 0.6s ease' }} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Oscar vote card — only for own profile */}
+                        {isOwnProfile && pollData?.poll && (
+                            <div style={{ marginBottom: 'var(--space-3xl)', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 16, overflow: 'hidden' }}>
+                                {/* Card header */}
+                                <div style={{ padding: 'var(--space-lg) var(--space-xl)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <Clapperboard size={20} style={{ color: '#d4af37', flexShrink: 0 }} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: 'var(--text-base)', fontWeight: 800 }}>
+                                                Best Picture Poll {pollData.poll.year}
+                                            </span>
+                                            {pollData.poll.isOpen && !pollData.userVote && (
+                                                <span style={{ background: '#22c55e22', color: '#22c55e', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.08em', border: '1px solid #22c55e44' }}>
+                                                    Live
+                                                </span>
+                                            )}
+                                            {pollData.userVote && (
+                                                <span style={{ background: `${accent}22`, color: accent, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                                    Voted
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                            {pollData.userVote
+                                                ? `Your vote: ${pollData.userVote.movieTitle}`
+                                                : 'Vote to earn the Oscar Voter \'26 badge — you can change your vote anytime'}
+                                        </p>
+                                    </div>
+                                    {pollData.totalVotes > 0 && (
+                                        <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                                            <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)' }}>{pollData.totalVotes}</div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Votes</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Nominees grid / results */}
+                                <div style={{ padding: 'var(--space-lg) var(--space-xl)' }}>
+                                    {/* Show results if user has voted */}
+                                    {pollData.userVote && pollData.results ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {pollData.results.map(r => {
+                                                const isUserVote = r.movieTitle === pollData.userVote?.movieTitle;
+                                                const isLeader = r.movieTitle === pollData.results![0].movieTitle;
+                                                return (
+                                                    <div key={r.movieTitle}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                            <span style={{ fontSize: 13, fontWeight: isUserVote ? 700 : 500, color: isUserVote ? accent : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                {isUserVote && <CheckCircle2 size={13} style={{ color: accent }} />}
+                                                                {isLeader && !isUserVote && <Trophy size={13} style={{ color: '#f59e0b' }} />}
+                                                                {r.movieTitle}
+                                                            </span>
+                                                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>{r.pct}%</span>
+                                                        </div>
+                                                        <div style={{ height: 6, background: 'var(--bg-primary)', borderRadius: 3, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${r.pct}%`, background: isUserVote ? accent : isLeader ? '#f59e0b' : 'var(--border-default)', borderRadius: 3, transition: 'width 0.5s ease' }} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            <button
+                                                onClick={() => { setPollData(prev => prev ? { ...prev, userVote: null, results: null } : null); }}
+                                                style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', background: 'none', cursor: 'pointer', alignSelf: 'flex-start', textDecoration: 'underline' }}
+                                            >
+                                                Change vote
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        /* Nominee selection */
+                                        <>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 8, marginBottom: 'var(--space-md)' }}>
+                                                {pollData.poll.nominees.map(nominee => {
+                                                    const selected = votingFor === nominee.title;
+                                                    return (
+                                                        <button
+                                                            key={nominee.title}
+                                                            onClick={() => handleVoteSelect(nominee.title)}
+                                                            style={{ padding: '10px 14px', textAlign: 'left', background: selected ? `${accent}18` : 'var(--bg-primary)', border: `2px solid ${selected ? accent : 'var(--border-default)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                        >
+                                                            <div style={{ fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? accent : 'var(--text-primary)' }}>{nominee.title}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{nominee.year}</div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {votingFor && (
+                                                <button
+                                                    onClick={handleVoteSubmit}
+                                                    disabled={voteLoading}
+                                                    style={{ padding: '10px 28px', background: accent, color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: 'var(--text-sm)', cursor: voteLoading ? 'not-allowed' : 'pointer', opacity: voteLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}
+                                                >
+                                                    {voteLoading ? 'Submitting…' : `Vote for "${votingFor}"`}
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Skeleton loading state */}
+                        {!achievementsLoaded && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 'var(--space-xl)' }}>
+                                {Array.from({ length: 20 }).map((_, i) => (
+                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                                        <div className="skeleton" style={{ width: 64, height: 64, borderRadius: '50%' }} />
+                                        <div className="skeleton" style={{ width: 60, height: 10, borderRadius: 4 }} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Achievement categories */}
+                        {achievementsLoaded && ACHIEVEMENT_CATEGORIES.map(cat => {
+                            const catAchievements = ACHIEVEMENTS.filter(a => a.category === cat.id);
+                            return (
+                                <section key={cat.id} style={{ marginBottom: 'var(--space-3xl)' }}>
+                                    <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-xl)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        {cat.label}
+                                        <span style={{ fontSize: 10, background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 20, color: 'var(--text-muted)', fontWeight: 600 }}>
+                                            {catAchievements.filter(a => earnedMap[a.id]).length}/{catAchievements.length}
+                                        </span>
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 'var(--space-xl)' }}>
+                                        {catAchievements.map(achievement => {
+                                            const earned = earnedMap[achievement.id];
+                                            const IconComp = ACHIEVEMENT_ICON_MAP[achievement.icon as AchievementIconKey];
+                                            const isHovered = hoveredAchievement === achievement.id;
+                                            return (
+                                                <div
+                                                    key={achievement.id}
+                                                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, position: 'relative', cursor: 'default' }}
+                                                    onMouseEnter={() => setHoveredAchievement(achievement.id)}
+                                                    onMouseLeave={() => setHoveredAchievement(null)}
+                                                >
+                                                    {/* Badge circle */}
+                                                    <div style={{
+                                                        width: 68, height: 68, borderRadius: '50%',
+                                                        background: earned ? achievement.gradient : 'var(--bg-secondary)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        filter: earned ? 'none' : 'grayscale(1)',
+                                                        opacity: earned ? 1 : 0.3,
+                                                        boxShadow: earned && isHovered ? `0 6px 24px ${achievement.color}60` : earned ? `0 3px 12px ${achievement.color}40` : 'none',
+                                                        border: earned ? `2px solid ${achievement.color}` : '2px solid var(--border-subtle)',
+                                                        transform: isHovered && earned ? 'scale(1.1) translateY(-2px)' : 'scale(1)',
+                                                        transition: 'all 0.2s ease',
+                                                        position: 'relative',
+                                                    }}>
+                                                        {IconComp && <IconComp size={27} color={earned ? '#fff' : 'var(--text-tertiary)'} strokeWidth={1.5} />}
+                                                    </div>
+
+                                                    {/* Label */}
+                                                    <div style={{ textAlign: 'center' }}>
+                                                        <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: earned ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                                                            {achievement.title}
+                                                        </div>
+                                                        <div style={{ fontSize: 9, marginTop: 2, color: earned ? RARITY_COLORS[achievement.rarity as AchievementRarity] : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                            {achievement.rarityLabel}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Tooltip */}
+                                                    {isHovered && (
+                                                        <div style={{
+                                                            position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
+                                                            background: 'var(--bg-elevated)', border: `1px solid ${earned ? achievement.color + '60' : 'var(--border-default)'}`,
+                                                            borderRadius: 12, padding: '10px 14px', minWidth: 190, maxWidth: 220, zIndex: 200,
+                                                            boxShadow: `0 8px 32px rgba(0,0,0,0.35)`,
+                                                            pointerEvents: 'none',
+                                                        }}>
+                                                            <div style={{ fontWeight: 800, fontSize: 13, color: earned ? achievement.color : 'var(--text-primary)', marginBottom: 5 }}>{achievement.title}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{achievement.description}</div>
+                                                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: RARITY_COLORS[achievement.rarity as AchievementRarity], background: `${RARITY_COLORS[achievement.rarity as AchievementRarity]}18`, padding: '2px 7px', borderRadius: 20 }}>
+                                                                    {achievement.rarityLabel}
+                                                                </span>
+                                                                {earned
+                                                                    ? <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>✓ {new Date(earned.earnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                                    : <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>🔒 Locked</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            );
+                        })}
                     </div>
                 )}
             </div>

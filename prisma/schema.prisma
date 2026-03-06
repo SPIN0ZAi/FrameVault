@@ -30,6 +30,8 @@ model User {
   lists         List[]
   favorites     UserFavorite[]
   reviewLikes   ReviewLike[]
+  achievements  UserAchievement[]
+  oscarVotes    OscarVote[]
 
   @@map("users")
 }
@@ -267,4 +269,48 @@ model UserFavorite {
   @@unique([userId, position])
   @@index([userId])
   @@map("user_favorites")
+}
+
+// ─── ACHIEVEMENTS ────────────────────────────────────
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+// ─── OSCAR POLLS ─────────────────────────────────────
+
+model OscarPoll {
+  id        String      @id @default(cuid())
+  year      Int         @unique
+  nominees  Json
+  isOpen    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  votes OscarVote[]
+
+  @@map("oscar_polls")
+}
+
+model OscarVote {
+  id         String    @id @default(cuid())
+  userId     String
+  pollId     String
+  movieTitle String
+  createdAt  DateTime  @default(now())
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll OscarPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pollId])
+  @@index([pollId])
+  @@map("oscar_votes")
 }
