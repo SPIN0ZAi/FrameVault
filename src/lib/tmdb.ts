@@ -87,6 +87,61 @@ export async function getMovieDetails(id: string | number): Promise<TMDBMovie> {
     return fetchFromTMDB<TMDBMovie>(`/movie/${id}`);
 }
 
+/**
+ * Enhanced movie search with three-tier fallback strategy.
+ *
+ * Tier 1 — Standard /search/movie + our custom adult-content phrase filter.
+ * Tier 2 — If TMDB returned results but our phrase filter removed them all,
+ *           relax to TMDB's own `adult` flag only. This handles legitimate
+ *           award films (e.g. Holy Spider / عنکبوت مقدس) whose overviews
+ *           describe sensitive topics without the film itself being adult content.
+ * Tier 3 — If TMDB's movie search returned zero results, fall back to
+ *           /search/multi which also matches on original titles, alternate
+ *           titles and transliterated queries — useful for non-Latin searches.
+ */
+export async function searchMoviesEnhanced(
+    query: string,
+    page = 1,
+): Promise<TMDBResponse<TMDBMovie>> {
+    const baseParams = { query, page: page.toString(), include_adult: 'false' };
+
+    // ── Tier 1: standard search + full phrase filter ──────────────────────────
+    const primary = await fetchFromTMDB<TMDBResponse<TMDBMovie>>('/search/movie', baseParams);
+    const tier1 = primary.results.filter(m => !isAdultContent(m));
+    if (tier1.length > 0) return { ...primary, results: tier1 };
+
+    // ── Tier 2: our filter was too aggressive — relax to TMDB adult flag only ─
+    if (primary.total_results > 0) {
+        const tier2 = primary.results.filter(m => !m.adult);
+        if (tier2.length > 0) return { ...primary, results: tier2 };
+    }
+
+    // ── Tier 3: /search/multi for non-Latin titles & alternate title matches ──
+    try {
+        type MultiResult = TMDBMovie & { media_type: string };
+        const multi = await fetchFromTMDB<{
+            results: MultiResult[];
+            page: number;
+            total_pages: number;
+            total_results: number;
+        }>('/search/multi', { query, page: page.toString(), include_adult: 'false' });
+
+        const tier3 = multi.results
+            .filter((r): r is MultiResult => r.media_type === 'movie' && !r.adult)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .map(({ media_type: _mt, ...m }) => m as TMDBMovie);
+
+        return {
+            results: tier3,
+            page: multi.page,
+            total_pages: multi.total_pages,
+            total_results: tier3.length,
+        };
+    } catch {
+        return { results: [], page: 1, total_pages: 0, total_results: 0 };
+    }
+}
+
 // ─── Adult / explicit content filter ─────────────────────────────────────────
 // TMDB's include_adult flag is unreliable — many explicitly sexual titles are
 // not tagged as adult in TMDB's own database.  We apply a two-tier keyword
@@ -112,8 +167,8 @@ const ADULT_PHRASES = [
     'japanese mom', 'asian mom', 'stepmom', 'step-mom', 'step mom',
     'stepmother fantasy', 'av idol', 'jav idol', 'jav model',
     'adult film', 'adult video', 'adult movie', 'adult content',
-    'adult entertainer', 'adult star', 'sex tape', 'sex scene', 'sex life',
-    'sex worker', 'sex club', 'sex party', 'sex tourism',
+    'adult entertainer', 'adult star', 'sex tape',
+    'sex club', 'sex party', 'sex tourism',
     'erotic thriller', 'erotic drama', 'sexual fantasy', 'sexual encounter',
     'sexual content', 'explicit sex', 'graphic sex', 'explicit content',
     'sexually explicit', 'gratuitous nudity',

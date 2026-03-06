@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { createMovieSchema } from '@/lib/validators';
 import { successResponse, validationError, unauthorizedError, serverError } from '@/lib/api-response';
-import { searchMovies, discoverMovies, getTMDBImageUrl, isAdultContent } from '@/lib/tmdb';
+import { searchMoviesEnhanced, discoverMovies, getTMDBImageUrl } from '@/lib/tmdb';
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -15,9 +15,7 @@ export async function GET(request: NextRequest) {
 
         let tmdbData;
         if (search) {
-            tmdbData = await searchMovies(search, page);
-            // Filter adult content from search results too
-            tmdbData.results = tmdbData.results.filter(m => !isAdultContent(m));
+            tmdbData = await searchMoviesEnhanced(search, page);
         } else {
             tmdbData = await discoverMovies({ page, genre, sort });
         }
