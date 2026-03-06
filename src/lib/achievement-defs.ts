@@ -257,7 +257,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     {
         id: 'oscar_voter_2026',
         title: "Oscar Voter '26",
-        description: 'Voted in the 2026 Best Picture poll',
+        description: 'Voted in the 98th Academy Awards Best Picture poll',
         icon: 'Clapperboard',
         color: '#d4af37',
         gradient: 'linear-gradient(135deg, #fde68a, #d4af37, #92400e)',

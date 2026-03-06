@@ -4,18 +4,18 @@ import { auth } from '@/lib/auth';
 import { checkAndAwardAchievements } from '@/lib/achievements';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
 
-// The 2026 Oscar Best Picture nominees (97th Academy Awards — 2025 ceremony)
+// The 2026 Oscar Best Picture nominees (98th Academy Awards — March 2, 2026 ceremony)
 const NOMINEES_2026 = [
-    { title: 'The Brutalist', year: 2024 },
-    { title: 'A Complete Unknown', year: 2024 },
-    { title: 'Anora', year: 2024 },
-    { title: 'Conclave', year: 2024 },
-    { title: 'Dune: Part Two', year: 2024 },
-    { title: 'Emilia Pérez', year: 2024 },
-    { title: "I'm Still Here", year: 2024 },
-    { title: 'Nickel Boys', year: 2024 },
-    { title: 'The Substance', year: 2024 },
-    { title: 'Wicked', year: 2024 },
+    { title: 'Bugonia', year: 2025 },
+    { title: 'F1', year: 2025 },
+    { title: 'Frankenstein', year: 2025 },
+    { title: 'Hamnet', year: 2025 },
+    { title: 'Marty Supreme', year: 2025 },
+    { title: 'One Battle after Another', year: 2025 },
+    { title: 'The Secret Agent', year: 2025 },
+    { title: 'Sentimental Value', year: 2025 },
+    { title: 'Sinners', year: 2025 },
+    { title: 'Train Dreams', year: 2025 },
 ];
 
 async function getOrCreatePoll(year: number) {
