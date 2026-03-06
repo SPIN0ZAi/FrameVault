@@ -3,6 +3,30 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { checkAndAwardAchievements } from '@/lib/achievements';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { fetchFromTMDB } from '@/lib/tmdb';
+
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w342';
+
+// Fetch poster paths for each nominee concurrently (best-effort, fails silently)
+async function fetchNomineePosters(nominees: { title: string; year: number }[]): Promise<Record<string, string>> {
+    const results = await Promise.allSettled(
+        nominees.map(async n => {
+            const data = await fetchFromTMDB<{ results: { title: string; poster_path: string | null; release_date: string }[] }>(
+                '/search/movie',
+                { query: n.title, year: String(n.year), include_adult: 'false' }
+            );
+            const hit = data.results[0];
+            return { title: n.title, posterUrl: hit?.poster_path ? `${TMDB_IMAGE_BASE}${hit.poster_path}` : null };
+        })
+    );
+    const map: Record<string, string> = {};
+    for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.posterUrl) {
+            map[r.value.title] = r.value.posterUrl;
+        }
+    }
+    return map;
+}
 
 // The 2026 Oscar Best Picture nominees (98th Academy Awards — March 2, 2026 ceremony)
 const NOMINEES_2026 = [
@@ -52,7 +76,18 @@ export async function GET() {
         }
 
         const nominees = poll.nominees as { title: string; year: number }[];
-        const results = nominees.map(n => ({
+
+        // Fetch posters concurrently alongside vote counts
+        const [posterMap] = await Promise.all([
+            fetchNomineePosters(nominees),
+        ]);
+
+        const nomineesWithPosters = nominees.map(n => ({
+            ...n,
+            posterUrl: posterMap[n.title] ?? null,
+        }));
+
+        const results = nomineesWithPosters.map(n => ({
             movieTitle: n.title,
             votes: resultsMap[n.title] ?? 0,
         })).sort((a, b) => b.votes - a.votes);
@@ -72,7 +107,7 @@ export async function GET() {
             poll: {
                 id: poll.id,
                 year: poll.year,
-                nominees,
+                nominees: nomineesWithPosters,
                 isOpen: poll.isOpen,
             },
             userVote,

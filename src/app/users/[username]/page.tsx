@@ -784,7 +784,7 @@ export default function UserProfilePage() {
     const [hoveredAchievement, setHoveredAchievement] = useState<string | null>(null);
 
     // ── Oscar vote state ────────────────────────────────────────────────────
-    type PollNominee = { title: string; year: number };
+    type PollNominee = { title: string; year: number; posterUrl: string | null };
     type VoteResult = { movieTitle: string; votes: number; pct: number };
     type PollData = {
         poll: { id: string; year: number; nominees: PollNominee[]; isOpen: boolean } | null;
@@ -1405,17 +1405,42 @@ export default function UserProfilePage() {
                                     ) : (
                                         /* Nominee selection */
                                         <>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 8, marginBottom: 'var(--space-md)' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, marginBottom: 'var(--space-md)' }}>
                                                 {pollData.poll.nominees.map(nominee => {
                                                     const selected = votingFor === nominee.title;
                                                     return (
                                                         <button
                                                             key={nominee.title}
                                                             onClick={() => handleVoteSelect(nominee.title)}
-                                                            style={{ padding: '10px 14px', textAlign: 'left', background: selected ? `${accent}18` : 'var(--bg-primary)', border: `2px solid ${selected ? accent : 'var(--border-default)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                            style={{
+                                                                padding: 0, textAlign: 'left', background: 'none',
+                                                                border: `3px solid ${selected ? accent : 'transparent'}`,
+                                                                borderRadius: 10, cursor: 'pointer',
+                                                                transition: 'all 0.15s',
+                                                                outline: 'none',
+                                                                transform: selected ? 'scale(1.03)' : 'scale(1)',
+                                                                boxShadow: selected ? `0 6px 20px ${accent}50` : '0 2px 8px rgba(0,0,0,0.25)',
+                                                                overflow: 'hidden',
+                                                                position: 'relative',
+                                                            }}
                                                         >
-                                                            <div style={{ fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? accent : 'var(--text-primary)' }}>{nominee.title}</div>
-                                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{nominee.year}</div>
+                                                            {/* Poster */}
+                                                            <div style={{ aspectRatio: '2/3', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
+                                                                {nominee.posterUrl
+                                                                    ? <img src={nominee.posterUrl} alt={nominee.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                                                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Film size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} /></div>
+                                                                }
+                                                                {/* Selected overlay */}
+                                                                {selected && (
+                                                                    <div style={{ position: 'absolute', inset: 0, background: `${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                        <CheckCircle2 size={36} style={{ color: accent, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {/* Title bar */}
+                                                            <div style={{ padding: '8px 10px', background: selected ? `${accent}18` : 'var(--bg-secondary)' }}>
+                                                                <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: selected ? accent : 'var(--text-primary)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{nominee.title}</div>
+                                                            </div>
                                                         </button>
                                                     );
                                                 })}
