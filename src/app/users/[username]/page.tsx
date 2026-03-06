@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
-import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievements';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievement-defs';
 
 //  Types 
 
