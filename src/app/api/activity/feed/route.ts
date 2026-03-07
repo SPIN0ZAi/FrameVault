@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest) {
 
         const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // last 90 days
 
-        const [watched, ratings, reviews] = await Promise.all([
+        const [watched, ratings, reviews, watchedShows, showRatings] = await Promise.all([
             prisma.watchedMovie.findMany({
                 where: { userId: { in: followingIds }, watchedAt: { gte: since } },
                 include: {
@@ -51,7 +51,35 @@ export async function GET(_req: NextRequest) {
                 orderBy: { createdAt: 'desc' },
                 take: 40,
             }),
+            // ── TV show watched events ──────────────────────────────────────────
+            prisma.watchedShow.findMany({
+                where: { userId: { in: followingIds }, watchedAt: { gte: since } },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                },
+                orderBy: { watchedAt: 'desc' },
+                take: 40,
+            }),
+            // ── TV show rating events ───────────────────────────────────────────
+            prisma.showRating.findMany({
+                where: { userId: { in: followingIds }, createdAt: { gte: since } },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 40,
+            }),
         ]);
+
+        // For show ratings, look up show info (title/poster) from WatchedShow
+        const showRatingPairs = showRatings.map(r => ({ userId: r.userId, tmdbShowId: r.tmdbShowId }));
+        const showInfoRows = showRatingPairs.length > 0
+            ? await prisma.watchedShow.findMany({
+                where: { OR: showRatingPairs },
+                select: { userId: true, tmdbShowId: true, title: true, year: true, posterUrl: true },
+              })
+            : [];
+        const showInfoMap = new Map(showInfoRows.map(s => [`${s.userId}-${s.tmdbShowId}`, s]));
 
         // Helper: resolve the event user's custom poster, or fall back to default
         const resolveposter = (movie: { posterUrl: string | null; customPosters: { userId: string; posterUrl: string }[] }, userId: string) =>
@@ -59,10 +87,12 @@ export async function GET(_req: NextRequest) {
 
         type ActivityEvent = {
             id: string;
-            type: 'watched' | 'rated' | 'reviewed';
+            type: 'watched' | 'rated' | 'reviewed' | 'watched_show' | 'rated_show';
+            contentType: 'movie' | 'show';
             date: string;
             user: { id: string; username: string; avatarUrl: string | null };
-            movie: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null };
+            movie?: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null };
+            show?: { tmdbShowId: number; title: string; year: number | null; posterUrl: string | null };
             rating?: number;
             reviewContent?: string;
             containsSpoilers?: boolean;
@@ -72,6 +102,7 @@ export async function GET(_req: NextRequest) {
             ...watched.map(w => ({
                 id: `watched-${w.id}`,
                 type: 'watched' as const,
+                contentType: 'movie' as const,
                 date: w.watchedAt.toISOString(),
                 user: w.user,
                 movie: { ...w.movie, posterUrl: resolveposter(w.movie, w.user.id) },
@@ -79,6 +110,7 @@ export async function GET(_req: NextRequest) {
             ...ratings.map(r => ({
                 id: `rated-${r.id}`,
                 type: 'rated' as const,
+                contentType: 'movie' as const,
                 date: r.createdAt.toISOString(),
                 user: r.user,
                 movie: { ...r.movie, posterUrl: resolveposter(r.movie, r.user.id) },
@@ -87,24 +119,51 @@ export async function GET(_req: NextRequest) {
             ...reviews.map(r => ({
                 id: `reviewed-${r.id}`,
                 type: 'reviewed' as const,
+                contentType: 'movie' as const,
                 date: r.createdAt.toISOString(),
                 user: r.user,
                 movie: { ...r.movie, posterUrl: resolveposter(r.movie, r.user.id) },
                 reviewContent: r.content,
                 containsSpoilers: r.containsSpoilers,
             })),
+            ...watchedShows.map(w => ({
+                id: `watched-show-${w.id}`,
+                type: 'watched_show' as const,
+                contentType: 'show' as const,
+                date: w.watchedAt.toISOString(),
+                user: w.user,
+                show: { tmdbShowId: w.tmdbShowId, title: w.title, year: w.year, posterUrl: w.posterUrl },
+            })),
+            ...showRatings.map(r => {
+                const info = showInfoMap.get(`${r.userId}-${r.tmdbShowId}`);
+                return {
+                    id: `rated-show-${r.id}`,
+                    type: 'rated_show' as const,
+                    contentType: 'show' as const,
+                    date: r.createdAt.toISOString(),
+                    user: r.user,
+                    show: {
+                        tmdbShowId: r.tmdbShowId,
+                        title: info?.title ?? 'Unknown Show',
+                        year: info?.year ?? null,
+                        posterUrl: info?.posterUrl ?? null,
+                    },
+                    rating: r.value,
+                };
+            }),
         ];
 
         // Sort by date desc
         events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        // Deduplicate: collapse watched+rated same movie+user within 1 hour into one entry
+        // Deduplicate: collapse watched+rated same item+user within 1 hour into one entry
         const deduped: ActivityEvent[] = [];
         const seen = new Set<string>();
         for (const ev of events) {
             const hourBucket = Math.floor(new Date(ev.date).getTime() / (60 * 60 * 1000));
-            const key = `${ev.user.id}-${ev.movie.id}-${hourBucket}`;
-            if (ev.type === 'watched' || ev.type === 'rated') {
+            const itemKey = ev.show ? `show-${ev.show.tmdbShowId}` : `movie-${ev.movie?.id}`;
+            const key = `${ev.user.id}-${itemKey}-${hourBucket}`;
+            if (ev.type === 'watched' || ev.type === 'rated' || ev.type === 'watched_show' || ev.type === 'rated_show') {
                 if (seen.has(key)) continue;
                 seen.add(key);
             }

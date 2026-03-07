@@ -799,6 +799,7 @@ export default function UserProfilePage() {
     const [showsTotalPages, setShowsTotalPages] = useState(1);
     const [showsTotalCount, setShowsTotalCount] = useState(0);
     const [showsSort, setShowsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'title_desc' | 'rating_desc'>('date_desc');
+    const [showsRatingFilter, setShowsRatingFilter] = useState<number | null>(null);
     const [showWatchlist, setShowWatchlist] = useState<ShowWatchlistItem[]>([]);
     const [showWatchlistLoaded, setShowWatchlistLoaded] = useState(false);
 
@@ -898,6 +899,7 @@ export default function UserProfilePage() {
         if (activeTab === 'TV') {
             setAllShowsLoaded(false);
             const params = new URLSearchParams({ limit: '50', page: showsPage.toString(), sort: showsSort });
+            if (showsRatingFilter) params.set('minRating', showsRatingFilter.toString());
             fetch(`/api/users/${username}/shows?${params}`)
                 .then(r => r.json())
                 .then(d => {
@@ -954,7 +956,7 @@ export default function UserProfilePage() {
                     .then(d => { if (d.success) setPollData(d.data); setPollLoaded(true); });
             }
         }
-    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showsRatingFilter, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
@@ -1291,8 +1293,9 @@ export default function UserProfilePage() {
                 {/* ─── TV Shows Tab ──────────────────────────────────────────────── */}
                 {activeTab === 'TV' && (
                     <div>
-                        {/* Sort bar */}
+                        {/* Sort + rating filter bar */}
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            {/* Sort */}
                             <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
                                 {([
                                     { key: 'date_desc', label: 'Latest' },
@@ -1307,6 +1310,19 @@ export default function UserProfilePage() {
                                     </button>
                                 ))}
                             </div>
+                            {/* Rating filter */}
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <button onClick={() => { setShowsRatingFilter(null); setShowsPage(1); }}
+                                    style={{ padding: '4px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: showsRatingFilter === null ? 700 : 500, background: showsRatingFilter === null ? 'var(--bg-secondary)' : 'transparent', border: showsRatingFilter === null ? `1.5px solid ${accent}` : '1.5px solid transparent', color: showsRatingFilter === null ? 'var(--text-primary)' : 'var(--text-tertiary)', cursor: 'pointer' }}>
+                                    All ★
+                                </button>
+                                {[10, 9, 8, 7, 6, 5].map(r => (
+                                    <button key={r} onClick={() => { setShowsRatingFilter(showsRatingFilter === r ? null : r); setShowsPage(1); }}
+                                        style={{ padding: '4px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: showsRatingFilter === r ? 700 : 400, background: showsRatingFilter === r ? '#fbbf24' : 'transparent', border: showsRatingFilter === r ? '1.5px solid #fbbf24' : '1.5px solid var(--border-subtle)', color: showsRatingFilter === r ? '#000' : 'var(--text-tertiary)', cursor: 'pointer' }}>
+                                        {r}★+
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Watched grid */}
@@ -1315,13 +1331,14 @@ export default function UserProfilePage() {
                                 {Array.from({ length: 20 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
                             </div>
                         ) : allShows.length === 0 && showWatchlist.length === 0 ? (
-                            <EmptyTab icon={<Tv size={48} />} text="No shows logged yet" cta={isOwnProfile ? { label: 'Browse TV Shows', href: '/shows' } : undefined} />
+                            <EmptyTab icon={<Tv size={48} />} text={showsRatingFilter ? `No shows rated ${showsRatingFilter}★ or higher` : 'No shows logged yet'} cta={isOwnProfile && !showsRatingFilter ? { label: 'Browse TV Shows', href: '/shows' } : undefined} />
                         ) : (
                             <>
                                 {allShows.length > 0 && (
                                     <>
                                         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)' }}>
-                                            {showsTotalCount.toLocaleString()} show{showsTotalCount !== 1 ? 's' : ''} watched
+                                            {showsTotalCount.toLocaleString()} show{showsTotalCount !== 1 ? 's' : ''}
+                                            {showsRatingFilter ? ` rated ${showsRatingFilter}★+` : ' watched'}
                                             {showsTotalPages > 1 ? ` · Page ${showsPage} of ${showsTotalPages}` : ''}
                                         </p>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
@@ -1341,11 +1358,16 @@ export default function UserProfilePage() {
                                                             {ws.year && <div className="movie-card-year">{ws.year}</div>}
                                                         </div>
                                                     </Link>
-                                                    {ws.rating && (
-                                                        <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24', pointerEvents: 'none' }}>
-                                                            {ws.rating}★
-                                                        </div>
-                                                    )}
+                                                    {ws.rating != null && (() => {
+                                                        const s = Math.round((ws.rating / 10) * 5 * 2) / 2;
+                                                        return (
+                                                            <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.82)', borderRadius: 4, padding: '2px 5px', pointerEvents: 'none', display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                                {[1, 2, 3, 4, 5].map(i => (
+                                                                    <Star key={i} size={8} fill={s >= i ? 'currentColor' : 'none'} stroke="currentColor" style={{ color: '#fbbf24', opacity: s >= i - 0.5 ? 1 : 0.2 }} />
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ))}
                                         </div>

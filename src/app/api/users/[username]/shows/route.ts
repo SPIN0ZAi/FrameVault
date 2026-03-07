@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { successResponse, notFoundError, serverError } from '@/lib/api-response';
 
 // GET /api/users/[username]/shows
-// Params: page, limit, sort (date_desc|date_asc|title_asc|title_desc|rating_desc)
+// Params: page, limit, sort (date_desc|date_asc|title_asc|title_desc|rating_desc), minRating
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ username: string }> }
@@ -11,9 +11,10 @@ export async function GET(
     try {
         const { username } = await params;
         const { searchParams } = new URL(request.url);
-        const page  = Math.max(1, parseInt(searchParams.get('page') || '1'));
-        const limit = Math.min(200, parseInt(searchParams.get('limit') || '20'));
-        const sort  = searchParams.get('sort') || 'date_desc';
+        const page      = Math.max(1, parseInt(searchParams.get('page') || '1'));
+        const limit     = Math.min(200, parseInt(searchParams.get('limit') || '20'));
+        const sort      = searchParams.get('sort') || 'date_desc';
+        const minRating = searchParams.get('minRating') ? parseInt(searchParams.get('minRating')!) : null;
 
         const user = await prisma.user.findUnique({
             where: { username },
@@ -27,6 +28,22 @@ export async function GET(
             select: { tmdbShowId: true, value: true },
         });
         const ratingMap = new Map(allRatings.map(r => [r.tmdbShowId, r.value]));
+
+        // ── minRating filter: fetch only shows whose rating meets the threshold ─
+        if (minRating !== null) {
+            const qualifyingIds = allRatings
+                .filter(r => r.value >= minRating)
+                .map(r => r.tmdbShowId);
+            const allMatchingShows = await prisma.watchedShow.findMany({
+                where: { userId: user.id, tmdbShowId: { in: qualifyingIds } },
+            });
+            const withRatings = allMatchingShows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+            // Default sort for filtered view: highest-rated first
+            withRatings.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+            const totalCount = withRatings.length;
+            const paged = withRatings.slice((page - 1) * limit, page * limit);
+            return successResponse(paged, { page, limit, totalCount, totalPages: Math.ceil(totalCount / limit) });
+        }
 
         // Rating sort: fetch all, join + sort in memory, then paginate
         if (sort === 'rating_desc') {

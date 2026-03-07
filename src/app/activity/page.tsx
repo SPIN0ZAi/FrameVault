@@ -4,14 +4,16 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Star, Eye, MessageSquare, Activity, Users } from 'lucide-react';
+import { Film, Tv, Star, Eye, MessageSquare, Activity, Users } from 'lucide-react';
 
 interface ActivityEvent {
     id: string;
-    type: 'watched' | 'rated' | 'reviewed';
+    type: 'watched' | 'rated' | 'reviewed' | 'watched_show' | 'rated_show';
+    contentType: 'movie' | 'show';
     date: string;
     user: { id: string; username: string; avatarUrl: string | null };
-    movie: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null };
+    movie?: { id: string; tmdbId: number | null; title: string; year: number; posterUrl: string | null };
+    show?: { tmdbShowId: number; title: string; year: number | null; posterUrl: string | null };
     rating?: number;
     reviewContent?: string;
     containsSpoilers?: boolean;
@@ -57,6 +59,7 @@ export default function ActivityPage() {
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [revealedReviews, setRevealedReviews] = useState<Set<string>>(new Set());
+    const [activityTab, setActivityTab] = useState<'movies' | 'shows'>('movies');
 
     useEffect(() => {
         if (status === 'unauthenticated') { router.push('/login'); return; }
@@ -67,9 +70,13 @@ export default function ActivityPage() {
             .finally(() => setLoading(false));
     }, [status, router]);
 
-    // Group events by day
+    const visibleEvents = events.filter(ev =>
+        activityTab === 'movies' ? ev.contentType === 'movie' : ev.contentType === 'show'
+    );
+
+    // Group visible events by day
     const grouped: { day: string; events: ActivityEvent[] }[] = [];
-    for (const ev of events) {
+    for (const ev of visibleEvents) {
         const label = dayLabel(ev.date);
         const last = grouped[grouped.length - 1];
         if (last && last.day === label) {
@@ -78,6 +85,9 @@ export default function ActivityPage() {
             grouped.push({ day: label, events: [ev] });
         }
     }
+
+    const movieCount = events.filter(e => e.contentType === 'movie').length;
+    const showCount  = events.filter(e => e.contentType === 'show').length;
 
     if (status === 'loading' || loading) {
         return (
@@ -95,7 +105,7 @@ export default function ActivityPage() {
     return (
         <div className="page">
             <div className="container" style={{ maxWidth: 680 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-2xl)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
                     <Activity size={28} style={{ color: 'var(--brand)' }} />
                     <div>
                         <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 900, lineHeight: 1 }}>Activity</h1>
@@ -103,12 +113,45 @@ export default function ActivityPage() {
                     </div>
                 </div>
 
-                {events.length === 0 ? (
+                {/* Films / TV Shows tab switcher */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-xl)' }}>
+                    {([
+                        { key: 'movies' as const, label: 'Films',    icon: <Film size={14} />, count: movieCount },
+                        { key: 'shows'  as const, label: 'TV Shows', icon: <Tv   size={14} />, count: showCount },
+                    ]).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setActivityTab(t.key)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '0.65rem 1.25rem',
+                                fontSize: 'var(--text-sm)', fontWeight: 600,
+                                color: activityTab === t.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                borderBottom: activityTab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
+                                marginBottom: '-1px', background: 'none', cursor: 'pointer',
+                                transition: 'color 0.1s',
+                            }}
+                        >
+                            {t.icon} {t.label}
+                            {t.count > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', borderRadius: 999, padding: '1px 6px' }}>
+                                    {t.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                {visibleEvents.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 'var(--space-3xl) 0', color: 'var(--text-tertiary)' }}>
                         <Users size={48} style={{ opacity: 0.2, display: 'block', margin: '0 auto var(--space-md)' }} />
-                        <p style={{ fontWeight: 600, fontSize: 'var(--text-base)', marginBottom: 'var(--space-sm)' }}>No activity yet</p>
-                        <p style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>Follow some members to see their activity here</p>
-                        <Link href="/members" className="btn btn-primary btn-sm">Find Members</Link>
+                        <p style={{ fontWeight: 600, fontSize: 'var(--text-base)', marginBottom: 'var(--space-sm)' }}>
+                            {events.length === 0 ? 'No activity yet' : `No ${activityTab === 'movies' ? 'film' : 'TV show'} activity yet`}
+                        </p>
+                        <p style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+                            {events.length === 0 ? 'Follow some members to see their activity here' : `People you follow haven\u2019t logged any ${activityTab === 'movies' ? 'films' : 'TV shows'} recently`}
+                        </p>
+                        {events.length === 0 && <Link href="/members" className="btn btn-primary btn-sm">Find Members</Link>}
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2xl)' }}>
@@ -121,7 +164,13 @@ export default function ActivityPage() {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                                     {group.events.map(ev => {
-                                        const movieHref = `/movies/${ev.movie.tmdbId ?? ev.movie.id}`;
+                                        const isShow = ev.contentType === 'show';
+                                        const href = isShow
+                                            ? `/shows/${ev.show!.tmdbShowId}`
+                                            : `/movies/${ev.movie!.tmdbId ?? ev.movie!.id}`;
+                                        const title      = isShow ? ev.show!.title      : ev.movie!.title;
+                                        const year       = isShow ? ev.show!.year       : ev.movie!.year;
+                                        const posterUrl  = isShow ? ev.show!.posterUrl  : ev.movie!.posterUrl;
                                         const isSpoiler = ev.type === 'reviewed' && ev.containsSpoilers && !revealedReviews.has(ev.id);
                                         return (
                                             <div key={ev.id} style={{ display: 'flex', gap: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', alignItems: 'flex-start' }}>
@@ -141,12 +190,12 @@ export default function ActivityPage() {
                                                         <Link href={`/users/${ev.user.username}`} style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', textDecoration: 'none' }}>
                                                             {ev.user.username}
                                                         </Link>
-                                                        {ev.type === 'watched' && (
+                                                        {(ev.type === 'watched' || ev.type === 'watched_show') && (
                                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
                                                                 <Eye size={11} /> watched
                                                             </span>
                                                         )}
-                                                        {ev.type === 'rated' && (
+                                                        {(ev.type === 'rated' || ev.type === 'rated_show') && (
                                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
                                                                 <Star size={11} /> rated
                                                             </span>
@@ -156,14 +205,14 @@ export default function ActivityPage() {
                                                                 <MessageSquare size={11} /> reviewed
                                                             </span>
                                                         )}
-                                                        <Link href={movieHref} style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                                                            {ev.movie.title}
+                                                        <Link href={href} style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', textDecoration: 'none' }}>
+                                                            {title}
                                                         </Link>
-                                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{ev.movie.year}</span>
+                                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{year}</span>
                                                         <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeAgo(ev.date)}</span>
                                                     </div>
 
-                                                    {ev.type === 'rated' && ev.rating != null && (
+                                                    {(ev.type === 'rated' || ev.type === 'rated_show') && ev.rating != null && (
                                                         <StarMini value={ev.rating} />
                                                     )}
 
@@ -185,11 +234,13 @@ export default function ActivityPage() {
                                                 </div>
 
                                                 {/* Poster */}
-                                                <Link href={movieHref} style={{ flexShrink: 0 }}>
+                                                <Link href={href} style={{ flexShrink: 0 }}>
                                                     <div style={{ width: 36, height: 54, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
-                                                        {ev.movie.posterUrl
-                                                            ? <img src={ev.movie.posterUrl} alt={ev.movie.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Film size={14} style={{ opacity: 0.3 }} /></div>
+                                                        {posterUrl
+                                                            ? <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {isShow ? <Tv size={14} style={{ opacity: 0.3 }} /> : <Film size={14} style={{ opacity: 0.3 }} />}
+                                                              </div>
                                                         }
                                                     </div>
                                                 </Link>
