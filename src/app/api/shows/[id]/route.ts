@@ -60,11 +60,11 @@ export async function GET(
             return notFoundError('Show not found on TMDB');
         }
 
-        // Fetch credits, videos, similar in parallel
+        // Fetch credits, videos, recommendations in parallel
         const [credits, videos, similar] = await Promise.all([
             fetchFromTMDB<TMDBCredits>(`/tv/${id}/credits`).catch(() => ({ cast: [], crew: [] })),
             fetchFromTMDB<TMDBVideos>(`/tv/${id}/videos`).catch(() => ({ results: [] })),
-            fetchFromTMDB<TMDBSimilarShows>(`/tv/${id}/similar`).catch(() => ({ results: [] })),
+            fetchFromTMDB<TMDBSimilarShows>(`/tv/${id}/recommendations`).catch(() => ({ results: [] })),
         ]);
 
         const trailer =

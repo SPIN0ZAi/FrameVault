@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
@@ -55,6 +55,7 @@ interface WatchedShow {
     year: number | null;
     posterUrl: string | null;
     watchedAt: string;
+    rating?: number | null;
 }
 
 interface ShowWatchlistItem {
@@ -768,11 +769,17 @@ type AchievementIconKey = keyof typeof ACHIEVEMENT_ICON_MAP;
 export default function UserProfilePage() {
     const { username } = useParams<{ username: string }>();
     const { data: session } = useSession();
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [user, setUser] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<'not_found' | 'server_error' | null>(null);
-    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>('Profile');
+    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>(() => {
+        const tab = searchParams.get('tab');
+        const valid = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'];
+        return (valid.includes(tab ?? '') ? tab : 'Profile') as 'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements';
+    });
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
 
@@ -791,7 +798,7 @@ export default function UserProfilePage() {
     const [showsPage, setShowsPage] = useState(1);
     const [showsTotalPages, setShowsTotalPages] = useState(1);
     const [showsTotalCount, setShowsTotalCount] = useState(0);
-    const [showsSort, setShowsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'title_desc'>('date_desc');
+    const [showsSort, setShowsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'title_desc' | 'rating_desc'>('date_desc');
     const [showWatchlist, setShowWatchlist] = useState<ShowWatchlistItem[]>([]);
     const [showWatchlistLoaded, setShowWatchlistLoaded] = useState(false);
 
@@ -831,6 +838,13 @@ export default function UserProfilePage() {
     const isOwnProfile = session?.user?.username === username;
     const TABS = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'] as const;
     const accent = user?.profile?.themeColor || 'var(--brand)';
+    const switchTab = (tab: typeof TABS[number]) => {
+        setActiveTab(tab);
+        const p = new URLSearchParams(searchParams.toString());
+        if (tab === 'Profile') { p.delete('tab'); } else { p.set('tab', tab); }
+        const qs = p.toString();
+        router.replace(`/users/${username}${qs ? `?${qs}` : ''}`, { scroll: false });
+    };
 
     useEffect(() => {
         async function fetchProfile() {
@@ -1101,7 +1115,7 @@ export default function UserProfilePage() {
                         { value: user._count.following ?? 0, label: 'Following', icon: <Users size={14} />, tab: 'Network' as const, sub: 'following' as const },
                     ] as const).map((stat, idx, arr) => (
                         <button key={stat.label}
-                            onClick={() => { setActiveTab(stat.tab); if ('sub' in stat && stat.sub) setNetworkTab(stat.sub); }}
+                            onClick={() => { switchTab(stat.tab); if ('sub' in stat && stat.sub) setNetworkTab(stat.sub); }}
                             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: 'var(--space-md) var(--space-sm)', background: 'none', cursor: 'pointer', borderRight: idx < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none', transition: 'background var(--duration-fast)' }}
                             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -1124,7 +1138,7 @@ export default function UserProfilePage() {
 
                 <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)', marginTop: 'var(--space-xl)', marginBottom: 'var(--space-xl)', position: 'sticky', top: 'var(--header-height)', background: 'var(--bg-primary)', zIndex: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
                     {TABS.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
+                        <button key={tab} onClick={() => switchTab(tab)}
                             style={{ padding: '0.75rem 1.25rem', fontSize: 'var(--text-sm)', fontWeight: 600, whiteSpace: 'nowrap', color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-tertiary)', borderBottom: activeTab === tab ? `2px solid ${accent}` : '2px solid transparent', marginBottom: '-1px', background: 'none', cursor: 'pointer', transition: 'color var(--duration-fast)' }}
                         >
                             {tab}
@@ -1151,7 +1165,7 @@ export default function UserProfilePage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
                                     <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>Recent Films</h2>
                                     {user._count.watchedMovies > 8 && (
-                                        <button onClick={() => setActiveTab('Films')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
+                                        <button onClick={() => switchTab('Films')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
                                     )}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
@@ -1166,7 +1180,7 @@ export default function UserProfilePage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
                                     <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>Recent Shows</h2>
                                     {user._count.watchedShows > 8 && (
-                                        <button onClick={() => setActiveTab('TV')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
+                                        <button onClick={() => switchTab('TV')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
                                     )}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
@@ -1193,9 +1207,9 @@ export default function UserProfilePage() {
                             <section>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
                                     <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>Recent Reviews</h2>
-                                    <button onClick={() => setActiveTab('Reviews')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
+                                    <button onClick={() => switchTab('Reviews')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
                                 </div>
-                                <RecentReviewsPreview username={username} onViewAll={() => setActiveTab('Reviews')} />
+                                <RecentReviewsPreview username={username} onViewAll={() => switchTab('Reviews')} />
                             </section>
                         )}
                         {watchedMovies.length === 0 && user._count.reviews === 0 && (
@@ -1283,6 +1297,7 @@ export default function UserProfilePage() {
                                 {([
                                     { key: 'date_desc', label: 'Latest' },
                                     { key: 'date_asc', label: 'Oldest' },
+                                    { key: 'rating_desc', label: 'Top Rated' },
                                     { key: 'title_asc', label: 'A–Z' },
                                     { key: 'title_desc', label: 'Z–A' },
                                 ] as const).map(s => (
@@ -1311,20 +1326,27 @@ export default function UserProfilePage() {
                                         </p>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                             {allShows.map(ws => (
-                                                <Link key={ws.id} href={`/shows/${ws.tmdbShowId}`} className="movie-card">
-                                                    {ws.posterUrl ? (
-                                                        <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
-                                                    ) : (
-                                                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                                                            <Tv size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
-                                                            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                                <div key={ws.id} style={{ position: 'relative' }}>
+                                                    <Link href={`/shows/${ws.tmdbShowId}`} className="movie-card">
+                                                        {ws.posterUrl ? (
+                                                            <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
+                                                        ) : (
+                                                            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                                <Tv size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="movie-card-overlay">
+                                                            <div className="movie-card-title">{ws.title}</div>
+                                                            {ws.year && <div className="movie-card-year">{ws.year}</div>}
+                                                        </div>
+                                                    </Link>
+                                                    {ws.rating && (
+                                                        <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24', pointerEvents: 'none' }}>
+                                                            {'★'.repeat(Math.round((ws.rating / 10) * 5))}
                                                         </div>
                                                     )}
-                                                    <div className="movie-card-overlay">
-                                                        <div className="movie-card-title">{ws.title}</div>
-                                                        {ws.year && <div className="movie-card-year">{ws.year}</div>}
-                                                    </div>
-                                                </Link>
+                                                </div>
                                             ))}
                                         </div>
                                         {showsTotalPages > 1 && (

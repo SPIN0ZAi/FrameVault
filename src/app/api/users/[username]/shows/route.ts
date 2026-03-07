@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { successResponse, notFoundError, serverError } from '@/lib/api-response';
 
 // GET /api/users/[username]/shows
-// Params: page, limit, sort (date_desc|date_asc|title_asc|title_desc)
+// Params: page, limit, sort (date_desc|date_asc|title_asc|title_desc|rating_desc)
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ username: string }> }
@@ -21,6 +21,23 @@ export async function GET(
         });
         if (!user) return notFoundError('User');
 
+        // Always fetch ratings so we can include them and badge the posters
+        const allRatings = await prisma.showRating.findMany({
+            where: { userId: user.id },
+            select: { tmdbShowId: true, value: true },
+        });
+        const ratingMap = new Map(allRatings.map(r => [r.tmdbShowId, r.value]));
+
+        // Rating sort: fetch all, join + sort in memory, then paginate
+        if (sort === 'rating_desc') {
+            const allShows = await prisma.watchedShow.findMany({ where: { userId: user.id } });
+            const withRatings = allShows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+            withRatings.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+            const totalCount = withRatings.length;
+            const paged = withRatings.slice((page - 1) * limit, page * limit);
+            return successResponse(paged, { page, limit, totalCount, totalPages: Math.ceil(totalCount / limit) });
+        }
+
         const orderBy =
             sort === 'date_asc'   ? { watchedAt: 'asc' as const } :
             sort === 'title_asc'  ? { title: 'asc' as const } :
@@ -37,7 +54,9 @@ export async function GET(
             prisma.watchedShow.count({ where: { userId: user.id } }),
         ]);
 
-        return successResponse(shows, {
+        const data = shows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+
+        return successResponse(data, {
             page,
             limit,
             totalCount,
