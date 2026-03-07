@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv } from 'lucide-react';
 
 export default function Header() {
     const { data: session } = useSession();
     const router = useRouter();
+    const pathname = usePathname();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -26,7 +27,8 @@ export default function Header() {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchQuery.trim()) {
-            router.push(`/movies?search=${encodeURIComponent(searchQuery.trim())}`);
+            const dest = pathname.startsWith('/shows') ? '/shows' : '/movies';
+            router.push(`${dest}?search=${encodeURIComponent(searchQuery.trim())}`);
             setSearchQuery('');
         }
     };
@@ -47,7 +49,10 @@ export default function Header() {
                 {/* Navigation */}
                 <nav className="header-nav">
                     <Link href="/movies" className="header-nav-link">
-                        Browse
+                        Films
+                    </Link>
+                    <Link href="/shows" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Tv size={14} /> Shows
                     </Link>
                     <Link href="/lists" className="header-nav-link">
                         Lists
@@ -80,7 +85,7 @@ export default function Header() {
                         <input
                             type="text"
                             className="header-search-input"
-                            placeholder="Search movies..."
+                            placeholder={pathname.startsWith('/shows') ? 'Search TV shows…' : 'Search films…'}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             aria-label="Search movies"

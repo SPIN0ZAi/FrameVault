@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Film, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
+import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievement-defs';
 
 //  Types 
@@ -30,6 +30,8 @@ interface UserProfile {
         ratings: number;
         followers: number;
         following: number;
+        watchedShows: number;
+        showWatchlist: number;
     };
 }
 
@@ -44,6 +46,24 @@ interface WatchedMovie {
         posterUrl: string | null;
         customPosters?: { posterUrl: string }[];
     };
+}
+
+interface WatchedShow {
+    id: string;
+    tmdbShowId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    watchedAt: string;
+}
+
+interface ShowWatchlistItem {
+    id: string;
+    tmdbShowId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    addedAt: string;
 }
 
 interface Review {
@@ -752,7 +772,7 @@ export default function UserProfilePage() {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<'not_found' | 'server_error' | null>(null);
-    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>('Profile');
+    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>('Profile');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
 
@@ -764,6 +784,17 @@ export default function UserProfilePage() {
     const [filmsTotalCount, setFilmsTotalCount] = useState(0);
     const [filmsSort, setFilmsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'rating_desc'>('date_desc');
     const [filmsRatingFilter, setFilmsRatingFilter] = useState<number | null>(null);
+    // ── TV Shows state ──────────────────────────────────────────────────────
+    const [watchedShows, setWatchedShows] = useState<WatchedShow[]>([]);
+    const [allShows, setAllShows] = useState<WatchedShow[]>([]);
+    const [allShowsLoaded, setAllShowsLoaded] = useState(false);
+    const [showsPage, setShowsPage] = useState(1);
+    const [showsTotalPages, setShowsTotalPages] = useState(1);
+    const [showsTotalCount, setShowsTotalCount] = useState(0);
+    const [showsSort, setShowsSort] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'title_desc'>('date_desc');
+    const [showWatchlist, setShowWatchlist] = useState<ShowWatchlistItem[]>([]);
+    const [showWatchlistLoaded, setShowWatchlistLoaded] = useState(false);
+
     const [reviews, setReviews] = useState<Review[]>([]);
     const [reviewsLoaded, setReviewsLoaded] = useState(false);
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -798,20 +829,22 @@ export default function UserProfilePage() {
     const [voteLoading, setVoteLoading] = useState(false);
 
     const isOwnProfile = session?.user?.username === username;
-    const TABS = ['Profile', 'Films', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'] as const;
+    const TABS = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'] as const;
     const accent = user?.profile?.themeColor || 'var(--brand)';
 
     useEffect(() => {
         async function fetchProfile() {
             try {
-                const [userRes, watchedRes, histRes] = await Promise.all([
+                const [userRes, watchedRes, histRes, showsRes] = await Promise.all([
                     fetch(`/api/users/${username}`),
                     fetch(`/api/users/${username}/watched?limit=8`),
                     fetch(`/api/users/${username}/rating-histogram`),
+                    fetch(`/api/users/${username}/shows?limit=8`),
                 ]);
                 const userData = await userRes.json();
                 const watchedData = await watchedRes.json();
                 const histData = await histRes.json();
+                const showsData = await showsRes.json();
                 if (userData.success) {
                     setUser(userData.data);
                     setIsFollowing(userData.data.isFollowing || false);
@@ -822,6 +855,7 @@ export default function UserProfilePage() {
                 }
                 if (watchedData.success) setWatchedMovies(watchedData.data);
                 if (histData.success) setUserRatingHistogram(histData.data);
+                if (showsData.success) setWatchedShows(showsData.data);
             } catch {
                 setError('server_error');
             } finally {
@@ -846,6 +880,25 @@ export default function UserProfilePage() {
                     }
                     setAllFilmsLoaded(true);
                 });
+        }
+        if (activeTab === 'TV') {
+            setAllShowsLoaded(false);
+            const params = new URLSearchParams({ limit: '50', page: showsPage.toString(), sort: showsSort });
+            fetch(`/api/users/${username}/shows?${params}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        setAllShows(d.data);
+                        setShowsTotalPages(d.meta?.totalPages ?? 1);
+                        setShowsTotalCount(d.meta?.totalCount ?? 0);
+                    }
+                    setAllShowsLoaded(true);
+                });
+            if (!showWatchlistLoaded) {
+                fetch(`/api/users/${username}/show-watchlist?limit=200`)
+                    .then(r => r.json())
+                    .then(d => { if (d.success) setShowWatchlist(d.data); setShowWatchlistLoaded(true); });
+            }
         }
         if (activeTab === 'Reviews' && !reviewsLoaded) {
             fetch(`/api/users/${username}/reviews?limit=50`)
@@ -887,7 +940,7 @@ export default function UserProfilePage() {
                     .then(d => { if (d.success) setPollData(d.data); setPollLoaded(true); });
             }
         }
-    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
@@ -1040,6 +1093,7 @@ export default function UserProfilePage() {
                 <div className="profile-stats-bar" style={{ marginTop: 'var(--space-xl)', gap: 0, borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                     {([
                         { value: user._count.watchedMovies, label: 'Films', icon: <Eye size={14} />, tab: 'Films' as const },
+                        { value: user._count.watchedShows ?? 0, label: 'Shows', icon: <Tv size={14} />, tab: 'TV' as const },
                         { value: user._count.ratings, label: 'Ratings', icon: <Star size={14} />, tab: 'Films' as const },
                         { value: user._count.reviews, label: 'Reviews', icon: <MessageSquare size={14} />, tab: 'Reviews' as const },
                         { value: user._count.watchlist, label: 'Watchlist', icon: <BookmarkPlus size={14} />, tab: 'Watchlist' as const },
@@ -1103,6 +1157,34 @@ export default function UserProfilePage() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {watchedMovies.map(wm => (
                                         <MoviePosterCard key={wm.id} href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                        {watchedShows.length > 0 && (
+                            <section>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                                    <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>Recent Shows</h2>
+                                    {user._count.watchedShows > 8 && (
+                                        <button onClick={() => setActiveTab('TV')} style={{ fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>View all</button>
+                                    )}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                                    {watchedShows.map(ws => (
+                                        <Link key={ws.id} href={`/shows/${ws.tmdbShowId}`} className="movie-card">
+                                            {ws.posterUrl ? (
+                                                <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
+                                            ) : (
+                                                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                    <Tv size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                                </div>
+                                            )}
+                                            <div className="movie-card-overlay">
+                                                <div className="movie-card-title">{ws.title}</div>
+                                                {ws.year && <div className="movie-card-year">{ws.year}</div>}
+                                            </div>
+                                        </Link>
                                     ))}
                                 </div>
                             </section>
@@ -1192,6 +1274,100 @@ export default function UserProfilePage() {
                     </div>
                 )}
 
+                {/* ─── TV Shows Tab ──────────────────────────────────────────────── */}
+                {activeTab === 'TV' && (
+                    <div>
+                        {/* Sort bar */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+                                {([
+                                    { key: 'date_desc', label: 'Latest' },
+                                    { key: 'date_asc', label: 'Oldest' },
+                                    { key: 'title_asc', label: 'A–Z' },
+                                    { key: 'title_desc', label: 'Z–A' },
+                                ] as const).map(s => (
+                                    <button key={s.key} onClick={() => { setShowsSort(s.key); setShowsPage(1); }}
+                                        style={{ padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: showsSort === s.key ? 700 : 500, background: showsSort === s.key ? accent : 'transparent', color: showsSort === s.key ? '#000' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.12s' }}>
+                                        {s.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Watched grid */}
+                        {!allShowsLoaded ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                {Array.from({ length: 20 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
+                            </div>
+                        ) : allShows.length === 0 && showWatchlist.length === 0 ? (
+                            <EmptyTab icon={<Tv size={48} />} text="No shows logged yet" cta={isOwnProfile ? { label: 'Browse TV Shows', href: '/shows' } : undefined} />
+                        ) : (
+                            <>
+                                {allShows.length > 0 && (
+                                    <>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)' }}>
+                                            {showsTotalCount.toLocaleString()} show{showsTotalCount !== 1 ? 's' : ''} watched
+                                            {showsTotalPages > 1 ? ` · Page ${showsPage} of ${showsTotalPages}` : ''}
+                                        </p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                            {allShows.map(ws => (
+                                                <Link key={ws.id} href={`/shows/${ws.tmdbShowId}`} className="movie-card">
+                                                    {ws.posterUrl ? (
+                                                        <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                            <Tv size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="movie-card-overlay">
+                                                        <div className="movie-card-title">{ws.title}</div>
+                                                        {ws.year && <div className="movie-card-year">{ws.year}</div>}
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                        {showsTotalPages > 1 && (
+                                            <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-sm)', marginTop: 'var(--space-2xl)', alignItems: 'center' }}>
+                                                <button className="btn btn-ghost btn-sm" disabled={showsPage <= 1} onClick={() => setShowsPage(p => p - 1)}>← Prev</button>
+                                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', padding: '0 var(--space-sm)' }}>{showsPage} / {showsTotalPages}</span>
+                                                <button className="btn btn-ghost btn-sm" disabled={showsPage >= showsTotalPages} onClick={() => setShowsPage(p => p + 1)}>Next →</button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Show Watchlist section */}
+                                {showWatchlist.length > 0 && (
+                                    <section style={{ marginTop: allShows.length > 0 ? 'var(--space-3xl)' : 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                                            <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800 }}>Want to Watch</h2>
+                                            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>{showWatchlist.length} saved</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                            {showWatchlist.map(sw => (
+                                                <Link key={sw.id} href={`/shows/${sw.tmdbShowId}`} className="movie-card">
+                                                    {sw.posterUrl ? (
+                                                        <img src={sw.posterUrl} alt={sw.title} loading="lazy" />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                            <Tv size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{sw.title}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="movie-card-overlay">
+                                                        <div className="movie-card-title">{sw.title}</div>
+                                                        {sw.year && <div className="movie-card-year">{sw.year}</div>}
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {activeTab === 'Reviews' && (
                     <div>

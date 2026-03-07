@@ -292,3 +292,115 @@ export async function getPersonMovieCredits(id: string | number): Promise<{ cast
     data.cast = data.cast.filter(m => !isAdultContent({ title: m.title, overview: '', adult: m.adult }));
     return data;
 }
+
+// ─── TV SHOWS ─────────────────────────────────────────────────────────────────
+
+export interface TMDBShow {
+    id: number;
+    name: string;
+    overview: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    first_air_date: string;
+    vote_average: number;
+    adult?: boolean;
+    genre_ids?: number[];
+    genres?: { id: number; name: string }[];
+    number_of_seasons?: number;
+    number_of_episodes?: number;
+    original_language?: string;
+    origin_country?: string[];
+    networks?: { id: number; name: string; logo_path: string | null }[];
+    status?: string;
+}
+
+const SHOW_SORT_MAP: Record<string, string> = {
+    popular:   'popularity.desc',
+    top_rated: 'vote_average.desc',
+    newest:    'first_air_date.desc',
+    oldest:    'first_air_date.asc',
+};
+
+export async function searchShows(query: string, page = 1): Promise<TMDBResponse<TMDBShow>> {
+    const data = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/search/tv', {
+        query,
+        page: page.toString(),
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(s => !s.adult);
+    return data;
+}
+
+/**
+ * Three-tier enhanced TV show search — mirrors searchMoviesEnhanced.
+ * Tier 1: /search/tv with adult filter
+ * Tier 2: Relax to TMDB adult flag only (handles shows whose overviews trigger our keyword filter)
+ * Tier 3: /search/multi for non-Latin/alternate title matches
+ */
+export async function searchShowsEnhanced(query: string, page = 1): Promise<TMDBResponse<TMDBShow>> {
+    const baseParams = { query, page: page.toString(), include_adult: 'false' };
+
+    const primary = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/search/tv', baseParams);
+    const tier1 = primary.results.filter(s => !s.adult);
+    if (tier1.length > 0) return { ...primary, results: tier1 };
+
+    if (primary.total_results > 0) {
+        const tier2 = primary.results.filter(s => !s.adult);
+        if (tier2.length > 0) return { ...primary, results: tier2 };
+    }
+
+    try {
+        type MultiResult = TMDBShow & { media_type: string };
+        const multi = await fetchFromTMDB<{
+            results: MultiResult[];
+            page: number;
+            total_pages: number;
+            total_results: number;
+        }>('/search/multi', { query, page: page.toString(), include_adult: 'false' });
+
+        const tier3 = multi.results
+            .filter((r): r is MultiResult => r.media_type === 'tv' && !r.adult)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .map(({ media_type: _mt, ...s }) => s as TMDBShow);
+
+        return { results: tier3, page: multi.page, total_pages: multi.total_pages, total_results: tier3.length };
+    } catch {
+        return { results: [], page: 1, total_pages: 0, total_results: 0 };
+    }
+}
+
+export async function discoverShows(options: {
+    page?: number;
+    genre?: string;
+    sort?: string;
+}): Promise<TMDBResponse<TMDBShow>> {
+    const params: Record<string, string> = {
+        page: (options.page || 1).toString(),
+        sort_by: SHOW_SORT_MAP[options.sort || 'popular'] || 'popularity.desc',
+        'vote_count.gte': '50',
+        include_adult: 'false',
+        include_null_first_air_dates: 'false',
+    };
+    if (options.genre) params.with_genres = options.genre;
+    if (options.sort === 'top_rated') params['vote_count.gte'] = '200';
+    const data = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/discover/tv', params);
+    data.results = data.results.filter(s => !s.adult);
+    return data;
+}
+
+export async function getTMDBShowGenres(): Promise<{ id: number; name: string }[]> {
+    const data = await fetchFromTMDB<{ genres: { id: number; name: string }[] }>('/genre/tv/list');
+    return data.genres;
+}
+
+export async function getShowDetails(id: string | number): Promise<TMDBShow> {
+    return fetchFromTMDB<TMDBShow>(`/tv/${id}`);
+}
+
+export async function getTrendingShows(): Promise<TMDBResponse<TMDBShow>> {
+    const data = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/trending/tv/week', {
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(s => !s.adult);
+    return data;
+}

@@ -21,17 +21,19 @@ model User {
   profile       UserProfile?
   reviews       Review[]
   ratings       Rating[]
-  watchedMovies WatchedMovie[]
-  watchlist     WatchlistItem[]
-  customPosters CustomPoster[]
-  accounts      Account[]
-  followers     Follows[] @relation("following")
-  following     Follows[] @relation("followers")
-  lists         List[]
-  favorites     UserFavorite[]
-  reviewLikes   ReviewLike[]
-  achievements  UserAchievement[]
-  oscarVotes    OscarVote[]
+  watchedMovies    WatchedMovie[]
+  watchlist        WatchlistItem[]
+  customPosters    CustomPoster[]
+  accounts         Account[]
+  followers        Follows[] @relation("following")
+  following        Follows[] @relation("followers")
+  lists            List[]
+  favorites        UserFavorite[]
+  reviewLikes      ReviewLike[]
+  achievements     UserAchievement[]
+  oscarVotes       OscarVote[]
+  watchedShows     WatchedShow[]
+  showWatchlist    ShowWatchlistItem[]
 
   @@map("users")
 }
@@ -284,6 +286,40 @@ model UserAchievement {
   @@unique([userId, achievementId])
   @@index([userId])
   @@map("user_achievements")
+}
+
+// ─── TV SHOWS ────────────────────────────────────────
+
+model WatchedShow {
+  id         String   @id @default(cuid())
+  userId     String
+  tmdbShowId Int
+  title      String
+  year       Int?
+  posterUrl  String?
+  watchedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbShowId])
+  @@index([userId])
+  @@map("watched_shows")
+}
+
+model ShowWatchlistItem {
+  id         String   @id @default(cuid())
+  userId     String
+  tmdbShowId Int
+  title      String
+  year       Int?
+  posterUrl  String?
+  addedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbShowId])
+  @@index([userId])
+  @@map("show_watchlist_items")
 }
 
 // ─── OSCAR POLLS ─────────────────────────────────────

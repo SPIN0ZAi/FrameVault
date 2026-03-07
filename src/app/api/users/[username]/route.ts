@@ -26,6 +26,8 @@ export async function GET(
                         watchlist: true,
                         reviews: true,
                         ratings: true,
+                        watchedShows: true,
+                        showWatchlist: true,
                     },
                 },
             },
