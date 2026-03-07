@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { Tv, Search, SlidersHorizontal, X, Eye, BookmarkPlus, Check } from 'lucide-react';
 
 interface Show {
@@ -108,27 +109,27 @@ function ShowCard({ show }: { show: Show }) {
     };
 
     return (
-        <div
-            className="movie-card"
-            style={{ cursor: 'default', position: 'relative' }}
+        <div style={{ position: 'relative' }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {show.posterUrl ? (
-                <img src={show.posterUrl} alt={show.title} loading="lazy" />
-            ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                    <Tv size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{show.title}</span>
+            <Link href={`/shows/${show.id}`} className="movie-card" style={{ display: 'block' }}>
+                {show.posterUrl ? (
+                    <img src={show.posterUrl} alt={show.title} loading="lazy" />
+                ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                        <Tv size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{show.title}</span>
+                    </div>
+                )}
+                {show.averageRating && (
+                    <div className="movie-card-rating">★ {show.averageRating}</div>
+                )}
+                <div className="movie-card-overlay">
+                    <div className="movie-card-title">{show.title}</div>
+                    <div className="movie-card-year">{show.year}</div>
                 </div>
-            )}
-            {show.averageRating && (
-                <div className="movie-card-rating">★ {show.averageRating}</div>
-            )}
-            <div className="movie-card-overlay">
-                <div className="movie-card-title">{show.title}</div>
-                <div className="movie-card-year">{show.year}</div>
-            </div>
+            </Link>
 
             {/* Action buttons — shown on hover or when already marked */}
             {session && (hovered || watched || inWatchlist) && (

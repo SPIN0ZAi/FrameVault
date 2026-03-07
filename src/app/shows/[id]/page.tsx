@@ -1,0 +1,404 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock } from 'lucide-react';
+
+interface ShowDetail {
+    id: string;
+    title: string;
+    year: number;
+    lastAirYear: number | null;
+    posterUrl: string | null;
+    backdropUrl: string | null;
+    description: string | null;
+    genres: { id: number; name: string }[];
+    numberOfSeasons: number | null;
+    numberOfEpisodes: number | null;
+    language: string | null;
+    networks: { id: number; name: string; logoUrl: string | null }[];
+    status: string | null;
+    tagline: string | null;
+    createdBy: { id: number; name: string; profileUrl: string | null }[];
+    episodeRuntime: number | null;
+    voteAverage: number;
+    voteCount: number;
+    nextEpisode: { air_date: string; name: string } | null;
+    seasons: { id: number; name: string; seasonNumber: number; episodeCount: number; posterUrl: string | null }[];
+    cast: { id: number; name: string; character: string; profileUrl: string | null }[];
+    trailerKey: string | null;
+    similarShows: { id: number; title: string; year: number; posterUrl: string | null }[];
+    userInteraction: { watched: boolean; inWatchlist: boolean };
+}
+
+function getLanguageName(code: string | null): string | null {
+    if (!code) return null;
+    try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase(); }
+    catch { return code.toUpperCase(); }
+}
+
+function StarDisplay({ value }: { value: number }) {
+    const stars = Math.round((value / 10) * 5 * 2) / 2;
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            {[1, 2, 3, 4, 5].map(i => (
+                <Star key={i} size={14} fill={stars >= i ? 'currentColor' : 'none'} stroke="currentColor"
+                    style={{ color: 'var(--star-filled)', opacity: stars >= i - 0.5 ? 1 : 0.25 }} />
+            ))}
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--star-filled)', marginLeft: 4 }}>
+                {(value / 2).toFixed(1)}
+            </span>
+        </div>
+    );
+}
+
+export default function ShowDetailPage() {
+    const { id } = useParams<{ id: string }>();
+    const { data: session } = useSession();
+    const router = useRouter();
+    const [show, setShow] = useState<ShowDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState('');
+    const [showTrailer, setShowTrailer] = useState(false);
+
+    const fetchShow = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/shows/${id}`);
+            const data = await res.json();
+            if (data.success) setShow(data.data);
+            else { setLoading(false); return; }
+        } catch { }
+        finally { setLoading(false); }
+    }, [id]);
+
+    useEffect(() => { fetchShow(); }, [fetchShow]);
+
+    const handleWatchToggle = async () => {
+        if (!session) { router.push('/login'); return; }
+        if (!show) return;
+        setActionLoading('watch');
+        try {
+            const isWatched = show.userInteraction.watched;
+            const method = isWatched ? 'DELETE' : 'POST';
+            await fetch(`/api/watched-shows/${id}`, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: method === 'POST'
+                    ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl })
+                    : undefined,
+            });
+            setShow(prev => prev ? {
+                ...prev,
+                userInteraction: {
+                    watched: !isWatched,
+                    inWatchlist: isWatched ? prev.userInteraction.inWatchlist : false,
+                },
+            } : prev);
+        } finally { setActionLoading(''); }
+    };
+
+    const handleWatchlistToggle = async () => {
+        if (!session) { router.push('/login'); return; }
+        if (!show) return;
+        setActionLoading('watchlist');
+        try {
+            const inWatchlist = show.userInteraction.inWatchlist;
+            const method = inWatchlist ? 'DELETE' : 'POST';
+            await fetch(`/api/show-watchlist/${id}`, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: method === 'POST'
+                    ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl })
+                    : undefined,
+            });
+            setShow(prev => prev ? {
+                ...prev,
+                userInteraction: { ...prev.userInteraction, inWatchlist: !inWatchlist },
+            } : prev);
+        } finally { setActionLoading(''); }
+    };
+
+    if (loading) {
+        return (
+            <div className="page">
+                <div className="container" style={{ paddingTop: 'var(--space-3xl)' }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap' }}>
+                        <div className="skeleton" style={{ width: 260, height: 390, borderRadius: 'var(--radius-xl)', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 8 }} />
+                            <div className="skeleton" style={{ height: 20, width: '40%', borderRadius: 6 }} />
+                            <div className="skeleton" style={{ height: 100, borderRadius: 8 }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!show) {
+        return (
+            <div className="page">
+                <div className="container" style={{ textAlign: 'center', paddingTop: 'var(--space-3xl)' }}>
+                    <Tv size={64} style={{ opacity: 0.3, marginBottom: 'var(--space-lg)' }} />
+                    <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-sm)' }}>Show not found</h1>
+                    <p style={{ color: 'var(--text-tertiary)', marginBottom: 'var(--space-xl)' }}>This TV show doesn't exist or could not be loaded.</p>
+                    <Link href="/shows" className="btn btn-primary">Browse TV Shows</Link>
+                </div>
+            </div>
+        );
+    }
+
+    const airYears = show.lastAirYear && show.lastAirYear !== show.year
+        ? `${show.year}–${show.status === 'Ended' || show.status === 'Canceled' ? show.lastAirYear : 'present'}`
+        : show.year.toString();
+
+    const statusColor: Record<string, string> = {
+        'Returning Series': '#22c55e',
+        'In Production': '#3b82f6',
+        'Planned': '#a855f7',
+        'Ended': 'var(--text-tertiary)',
+        'Canceled': '#ef4444',
+    };
+
+    return (
+        <div className="page">
+            {/* Backdrop */}
+            {show.backdropUrl && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+                    <img src={show.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.1 }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, var(--bg-primary) 70%)' }} />
+                </div>
+            )}
+
+            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+                {/* Hero */}
+                <div style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', paddingTop: 'var(--space-3xl)' }}>
+                    {/* Poster */}
+                    <div style={{ flexShrink: 0, width: 220 }}>
+                        <div style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', aspectRatio: '2/3' }}>
+                            {show.posterUrl ? (
+                                <img src={show.posterUrl} alt={show.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Tv size={64} style={{ opacity: 0.3 }} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 260 }}>
+                        {/* Genres */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--space-sm)' }}>
+                            {show.genres.map(g => (
+                                <span key={g.id} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: 600, background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
+                                    {g.name}
+                                </span>
+                            ))}
+                        </div>
+
+                        <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 900, lineHeight: 1.15, marginBottom: 'var(--space-xs)' }}>{show.title}</h1>
+                        {show.tagline && (
+                            <p style={{ fontSize: 'var(--text-sm)', fontStyle: 'italic', color: 'var(--text-tertiary)', marginBottom: 'var(--space-sm)' }}>"{show.tagline}"</p>
+                        )}
+
+                        {/* Meta row */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', alignItems: 'center', marginBottom: 'var(--space-lg)', fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Calendar size={13} /> {airYears}
+                            </span>
+                            {show.numberOfSeasons && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Layers size={13} /> {show.numberOfSeasons} season{show.numberOfSeasons !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                            {show.numberOfEpisodes && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Tv size={13} /> {show.numberOfEpisodes} episodes
+                                </span>
+                            )}
+                            {show.episodeRuntime && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Clock size={13} /> ~{show.episodeRuntime}m / ep
+                                </span>
+                            )}
+                            {show.language && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Globe size={13} /> {getLanguageName(show.language)}
+                                </span>
+                            )}
+                            {show.networks.length > 0 && (
+                                <span>{show.networks.map(n => n.name).join(', ')}</span>
+                            )}
+                            {show.status && (
+                                <span style={{ fontWeight: 700, color: statusColor[show.status] ?? 'var(--text-tertiary)' }}>
+                                    {show.status}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* TMDB Rating */}
+                        {show.voteAverage > 0 && (
+                            <div style={{ marginBottom: 'var(--space-lg)' }}>
+                                <StarDisplay value={show.voteAverage} />
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 3 }}>
+                                    {show.voteCount.toLocaleString()} TMDB ratings
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
+                            <button
+                                onClick={handleWatchToggle}
+                                disabled={actionLoading === 'watch'}
+                                className={show.userInteraction.watched ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                                style={{ gap: 6, minWidth: 130 }}
+                            >
+                                {show.userInteraction.watched ? <><Check size={15} strokeWidth={3} /> Watched</> : <><Eye size={15} /> Mark Watched</>}
+                            </button>
+
+                            {!show.userInteraction.watched && (
+                                <button
+                                    onClick={handleWatchlistToggle}
+                                    disabled={actionLoading === 'watchlist'}
+                                    className={show.userInteraction.inWatchlist ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                                    style={{ gap: 6, minWidth: 140 }}
+                                >
+                                    <BookmarkPlus size={15} />
+                                    {show.userInteraction.inWatchlist ? 'Saved' : 'Add to Watchlist'}
+                                </button>
+                            )}
+
+                            {show.trailerKey && (
+                                <button onClick={() => setShowTrailer(true)} className="btn btn-ghost btn-sm" style={{ gap: 6 }}>
+                                    <Play size={14} fill="currentColor" /> Trailer
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Overview */}
+                        {show.description && (
+                            <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.75, color: 'var(--text-secondary)', maxWidth: 640 }}>
+                                {show.description}
+                            </p>
+                        )}
+
+                        {/* Created by */}
+                        {show.createdBy.length > 0 && (
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginTop: 'var(--space-md)' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Created by </span>
+                                {show.createdBy.map(c => c.name).join(', ')}
+                            </p>
+                        )}
+
+                        {/* Next episode */}
+                        {show.nextEpisode && (
+                            <div style={{ marginTop: 'var(--space-md)', padding: '8px 14px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 'var(--radius-md)', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-xs)' }}>
+                                <Calendar size={12} style={{ color: 'var(--brand)' }} />
+                                <span><span style={{ fontWeight: 700, color: 'var(--brand)' }}>Next episode:</span> {show.nextEpisode.name} — {new Date(show.nextEpisode.air_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Cast */}
+                {show.cast.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Cast</h2>
+                        <div style={{ display: 'flex', gap: 'var(--space-md)', overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'thin' }}>
+                            {show.cast.map(person => (
+                                <div key={person.id} style={{ flexShrink: 0, width: 90, textAlign: 'center' }}>
+                                    <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                        {person.profileUrl ? (
+                                            <img src={person.profileUrl} alt={person.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Users size={28} style={{ opacity: 0.3 }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>{person.name}</p>
+                                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{person.character}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Seasons */}
+                {show.seasons.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
+                            Seasons <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-tertiary)' }}>({show.seasons.length})</span>
+                        </h2>
+                        <div style={{ display: 'flex', gap: 'var(--space-md)', overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'thin' }}>
+                            {show.seasons.map(s => (
+                                <div key={s.id} style={{ flexShrink: 0, width: 110 }}>
+                                    <div style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--bg-secondary)', marginBottom: 6 }}>
+                                        {s.posterUrl ? (
+                                            <img src={s.posterUrl} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Tv size={28} style={{ opacity: 0.3 }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: 'var(--text-primary)' }}>{s.name}</p>
+                                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{s.episodeCount} eps</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Similar Shows */}
+                {show.similarShows.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)', marginBottom: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Similar Shows</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
+                            {show.similarShows.map(s => (
+                                <Link key={s.id} href={`/shows/${s.id}`} className="movie-card">
+                                    {s.posterUrl ? (
+                                        <img src={s.posterUrl} alt={s.title} loading="lazy" />
+                                    ) : (
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 8, textAlign: 'center' }}>
+                                            <Tv size={28} style={{ opacity: 0.3 }} />
+                                        </div>
+                                    )}
+                                    <div className="movie-card-overlay">
+                                        <div className="movie-card-title">{s.title}</div>
+                                        <div className="movie-card-year">{s.year}</div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
+
+            {/* Trailer modal */}
+            {showTrailer && show.trailerKey && (
+                <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl)' }}
+                    onClick={() => setShowTrailer(false)}
+                >
+                    <button onClick={() => setShowTrailer(false)} style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                        <X size={20} />
+                    </button>
+                    <div style={{ width: '100%', maxWidth: 900 }} onClick={e => e.stopPropagation()}>
+                        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                            <iframe
+                                src={`https://www.youtube.com/embed/${show.trailerKey}?autoplay=1`}
+                                allow="autoplay; fullscreen"
+                                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-xl)' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
