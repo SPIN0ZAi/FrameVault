@@ -30,6 +30,9 @@ export async function GET(
         const ratingMap = new Map(allRatings.map(r => [r.tmdbShowId, r.value]));
 
         // ── minRating filter: fetch only shows whose rating meets the threshold ─
+        const customPosters = await prisma.showCustomPoster.findMany({ where: { userId: user.id } }).catch(() => []);
+        const customPosterMap = new Map(customPosters.map(p => [p.tmdbShowId, p.posterUrl]));
+
         if (minRating !== null) {
             const qualifyingIds = allRatings
                 .filter(r => r.value >= minRating)
@@ -37,7 +40,11 @@ export async function GET(
             const allMatchingShows = await prisma.watchedShow.findMany({
                 where: { userId: user.id, tmdbShowId: { in: qualifyingIds } },
             });
-            const withRatings = allMatchingShows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+            const withRatings = allMatchingShows.map(s => ({
+                ...s,
+                rating: ratingMap.get(s.tmdbShowId) ?? null,
+                posterUrl: customPosterMap.get(s.tmdbShowId) ?? s.posterUrl,
+            }));
             // Default sort for filtered view: highest-rated first
             withRatings.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
             const totalCount = withRatings.length;
@@ -48,7 +55,11 @@ export async function GET(
         // Rating sort: fetch all, join + sort in memory, then paginate
         if (sort === 'rating_desc') {
             const allShows = await prisma.watchedShow.findMany({ where: { userId: user.id } });
-            const withRatings = allShows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+            const withRatings = allShows.map(s => ({
+                ...s,
+                rating: ratingMap.get(s.tmdbShowId) ?? null,
+                posterUrl: customPosterMap.get(s.tmdbShowId) ?? s.posterUrl,
+            }));
             withRatings.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
             const totalCount = withRatings.length;
             const paged = withRatings.slice((page - 1) * limit, page * limit);
@@ -71,7 +82,11 @@ export async function GET(
             prisma.watchedShow.count({ where: { userId: user.id } }),
         ]);
 
-        const data = shows.map(s => ({ ...s, rating: ratingMap.get(s.tmdbShowId) ?? null }));
+        const data = shows.map(s => ({
+            ...s,
+            rating: ratingMap.get(s.tmdbShowId) ?? null,
+            posterUrl: customPosterMap.get(s.tmdbShowId) ?? s.posterUrl,
+        }));
 
         return successResponse(data, {
             page,

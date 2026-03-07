@@ -18,13 +18,22 @@ export async function GET(
         });
         if (!user) return notFoundError('User');
 
-        const items = await prisma.showWatchlistItem.findMany({
-            where: { userId: user.id },
-            orderBy: { addedAt: 'desc' },
-            take: limit,
-        });
+        const [items, customPosters] = await Promise.all([
+            prisma.showWatchlistItem.findMany({
+                where: { userId: user.id },
+                orderBy: { addedAt: 'desc' },
+                take: limit,
+            }),
+            prisma.showCustomPoster.findMany({ where: { userId: user.id } }).catch(() => []),
+        ]);
 
-        return successResponse(items);
+        const customPosterMap = new Map(customPosters.map(p => [p.tmdbShowId, p.posterUrl]));
+        const data = items.map(item => ({
+            ...item,
+            posterUrl: customPosterMap.get(item.tmdbShowId) ?? item.posterUrl,
+        }));
+
+        return successResponse(data);
     } catch (error) {
         console.error('GET user show-watchlist error:', error);
         return serverError();
