@@ -62,6 +62,7 @@ export default function ShowDetailPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState('');
     const [hoverRating, setHoverRating] = useState(0);
+    const [showWatchPrompt, setShowWatchPrompt] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
 
     const fetchShow = useCallback(async () => {
@@ -136,6 +137,7 @@ export default function ShowDetailPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ value }),
                 });
+                if (!show.userInteraction.watched) setShowWatchPrompt(true);
             }
             setShow(prev => prev ? {
                 ...prev,
@@ -301,6 +303,36 @@ export default function ShowDetailPage() {
                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 3 }}>
                                     {show.voteCount.toLocaleString()} TMDB ratings
                                 </p>
+                            </div>
+                        )}
+
+                        {/* Watch prompt after rating */}
+                        {showWatchPrompt && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                gap: 'var(--space-md)', flexWrap: 'wrap',
+                                padding: '10px 16px',
+                                background: 'rgba(0,209,193,0.08)',
+                                border: '1px solid rgba(0,209,193,0.25)',
+                                borderRadius: 'var(--radius-md)',
+                                marginBottom: 'var(--space-md)',
+                            }}>
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Eye size={15} style={{ color: 'var(--brand)' }} />
+                                    Mark <strong>{show.title}</strong> as watched?
+                                </span>
+                                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                    <button
+                                        onClick={async () => { setShowWatchPrompt(false); await handleWatchToggle(); }}
+                                        disabled={actionLoading === 'watch'}
+                                        className="btn btn-primary btn-sm"
+                                    >
+                                        Yes, mark watched
+                                    </button>
+                                    <button onClick={() => setShowWatchPrompt(false)} className="btn btn-ghost btn-sm">
+                                        No thanks
+                                    </button>
+                                </div>
                             </div>
                         )}
 
