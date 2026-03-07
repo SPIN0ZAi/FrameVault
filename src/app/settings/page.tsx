@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus,
 } from 'lucide-react';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
@@ -64,6 +64,17 @@ export default function SettingsPage() {
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Picker modals
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+    const [bannerPickerOpen, setBannerPickerOpen] = useState(false);
+    const [avatarPickFile, setAvatarPickFile] = useState<File | null>(null);
+    const [avatarPickPreview, setAvatarPickPreview] = useState<string | null>(null);
+    const [bannerPickFile, setBannerPickFile] = useState<File | null>(null);
+    const [bannerPickPreview, setBannerPickPreview] = useState<string | null>(null);
+    const [pickerError, setPickerError] = useState<string | null>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+    const bannerInputRef = useRef<HTMLInputElement>(null);
 
     // Appearance
     const [themeColor, setThemeColor] = useState('#00D1C1');
@@ -345,16 +356,10 @@ export default function SettingsPage() {
                                                     onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                                                     onMouseLeave={(e) => (e.currentTarget.style.opacity = bannerUrl ? '0' : '1')}
                                                 >
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                                                    <button onClick={() => { setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); setBannerPickerOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                                                         <Camera size={15} />
                                                         {bannerUrl ? 'Change Banner' : 'Upload Banner'}
-                                                        <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => {
-                                                            const f = e.target.files?.[0];
-                                                            if (!f) return;
-                                                            setBannerFile(f);
-                                                            setBannerUrl(URL.createObjectURL(f));
-                                                        }} />
-                                                    </label>
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -370,16 +375,10 @@ export default function SettingsPage() {
                                         </div>
 
                                         <div style={{ marginTop: 52, display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-                                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-primary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                                            <button onClick={() => { setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); setAvatarPickerOpen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-primary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                                                 <Camera size={15} />
                                                 Change Avatar
-                                                <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => {
-                                                    const f = e.target.files?.[0];
-                                                    if (!f) return;
-                                                    setAvatarFile(f);
-                                                    setAvatarUrl(URL.createObjectURL(f));
-                                                }} />
-                                            </label>
+                                            </button>
                                             {(avatarFile || bannerFile) && (
                                                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand)' }} />
@@ -712,5 +711,141 @@ export default function SettingsPage() {
                 </div>
             </div>
         </div>
+
+        {/* ── Hidden file inputs ─────────────────────────────────────── */}
+        <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }} onChange={(e) => {
+            const f = e.target.files?.[0]; e.target.value = '';
+            if (!f) return;
+            setPickerError(null);
+            setAvatarPickFile(f);
+            setAvatarPickPreview(URL.createObjectURL(f));
+        }} />
+        <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }} onChange={(e) => {
+            const f = e.target.files?.[0]; e.target.value = '';
+            if (!f) return;
+            setPickerError(null);
+            setBannerPickFile(f);
+            setBannerPickPreview(URL.createObjectURL(f));
+        }} />
+
+        {/* ── Avatar picker modal ──────────────────────────────────────── */}
+        {avatarPickerOpen && (
+            <div onClick={() => setAvatarPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 420, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-md)' }}>Change Avatar</span>
+                        <button onClick={() => setAvatarPickerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
+                    </div>
+
+                    {/* Preview */}
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ width: 110, height: 110, borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--border-strong)', background: 'var(--bg-primary)', flexShrink: 0 }}>
+                            {avatarPickPreview ? (
+                                <img src={avatarPickPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : avatarUrl ? (
+                                <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 700, color: 'var(--brand)' }}>{username.charAt(0).toUpperCase()}</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Error */}
+                    {pickerError && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: 'var(--text-sm)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <AlertTriangle size={14} />{pickerError}
+                        </div>
+                    )}
+
+                    {/* Actions — no file chosen yet */}
+                    {!avatarPickPreview && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            <button onClick={() => avatarInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                <ImagePlus size={16} /> Upload Photo or GIF
+                            </button>
+                            {avatarUrl && (
+                                <button onClick={() => { setAvatarUrl(''); setAvatarFile(null); setAvatarPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
+                                    <Trash2 size={16} /> Remove Avatar
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Actions — file staged */}
+                    {avatarPickPreview && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                <button onClick={() => { setAvatarFile(avatarPickFile); setAvatarUrl(avatarPickPreview!); setAvatarPickerOpen(false); setAvatarPickFile(null); setAvatarPickPreview(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                    <Check size={16} /> Apply
+                                </button>
+                                <button onClick={() => { setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                    <X size={16} /> Try Another
+                                </button>
+                            </div>
+                            <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+
+        {/* ── Banner picker modal ──────────────────────────────────────── */}
+        {bannerPickerOpen && (
+            <div onClick={() => setBannerPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-md)' }}>Change Banner</span>
+                        <button onClick={() => setBannerPickerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
+                    </div>
+
+                    {/* Preview */}
+                    <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '21/5', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', position: 'relative' }}>
+                        {(bannerPickPreview || bannerUrl) ? (
+                            <img src={bannerPickPreview ?? bannerUrl ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No banner set</div>
+                        )}
+                    </div>
+
+                    {/* Error */}
+                    {pickerError && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: 'var(--text-sm)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <AlertTriangle size={14} />{pickerError}
+                        </div>
+                    )}
+
+                    {/* Actions — no file chosen yet */}
+                    {!bannerPickPreview && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            <button onClick={() => bannerInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                <ImagePlus size={16} /> Upload Photo or GIF
+                            </button>
+                            {bannerUrl && (
+                                <button onClick={() => { setBannerUrl(''); setBannerFile(null); setBannerPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
+                                    <Trash2 size={16} /> Remove Banner
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Actions — file staged */}
+                    {bannerPickPreview && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                <button onClick={() => { setBannerFile(bannerPickFile); setBannerUrl(bannerPickPreview!); setBannerPickerOpen(false); setBannerPickFile(null); setBannerPickPreview(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                    <Check size={16} /> Apply
+                                </button>
+                                <button onClick={() => { setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                    <X size={16} /> Try Another
+                                </button>
+                            </div>
+                            <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
     );
 }
