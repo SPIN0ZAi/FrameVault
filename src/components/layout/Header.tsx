@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv } from 'lucide-react';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Clapperboard, BookMarked, LayoutDashboard } from 'lucide-react';
 
 export default function Header() {
     const { data: session } = useSession();
@@ -48,28 +48,28 @@ export default function Header() {
 
                 {/* Navigation */}
                 <nav className="header-nav">
-                    <Link href="/movies" className="header-nav-link">
-                        Films
+                    <Link href="/movies" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Film size={14} /> Films
                     </Link>
                     <Link href="/shows" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Tv size={14} /> Shows
                     </Link>
-                    <Link href="/lists" className="header-nav-link">
-                        Lists
+                    <Link href="/lists" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <List size={14} /> Lists
                     </Link>
-                    <Link href="/members" className="header-nav-link">
-                        Members
+                    <Link href="/members" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Users size={14} /> Members
                     </Link>
                     {session && (
                         <>
-                            <Link href="/activity" className="header-nav-link">
-                                Activity
+                            <Link href="/activity" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <Activity size={14} /> Activity
                             </Link>
-                            <Link href="/diary" className="header-nav-link">
-                                Diary
+                            <Link href="/diary" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <BookMarked size={14} /> Diary
                             </Link>
-                            <Link href={`/users/${session.user.username}`} className="header-nav-link">
-                                Profile
+                            <Link href={`/users/${session.user.username}`} className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <LayoutDashboard size={14} /> Profile
                             </Link>
                         </>
                     )}
