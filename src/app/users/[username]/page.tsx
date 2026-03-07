@@ -22,6 +22,8 @@ interface UserProfile {
         location: string | null;
         bannerUrl: string | null;
         themeColor: string;
+        bannerPosition: string | null;
+        avatarPosition: string | null;
     } | null;
     _count: {
         watchedMovies: number;
@@ -1367,7 +1369,7 @@ export default function UserProfilePage() {
         <div style={{ paddingBottom: 'var(--space-3xl)' }}>
             <div className="profile-banner">
                 {user.profile?.bannerUrl ? (
-                    <img src={user.profile.bannerUrl} alt="banner" />
+                    <img src={user.profile.bannerUrl} alt="banner" style={{ objectPosition: user.profile.bannerPosition ?? '50% 50%' }} />
                 ) : (
                     <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${accent}44 0%, var(--bg-secondary) 100%)` }} />
                 )}
@@ -1381,7 +1383,7 @@ export default function UserProfilePage() {
                         boxShadow: accent !== 'var(--brand)' ? `0 0 0 3px ${accent}44, 0 0 24px ${accent}30` : undefined,
                     }}>
                         {user.avatarUrl ? (
-                            <img src={user.avatarUrl} alt={user.username} />
+                            <img src={user.avatarUrl} alt={user.username} style={{ objectPosition: user.profile?.avatarPosition ?? '50% 50%' }} />
                         ) : (
                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 800, background: `${accent}22`, color: accent }}>
                                 {user.username.charAt(0).toUpperCase()}

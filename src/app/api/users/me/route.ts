@@ -11,6 +11,8 @@ const updateMeSchema = z.object({
     bannerUrl: z.string().url('Invalid banner URL').max(2048).optional().nullable(),
     themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color').optional(),
     themeMode: z.enum(['light', 'dark', 'system']).optional(),
+    bannerPosition: z.string().max(20).optional().nullable(),
+    avatarPosition: z.string().max(20).optional().nullable(),
 });
 
 export async function GET() {
@@ -48,12 +50,12 @@ export async function PATCH(req: Request) {
         if (!parsed.success) {
             return validationError(parsed.error.issues[0].message);
         }
-        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode } = parsed.data;
+        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode, bannerPosition, avatarPosition } = parsed.data;
 
         const userId = session.user.id;
 
         // Update User Profile (bio, location, banner, theme)
-        if (bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined) {
+        if (bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined || bannerPosition !== undefined || avatarPosition !== undefined) {
             await prisma.userProfile.upsert({
                 where: { userId },
                 update: {
@@ -62,6 +64,8 @@ export async function PATCH(req: Request) {
                     ...(bannerUrl !== undefined && { bannerUrl }),
                     ...(themeColor !== undefined && { themeColor }),
                     ...(themeMode !== undefined && { themeMode }),
+                    ...(bannerPosition !== undefined && { bannerPosition }),
+                    ...(avatarPosition !== undefined && { avatarPosition }),
                 },
                 create: {
                     userId,
@@ -70,6 +74,8 @@ export async function PATCH(req: Request) {
                     bannerUrl,
                     themeColor: themeColor || '#00D1C1',
                     themeMode: themeMode || 'dark',
+                    bannerPosition: bannerPosition ?? '50% 50%',
+                    avatarPosition: avatarPosition ?? '50% 50%',
                 }
             });
         }

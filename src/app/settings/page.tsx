@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move,
 } from 'lucide-react';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
@@ -76,6 +76,16 @@ export default function SettingsPage() {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const bannerInputRef = useRef<HTMLInputElement>(null);
 
+    // Drag-to-reposition state
+    const [avatarPos, setAvatarPos] = useState({ x: 50, y: 50 });
+    const [avatarDragState, setAvatarDragState] = useState<{ startX: number; startY: number; posX: number; posY: number } | null>(null);
+    const [bannerPos, setBannerPos] = useState({ x: 50, y: 50 });
+    const [bannerDragState, setBannerDragState] = useState<{ startX: number; startY: number; posX: number; posY: number } | null>(null);
+    const [avatarPosition, setAvatarPosition] = useState('50% 50%');
+    const [bannerPosition, setBannerPosition] = useState('50% 50%');
+    const avatarPreviewRef = useRef<HTMLDivElement>(null);
+    const bannerPreviewRef = useRef<HTMLDivElement>(null);
+
     // Appearance
     const [themeColor, setThemeColor] = useState('#00D1C1');
 
@@ -109,6 +119,8 @@ export default function SettingsPage() {
                     setAvatarUrl(u.avatarUrl || null);
                     setBannerUrl(u.profile?.bannerUrl || null);
                     setThemeColor(u.profile?.themeColor || '#00D1C1');
+                    setBannerPosition(u.profile?.bannerPosition ?? '50% 50%');
+                    setAvatarPosition(u.profile?.avatarPosition ?? '50% 50%');
                 }
             } finally {
                 setIsLoading(false);
@@ -146,7 +158,7 @@ export default function SettingsPage() {
             const res = await fetch('/api/users/me', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bio, location, themeColor, avatarUrl: finalAvatar, bannerUrl: finalBanner }),
+                body: JSON.stringify({ bio, location, themeColor, avatarUrl: finalAvatar, bannerUrl: finalBanner, avatarPosition, bannerPosition }),
             });
             const data = await res.json();
             if (data.success) {
@@ -357,7 +369,7 @@ export default function SettingsPage() {
                                                     onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                                                     onMouseLeave={(e) => (e.currentTarget.style.opacity = bannerUrl ? '0' : '1')}
                                                 >
-                                                    <button onClick={() => { setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); setBannerPickerOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                                                    <button onClick={() => { const [x,y]=(bannerPosition).split(' ').map(parseFloat); setBannerPos({x:isNaN(x)?50:x,y:isNaN(y)?50:y}); setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); setBannerPickerOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                                                         <Camera size={15} />
                                                         {bannerUrl ? 'Change Banner' : 'Upload Banner'}
                                                     </button>
@@ -376,7 +388,7 @@ export default function SettingsPage() {
                                         </div>
 
                                         <div style={{ marginTop: 52, display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-                                            <button onClick={() => { setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); setAvatarPickerOpen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-primary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                                            <button onClick={() => { const [x,y]=(avatarPosition).split(' ').map(parseFloat); setAvatarPos({x:isNaN(x)?50:x,y:isNaN(y)?50:y}); setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); setAvatarPickerOpen(true); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-primary)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)', padding: '8px 18px', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                                                 <Camera size={15} />
                                                 Change Avatar
                                             </button>
@@ -732,25 +744,42 @@ export default function SettingsPage() {
         {/* ── Avatar picker modal ──────────────────────────────────────── */}
         {avatarPickerOpen && (
             <div onClick={() => setAvatarPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}>
-                <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 420, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseMove={(e) => {
+                        if (!avatarDragState || !avatarPreviewRef.current) return;
+                        const rect = avatarPreviewRef.current.getBoundingClientRect();
+                        setAvatarPos({
+                            x: Math.min(100, Math.max(0, avatarDragState.posX - (e.clientX - avatarDragState.startX) / rect.width * 100)),
+                            y: Math.min(100, Math.max(0, avatarDragState.posY - (e.clientY - avatarDragState.startY) / rect.height * 100)),
+                        });
+                    }}
+                    onMouseUp={() => setAvatarDragState(null)}
+                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 420, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', userSelect: 'none' }}
+                >
                     {/* Header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: 700, fontSize: 'var(--text-md)' }}>Change Avatar</span>
                         <button onClick={() => setAvatarPickerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
                     </div>
 
-                    {/* Preview */}
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        {(avatarPickPreview ?? avatarUrl) ? (
-                            <div style={{ position: 'relative', width: 200, height: 200, background: '#0a0a0a', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
-                                <img src={avatarPickPreview ?? avatarUrl ?? ''} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
-                                {/* Circular crop indicator */}
-                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 160, height: 160, borderRadius: '50%', boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)', border: '2px dashed rgba(255,255,255,0.75)', zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>Visible area</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{ width: 110, height: 110, borderRadius: '50%', border: '3px solid var(--border-strong)', background: 'var(--bg-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 700, color: 'var(--brand)' }}>{username.charAt(0).toUpperCase()}</div>
+                    {/* Drag crop zone */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <div
+                            ref={avatarPreviewRef}
+                            onMouseDown={(e) => { e.preventDefault(); if (!(avatarPickPreview || avatarUrl)) return; setAvatarDragState({ startX: e.clientX, startY: e.clientY, posX: avatarPos.x, posY: avatarPos.y }); }}
+                            style={{ width: 180, height: 180, borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-strong)', background: 'var(--bg-primary)', flexShrink: 0, cursor: avatarDragState ? 'grabbing' : (avatarPickPreview || avatarUrl) ? 'grab' : 'default' }}
+                        >
+                            {(avatarPickPreview || avatarUrl) ? (
+                                <img src={avatarPickPreview ?? avatarUrl ?? ''} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${avatarPos.x}% ${avatarPos.y}%`, pointerEvents: 'none' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 700, color: 'var(--brand)' }}>{username.charAt(0).toUpperCase()}</div>
+                            )}
+                        </div>
+                        {(avatarPickPreview || avatarUrl) && (
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <Move size={12} /> Drag to reposition
+                            </span>
                         )}
                     </div>
 
@@ -761,34 +790,37 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {/* Actions — no file chosen yet */}
-                    {!avatarPickPreview && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                            <button onClick={() => avatarInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                <ImagePlus size={16} /> Upload Photo or GIF
-                            </button>
-                            {avatarUrl && (
-                                <button onClick={() => { setAvatarUrl(''); setAvatarFile(null); setAvatarPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
-                                    <Trash2 size={16} /> Remove Avatar
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Actions — file staged */}
-                    {avatarPickPreview && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {(avatarPickPreview || avatarUrl) && (
                             <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                <button onClick={() => { setAvatarFile(avatarPickFile); setAvatarUrl(avatarPickPreview!); setAvatarPickerOpen(false); setAvatarPickFile(null); setAvatarPickPreview(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                    <Check size={16} /> Apply
+                                <button
+                                    onClick={() => {
+                                        setAvatarPosition(`${avatarPos.x.toFixed(1)}% ${avatarPos.y.toFixed(1)}%`);
+                                        if (avatarPickFile) { setAvatarFile(avatarPickFile); setAvatarUrl(avatarPickPreview!); }
+                                        setAvatarPickerOpen(false); setAvatarPickFile(null); setAvatarPickPreview(null);
+                                    }}
+                                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
+                                >
+                                    <Check size={16} /> {avatarPickFile ? 'Apply' : 'Save Position'}
                                 </button>
-                                <button onClick={() => { setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                    <X size={16} /> Try Another
-                                </button>
+                                {avatarPickFile && (
+                                    <button onClick={() => { setAvatarPickFile(null); setAvatarPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                        <X size={16} /> Try Another
+                                    </button>
+                                )}
                             </div>
-                            <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
-                        </div>
-                    )}
+                        )}
+                        <button onClick={() => avatarInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: (avatarUrl || avatarPickPreview) ? 'none' : 'var(--brand)', color: (avatarUrl || avatarPickPreview) ? 'inherit' : 'white', border: (avatarUrl || avatarPickPreview) ? '1px solid var(--border-strong)' : 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                            <ImagePlus size={16} /> {(avatarUrl || avatarPickPreview) ? 'Upload Different Image' : 'Upload Photo or GIF'}
+                        </button>
+                        {avatarUrl && !avatarPickPreview && (
+                            <button onClick={() => { setAvatarUrl(''); setAvatarFile(null); setAvatarPosition('50% 50%'); setAvatarPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
+                                <Trash2 size={16} /> Remove Avatar
+                            </button>
+                        )}
+                    </div>
+                    <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
                 </div>
             </div>
         )}
@@ -796,25 +828,42 @@ export default function SettingsPage() {
         {/* ── Banner picker modal ──────────────────────────────────────── */}
         {bannerPickerOpen && (
             <div onClick={() => setBannerPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}>
-                <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseMove={(e) => {
+                        if (!bannerDragState || !bannerPreviewRef.current) return;
+                        const rect = bannerPreviewRef.current.getBoundingClientRect();
+                        setBannerPos({
+                            x: Math.min(100, Math.max(0, bannerDragState.posX - (e.clientX - bannerDragState.startX) / rect.width * 100)),
+                            y: Math.min(100, Math.max(0, bannerDragState.posY - (e.clientY - bannerDragState.startY) / rect.height * 100)),
+                        });
+                    }}
+                    onMouseUp={() => setBannerDragState(null)}
+                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', userSelect: 'none' }}
+                >
                     {/* Header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: 700, fontSize: 'var(--text-md)' }}>Change Banner</span>
                         <button onClick={() => setBannerPickerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
                     </div>
 
-                    {/* Preview */}
-                    <div style={{ position: 'relative', background: '#0a0a0a', borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '16/9' }}>
-                        {(bannerPickPreview || bannerUrl) ? (
-                            <>
-                                <img src={bannerPickPreview ?? bannerUrl ?? ''} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
-                                {/* 21:5 crop-zone indicator */}
-                                <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', transform: 'translateY(-50%)', aspectRatio: '21/5', boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)', border: '2px dashed rgba(255,255,255,0.75)', zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>Visible area</span>
-                                </div>
-                            </>
-                        ) : (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No banner set</div>
+                    {/* Drag crop zone — exact 21:5 ratio = what profile shows */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div
+                            ref={bannerPreviewRef}
+                            onMouseDown={(e) => { e.preventDefault(); if (!(bannerPickPreview || bannerUrl)) return; setBannerDragState({ startX: e.clientX, startY: e.clientY, posX: bannerPos.x, posY: bannerPos.y }); }}
+                            style={{ width: '100%', aspectRatio: '21/5', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '2px solid var(--border-strong)', background: 'var(--bg-primary)', cursor: bannerDragState ? 'grabbing' : (bannerPickPreview || bannerUrl) ? 'grab' : 'default' }}
+                        >
+                            {(bannerPickPreview || bannerUrl) ? (
+                                <img src={bannerPickPreview ?? bannerUrl ?? ''} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${bannerPos.x}% ${bannerPos.y}%`, pointerEvents: 'none' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No banner set</div>
+                            )}
+                        </div>
+                        {(bannerPickPreview || bannerUrl) && (
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <Move size={12} /> Drag to reposition
+                            </span>
                         )}
                     </div>
 
@@ -825,34 +874,37 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {/* Actions — no file chosen yet */}
-                    {!bannerPickPreview && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                            <button onClick={() => bannerInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                <ImagePlus size={16} /> Upload Photo or GIF
-                            </button>
-                            {bannerUrl && (
-                                <button onClick={() => { setBannerUrl(''); setBannerFile(null); setBannerPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
-                                    <Trash2 size={16} /> Remove Banner
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Actions — file staged */}
-                    {bannerPickPreview && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {(bannerPickPreview || bannerUrl) && (
                             <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                <button onClick={() => { setBannerFile(bannerPickFile); setBannerUrl(bannerPickPreview!); setBannerPickerOpen(false); setBannerPickFile(null); setBannerPickPreview(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                    <Check size={16} /> Apply
+                                <button
+                                    onClick={() => {
+                                        setBannerPosition(`${bannerPos.x.toFixed(1)}% ${bannerPos.y.toFixed(1)}%`);
+                                        if (bannerPickFile) { setBannerFile(bannerPickFile); setBannerUrl(bannerPickPreview!); }
+                                        setBannerPickerOpen(false); setBannerPickFile(null); setBannerPickPreview(null);
+                                    }}
+                                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
+                                >
+                                    <Check size={16} /> {bannerPickFile ? 'Apply' : 'Save Position'}
                                 </button>
-                                <button onClick={() => { setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
-                                    <X size={16} /> Try Another
-                                </button>
+                                {bannerPickFile && (
+                                    <button onClick={() => { setBannerPickFile(null); setBannerPickPreview(null); setPickerError(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'none', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                        <X size={16} /> Try Another
+                                    </button>
+                                )}
                             </div>
-                            <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
-                        </div>
-                    )}
+                        )}
+                        <button onClick={() => bannerInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: (bannerUrl || bannerPickPreview) ? 'none' : 'var(--brand)', color: (bannerUrl || bannerPickPreview) ? 'inherit' : 'white', border: (bannerUrl || bannerPickPreview) ? '1px solid var(--border-strong)' : 'none', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                            <ImagePlus size={16} /> {(bannerUrl || bannerPickPreview) ? 'Upload Different Image' : 'Upload Photo or GIF'}
+                        </button>
+                        {bannerUrl && !bannerPickPreview && (
+                            <button onClick={() => { setBannerUrl(''); setBannerFile(null); setBannerPosition('50% 50%'); setBannerPickerOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', padding: '12px 20px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', color: '#ef4444' }}>
+                                <Trash2 size={16} /> Remove Banner
+                            </button>
+                        )}
+                    </div>
+                    <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Hit <strong>Save Changes</strong> after applying to upload.</p>
                 </div>
             </div>
         )}
