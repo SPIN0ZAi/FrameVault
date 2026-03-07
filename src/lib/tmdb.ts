@@ -332,23 +332,32 @@ export async function searchShows(query: string, page = 1): Promise<TMDBResponse
 }
 
 /**
- * Three-tier enhanced TV show search — mirrors searchMoviesEnhanced.
- * Tier 1: /search/tv with adult filter
- * Tier 2: Relax to TMDB adult flag only (handles shows whose overviews trigger our keyword filter)
- * Tier 3: /search/multi for non-Latin/alternate title matches
+ * Three-tier enhanced TV show search.
+ *
+ * Tier 1 — Standard /search/tv.  Handles the vast majority of queries.
+ *
+ * Tier 2 — /search/multi filtered to media_type === 'tv'.
+ *           Better than /search/tv at matching alternate titles, translated
+ *           names and non-Latin queries (e.g. "Money Heist" → "La Casa de
+ *           Papel", or a Cyrillic/Arabic transliteration of a show name).
+ *           Only reached when Tier 1 returns nothing.
+ *
+ * Tier 3 — Normalised query retry on /search/tv.
+ *           Strips leading articles (the / a / an / el / la / le / etc.) and
+ *           Unicode diacritics so that queries like "the last of us" or
+ *           "bad gürl" still resolve when the canonical TMDB title starts
+ *           differently.  Only reached when Tier 2 also returns nothing AND
+ *           the normalised query is different from the original.
  */
 export async function searchShowsEnhanced(query: string, page = 1): Promise<TMDBResponse<TMDBShow>> {
     const baseParams = { query, page: page.toString(), include_adult: 'false' };
 
+    // ── Tier 1: standard /search/tv ──────────────────────────────────────────
     const primary = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/search/tv', baseParams);
     const tier1 = primary.results.filter(s => !s.adult);
     if (tier1.length > 0) return { ...primary, results: tier1 };
 
-    if (primary.total_results > 0) {
-        const tier2 = primary.results.filter(s => !s.adult);
-        if (tier2.length > 0) return { ...primary, results: tier2 };
-    }
-
+    // ── Tier 2: /search/multi filtered to TV ─────────────────────────────────
     try {
         type MultiResult = TMDBShow & { media_type: string };
         const multi = await fetchFromTMDB<{
@@ -358,15 +367,44 @@ export async function searchShowsEnhanced(query: string, page = 1): Promise<TMDB
             total_results: number;
         }>('/search/multi', { query, page: page.toString(), include_adult: 'false' });
 
-        const tier3 = multi.results
+        const tier2 = multi.results
             .filter((r): r is MultiResult => r.media_type === 'tv' && !r.adult)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .map(({ media_type: _mt, ...s }) => s as TMDBShow);
 
-        return { results: tier3, page: multi.page, total_pages: multi.total_pages, total_results: tier3.length };
+        if (tier2.length > 0) {
+            return {
+                results: tier2,
+                page: multi.page,
+                total_pages: multi.total_pages,
+                total_results: tier2.length,
+            };
+        }
     } catch {
-        return { results: [], page: 1, total_pages: 0, total_results: 0 };
+        // fall through to Tier 3
     }
+
+    // ── Tier 3: normalised query — strip articles & diacritics ───────────────
+    const normalized = query
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // strip diacritics (é→e, ñ→n, …)
+        .replace(/^(?:the|a|an|el|la|les|le|il|lo|ein|eine|der|die|das|os|as)\s+/i, '')
+        .trim();
+
+    if (normalized && normalized.toLowerCase() !== query.toLowerCase().trim()) {
+        try {
+            const tier3data = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/search/tv', {
+                query: normalized,
+                page: page.toString(),
+                include_adult: 'false',
+            });
+            const tier3 = tier3data.results.filter(s => !s.adult);
+            if (tier3.length > 0) return { ...tier3data, results: tier3 };
+        } catch {
+            // fall through
+        }
+    }
+
+    return { results: [], page: 1, total_pages: 0, total_results: 0 };
 }
 
 export async function discoverShows(options: {
