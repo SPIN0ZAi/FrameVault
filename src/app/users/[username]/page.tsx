@@ -1270,7 +1270,7 @@ export default function UserProfilePage() {
                                             <MoviePosterCard href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
                                             {(wm as WatchedMovie & { rating?: number }).rating && (
                                                 <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24' }}>
-                                                    {'★'.repeat(Math.round(((wm as WatchedMovie & { rating?: number }).rating! / 10) * 5))}
+                                                    {(wm as WatchedMovie & { rating?: number }).rating}★
                                                 </div>
                                             )}
                                         </div>
@@ -1343,7 +1343,7 @@ export default function UserProfilePage() {
                                                     </Link>
                                                     {ws.rating && (
                                                         <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24', pointerEvents: 'none' }}>
-                                                            {'★'.repeat(Math.round((ws.rating / 10) * 5))}
+                                                            {ws.rating}★
                                                         </div>
                                                     )}
                                                 </div>
