@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { createMovieSchema } from '@/lib/validators';
-import { successResponse, validationError, unauthorizedError, serverError } from '@/lib/api-response';
+import { successResponse, validationError, unauthorizedError, forbiddenError, serverError } from '@/lib/api-response';
 import { searchMoviesEnhanced, discoverMovies, getTMDBImageUrl } from '@/lib/tmdb';
 export async function GET(request: NextRequest) {
     try {
@@ -46,12 +46,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/movies — create a movie
+// POST /api/movies — create a movie (owner-only)
 export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
             return unauthorizedError();
+        }
+        // Only the site owner may create movies directly
+        const dbUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (dbUser?.role !== 'owner') {
+            return forbiddenError('Only the site owner can create movies');
         }
 
         const body = await request.json();

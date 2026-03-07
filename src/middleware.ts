@@ -6,11 +6,15 @@ import { Redis } from '@upstash/redis';
 let loginLimiter: Ratelimit | null = null;
 let registerLimiter: Ratelimit | null = null;
 let passwordLimiter: Ratelimit | null = null;
+let presignLimiter: Ratelimit | null = null;
 
 function getRedis(): Redis | null {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token) return null;
+    if (!url || !token) {
+        // Rate limiting is disabled — set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to enable
+        return null;
+    }
     return new Redis({ url, token });
 }
 
@@ -71,7 +75,14 @@ export async function middleware(req: NextRequest) {
             if (!success) return rateLimitedResponse();
         }
     }
-
+    // ── Upload presign (prevent signed-URL farming) ──────────────────
+    if (pathname === '/api/uploads/presign' && req.method === 'POST') {
+        presignLimiter = getLimiter(presignLimiter, 20, '10 m', 'rl:presign');
+        if (presignLimiter) {
+            const { success } = await presignLimiter.limit(ip);
+            if (!success) return rateLimitedResponse();
+        }
+    }
     return NextResponse.next();
 }
 
@@ -80,5 +91,6 @@ export const config = {
         '/api/auth/callback/credentials',
         '/api/auth/register',
         '/api/auth/change-password',
+        '/api/uploads/presign',
     ],
 };

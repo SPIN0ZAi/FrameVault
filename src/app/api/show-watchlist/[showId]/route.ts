@@ -1,7 +1,14 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-import { successResponse, unauthorizedError, notFoundError, serverError } from '@/lib/api-response';
+import { successResponse, unauthorizedError, notFoundError, serverError, validationError } from '@/lib/api-response';
+import { z } from 'zod';
+
+const showWatchlistBodySchema = z.object({
+    title: z.string().min(1).max(500).trim().default('Unknown Show'),
+    year: z.number().int().min(1900).max(2100).optional().nullable(),
+    posterUrl: z.string().url().max(2048).optional().nullable(),
+});
 
 // POST /api/show-watchlist/[showId]
 // Body: { title, year?, posterUrl? }
@@ -17,10 +24,10 @@ export async function POST(
         const tmdbShowId = parseInt(showId);
         if (isNaN(tmdbShowId)) return notFoundError('Show');
 
-        const body = await request.json().catch(() => ({}));
-        const { title = 'Unknown Show', year = null, posterUrl = null } = body as {
-            title?: string; year?: number | null; posterUrl?: string | null;
-        };
+        const rawBody = await request.json().catch(() => ({}));
+        const bodyParsed = showWatchlistBodySchema.safeParse(rawBody);
+        if (!bodyParsed.success) return validationError(bodyParsed.error.issues[0]?.message ?? 'Invalid body');
+        const { title, year, posterUrl } = bodyParsed.data;
 
         const item = await prisma.showWatchlistItem.upsert({
             where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },

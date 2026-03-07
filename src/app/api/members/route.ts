@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
         const limit = 24;
         const skip = (page - 1) * limit;
         const sort = searchParams.get('sort') || 'popular'; // popular | newest | films
-        const q = searchParams.get('q') || '';
+        const q = (searchParams.get('q') || '').slice(0, 50);
 
         const where = q
             ? { username: { contains: q, mode: 'insensitive' as const } }

@@ -81,9 +81,9 @@ export async function DELETE(
         });
 
         return successResponse({ unfollowed: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Prisma throws if record doesn't exist on delete
-        if (error.code === 'P2025') {
+        if ((error as { code?: string }).code === 'P2025') {
             return successResponse({ unfollowed: true });
         }
         console.error('Unfollow User Error:', error);

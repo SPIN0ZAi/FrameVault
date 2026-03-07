@@ -11,8 +11,8 @@ const updateMeSchema = z.object({
     bannerUrl: z.string().url('Invalid banner URL').max(2048).optional().nullable(),
     themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color').optional(),
     themeMode: z.enum(['light', 'dark', 'system']).optional(),
-    bannerPosition: z.string().max(20).optional().nullable(),
-    avatarPosition: z.string().max(20).optional().nullable(),
+    bannerPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.\d+)?% (100|[1-9]?[0-9])(\.\d+)?%$/).max(25).optional().nullable(),
+    avatarPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.\d+)?% (100|[1-9]?[0-9])(\.\d+)?%$/).max(25).optional().nullable(),
 });
 
 export async function GET() {

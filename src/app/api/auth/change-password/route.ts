@@ -14,9 +14,13 @@ export async function POST(req: NextRequest) {
         if (!currentPassword || !newPassword) {
             return validationError('Both current and new password are required');
         }
-        if (newPassword.length < 8) {
+        if (typeof newPassword !== 'string' || newPassword.length < 8) {
             return validationError('New password must be at least 8 characters');
         }
+        if (!/[a-z]/.test(newPassword)) return validationError('New password must contain a lowercase letter');
+        if (!/[A-Z]/.test(newPassword)) return validationError('New password must contain an uppercase letter');
+        if (!/[0-9]/.test(newPassword)) return validationError('New password must contain a number');
+        if (newPassword.length > 128) return validationError('New password must be at most 128 characters');
 
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },

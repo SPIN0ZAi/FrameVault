@@ -11,6 +11,10 @@ import { getMovieDetails, getTMDBImageUrl } from '@/lib/tmdb';
 export async function syncTMDBMovie(tmdbId: string | number): Promise<string> {
     const numericId = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
 
+    if (!Number.isInteger(numericId) || numericId <= 0 || numericId > 1_000_000_000) {
+        throw new Error(`Invalid TMDB ID: ${tmdbId}`);
+    }
+
     // Check if the movie already exists locally
     let localMovie = await prisma.movie.findUnique({
         where: { tmdbId: numericId },

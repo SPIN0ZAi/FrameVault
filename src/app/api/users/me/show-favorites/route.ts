@@ -1,7 +1,17 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { successResponse, unauthorizedError, serverError, validationError } from '@/lib/api-response';
+import { z } from 'zod';
+
+const showFavoriteItemSchema = z.object({
+    tmdbShowId: z.number().int().positive(),
+    title: z.string().min(1).max(500).trim(),
+    year: z.number().int().min(1900).max(2100).optional().nullable(),
+    posterUrl: z.string().url().max(2048).optional().nullable(),
+    position: z.number().int().min(0).max(4),
+});
+const showFavoritesSchema = z.array(showFavoriteItemSchema).max(5);
 
 // GET /api/users/me/show-favorites
 export async function GET() {
@@ -26,8 +36,12 @@ export async function PUT(req: NextRequest) {
         const session = await auth();
         if (!session?.user?.id) return unauthorizedError();
 
-        const items: { tmdbShowId: number; title: string; year?: number; posterUrl?: string; position: number }[] =
-            await req.json();
+        const raw = await req.json();
+        const parsed = showFavoritesSchema.safeParse(raw);
+        if (!parsed.success) {
+            return validationError(parsed.error.issues[0]?.message ?? 'Invalid favorites payload');
+        }
+        const items = parsed.data;
 
         if (!Array.isArray(items) || items.length > 5) {
             return serverError('Must supply between 0 and 5 favorites');
