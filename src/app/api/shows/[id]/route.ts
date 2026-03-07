@@ -89,19 +89,22 @@ export async function GET(
 
         // Check user interaction
         const session = await auth();
-        let userInteraction: { watched: boolean; inWatchlist: boolean } = { watched: false, inWatchlist: false };
+        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null } = { watched: false, inWatchlist: false, rating: null };
 
         if (session?.user) {
             const tmdbShowId = parseInt(id);
-            const [watched, watchlisted] = await Promise.all([
+            const [watched, watchlisted, ratingRecord] = await Promise.all([
                 prisma.watchedShow.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }),
                 prisma.showWatchlistItem.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }),
+                prisma.showRating.findUnique({
+                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                }),
             ]);
-            userInteraction = { watched: !!watched, inWatchlist: !!watchlisted };
+            userInteraction = { watched: !!watched, inWatchlist: !!watchlisted, rating: ratingRecord?.value ?? null };
         }
 
         return successResponse({

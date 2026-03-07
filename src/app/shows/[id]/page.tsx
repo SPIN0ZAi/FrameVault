@@ -30,7 +30,7 @@ interface ShowDetail {
     cast: { id: number; name: string; character: string; profileUrl: string | null }[];
     trailerKey: string | null;
     similarShows: { id: number; title: string; year: number; posterUrl: string | null }[];
-    userInteraction: { watched: boolean; inWatchlist: boolean };
+    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null };
 }
 
 function getLanguageName(code: string | null): string | null {
@@ -61,6 +61,7 @@ export default function ShowDetailPage() {
     const [show, setShow] = useState<ShowDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState('');
+    const [hoverRating, setHoverRating] = useState(0);
     const [showTrailer, setShowTrailer] = useState(false);
 
     const fetchShow = useCallback(async () => {
@@ -94,6 +95,7 @@ export default function ShowDetailPage() {
                 userInteraction: {
                     watched: !isWatched,
                     inWatchlist: isWatched ? prev.userInteraction.inWatchlist : false,
+                    rating: prev.userInteraction.rating,
                 },
             } : prev);
         } finally { setActionLoading(''); }
@@ -116,6 +118,28 @@ export default function ShowDetailPage() {
             setShow(prev => prev ? {
                 ...prev,
                 userInteraction: { ...prev.userInteraction, inWatchlist: !inWatchlist },
+            } : prev);
+        } finally { setActionLoading(''); }
+    };
+
+    const handleRate = async (value: number) => {
+        if (!session) { router.push('/login'); return; }
+        if (!show) return;
+        setActionLoading('rating');
+        try {
+            const isSame = show.userInteraction.rating === value;
+            if (isSame) {
+                await fetch(`/api/shows/${id}/rating`, { method: 'DELETE' });
+            } else {
+                await fetch(`/api/shows/${id}/rating`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value }),
+                });
+            }
+            setShow(prev => prev ? {
+                ...prev,
+                userInteraction: { ...prev.userInteraction, rating: isSame ? null : value },
             } : prev);
         } finally { setActionLoading(''); }
     };
@@ -236,6 +260,37 @@ export default function ShowDetailPage() {
                                 <span style={{ fontWeight: 700, color: statusColor[show.status] ?? 'var(--text-tertiary)' }}>
                                     {show.status}
                                 </span>
+                            )}
+                        </div>
+
+                        {/* User Rating */}
+                        <div style={{ marginBottom: 'var(--space-lg)' }}>
+                            <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                                {session ? 'Your Rating' : 'Rating'}
+                            </p>
+                            <div className="rating-picker">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
+                                    <button
+                                        key={star}
+                                        className={`rating-star ${star <= (hoverRating || (show.userInteraction.rating ?? 0)) ? 'filled' : ''}`}
+                                        onMouseEnter={() => session && setHoverRating(star)}
+                                        onMouseLeave={() => setHoverRating(0)}
+                                        onClick={() => handleRate(star)}
+                                        disabled={actionLoading === 'rating'}
+                                        aria-label={`Rate ${star} out of 10`}
+                                        style={{ cursor: session ? 'pointer' : 'default' }}
+                                    >
+                                        <Star size={22} fill="currentColor" />
+                                    </button>
+                                ))}
+                                <span className="rating-value">
+                                    {hoverRating || show.userInteraction.rating || '—'} / 10
+                                </span>
+                            </div>
+                            {!session && (
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                    <Link href="/login" style={{ color: 'var(--brand)', fontWeight: 600 }}>Sign in</Link> to rate this show
+                                </p>
                             )}
                         </div>
 
