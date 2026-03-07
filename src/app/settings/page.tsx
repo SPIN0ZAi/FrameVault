@@ -741,15 +741,17 @@ export default function SettingsPage() {
 
                     {/* Preview */}
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ width: 110, height: 110, borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--border-strong)', background: 'var(--bg-primary)', flexShrink: 0 }}>
-                            {avatarPickPreview ? (
-                                <img src={avatarPickPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : avatarUrl ? (
-                                <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 700, color: 'var(--brand)' }}>{username.charAt(0).toUpperCase()}</div>
-                            )}
-                        </div>
+                        {(avatarPickPreview ?? avatarUrl) ? (
+                            <div style={{ position: 'relative', width: 200, height: 200, background: '#0a0a0a', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
+                                <img src={avatarPickPreview ?? avatarUrl ?? ''} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                                {/* Circular crop indicator */}
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 160, height: 160, borderRadius: '50%', boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)', border: '2px dashed rgba(255,255,255,0.75)', zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>Visible area</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ width: 110, height: 110, borderRadius: '50%', border: '3px solid var(--border-strong)', background: 'var(--bg-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 700, color: 'var(--brand)' }}>{username.charAt(0).toUpperCase()}</div>
+                        )}
                     </div>
 
                     {/* Error */}
@@ -802,11 +804,17 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Preview */}
-                    <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '21/5', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', position: 'relative' }}>
+                    <div style={{ position: 'relative', background: '#0a0a0a', borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '16/9' }}>
                         {(bannerPickPreview || bannerUrl) ? (
-                            <img src={bannerPickPreview ?? bannerUrl ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <>
+                                <img src={bannerPickPreview ?? bannerUrl ?? ''} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                                {/* 21:5 crop-zone indicator */}
+                                <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', transform: 'translateY(-50%)', aspectRatio: '21/5', boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)', border: '2px dashed rgba(255,255,255,0.75)', zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>Visible area</span>
+                                </div>
+                            </>
                         ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No banner set</div>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No banner set</div>
                         )}
                     </div>
 

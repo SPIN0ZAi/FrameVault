@@ -980,7 +980,7 @@ select {
 
 .profile-banner {
   position: relative;
-  height: 280px;
+  height: 340px;
   background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
   overflow: hidden;
   margin: 0 calc(-1 * var(--space-lg));
