@@ -89,11 +89,13 @@ export async function GET(
 
         // Check user interaction
         const session = await auth();
-        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null } = { watched: false, inWatchlist: false, rating: null };
+        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null } = {
+            watched: false, inWatchlist: false, rating: null, customPosterUrl: null,
+        };
 
         if (session?.user) {
             const tmdbShowId = parseInt(id);
-            const [watched, watchlisted, ratingRecord] = await Promise.all([
+            const [watched, watchlisted, ratingRecord, customPoster] = await Promise.all([
                 prisma.watchedShow.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }),
@@ -103,8 +105,16 @@ export async function GET(
                 prisma.showRating.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }),
+                prisma.showCustomPoster.findUnique({
+                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                }),
             ]);
-            userInteraction = { watched: !!watched, inWatchlist: !!watchlisted, rating: ratingRecord?.value ?? null };
+            userInteraction = {
+                watched: !!watched,
+                inWatchlist: !!watchlisted,
+                rating: ratingRecord?.value ?? null,
+                customPosterUrl: customPoster?.posterUrl ?? null,
+            };
         }
 
         return successResponse({

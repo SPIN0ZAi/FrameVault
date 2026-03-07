@@ -115,6 +115,22 @@ interface TMDBSearchResult {
     posterUrl: string | null;
 }
 
+interface ShowFavorite {
+    id: string;
+    tmdbShowId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    position: number;
+}
+
+interface TMDBShowSearchResult {
+    tmdbShowId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+}
+
 //  Helpers 
 
 function MoviePosterCard({ href, posterUrl, title, year }: {
@@ -523,6 +539,305 @@ function FavoritesSection({ username, isOwnProfile, accent }: { username: string
     );
 }
 
+// ─── Show Favorites (Top 5 Series) ───────────────────
+
+function ShowFavoriteSearchModal({ onSelect, onClose, existing }: {
+    onSelect: (show: TMDBShowSearchResult) => void;
+    onClose: () => void;
+    existing: number[];
+}) {
+    const [q, setQ] = useState('');
+    const [results, setResults] = useState<TMDBShowSearchResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => { inputRef.current?.focus(); }, []);
+    useEffect(() => {
+        if (q.length < 2) { setResults([]); return; }
+        const t = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/shows/tmdb-search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                if (data.success) setResults(data.data);
+            } finally { setLoading(false); }
+        }, 300);
+        return () => clearTimeout(t);
+    }, [q]);
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-md)' }} onClick={onClose}>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-default)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+                    <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                    <input ref={inputRef} className="input" placeholder="Search for a series…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none' }} />
+                    <button onClick={onClose} style={{ color: 'var(--text-tertiary)', background: 'none', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {loading && <div style={{ padding: 'var(--space-md)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Searching…</div>}
+                    {!loading && q.length >= 2 && results.length === 0 && <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>No results for &quot;{q}&quot;</div>}
+                    {!loading && q.length < 2 && <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Type to search TMDB…</div>}
+                    {results.map(r => {
+                        const alreadyAdded = existing.includes(r.tmdbShowId);
+                        return (
+                            <button key={r.tmdbShowId} disabled={alreadyAdded}
+                                onClick={() => { if (!alreadyAdded) { onSelect(r); onClose(); } }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)', background: 'none', cursor: alreadyAdded ? 'default' : 'pointer', opacity: alreadyAdded ? 0.4 : 1, borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s', textAlign: 'left' }}
+                                onMouseEnter={e => !alreadyAdded && ((e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)')}
+                                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'none')}>
+                                {r.posterUrl
+                                    ? <img src={r.posterUrl} alt={r.title} style={{ width: 40, aspectRatio: '2/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)', flexShrink: 0 }} />
+                                    : <div style={{ width: 40, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Tv size={16} style={{ opacity: 0.4 }} /></div>
+                                }
+                                <div>
+                                    <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{r.title}</p>
+                                    {r.year && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{r.year}</p>}
+                                </div>
+                                {alreadyAdded && <span style={{ marginLeft: 'auto', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Added</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TopSeriesSection({ username, isOwnProfile, accent }: { username: string; isOwnProfile: boolean; accent: string }) {
+    const [showFavorites, setShowFavorites] = useState<ShowFavorite[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [draft, setDraft] = useState<ShowFavorite[]>([]);
+
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+    const [ghostPoster, setGhostPoster] = useState<string | null>(null);
+    const [ghostTitle, setGhostTitle] = useState('');
+    const dragIdxRef = useRef<number | null>(null);
+    const ghostOffsetRef = useRef({ x: 0, y: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        fetch(`/api/users/${username}/show-favorites`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setShowFavorites(d.data); })
+            .finally(() => setLoading(false));
+    }, [username]);
+
+    const startEdit = () => { setDraft([...showFavorites]); setEditing(true); };
+    const cancelEdit = () => { setDraft([]); setEditing(false); };
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/users/me/show-favorites', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(
+                    draft.map((f, i) => ({ tmdbShowId: f.tmdbShowId, title: f.title, year: f.year, posterUrl: f.posterUrl, position: i }))
+                ),
+            });
+            const data = await res.json();
+            if (data.success) { setShowFavorites(data.data); setEditing(false); setDraft([]); }
+        } finally { setSaving(false); }
+    };
+
+    const addToFavorites = (show: TMDBShowSearchResult) => {
+        if (draft.length >= 5) return;
+        setDraft(prev => [...prev, { id: '', tmdbShowId: show.tmdbShowId, title: show.title, year: show.year, posterUrl: show.posterUrl, position: prev.length }]);
+    };
+
+    const removeFavorite = (idx: number) => { setDraft(prev => prev.filter((_, i) => i !== idx)); };
+
+    const startDrag = (e: React.PointerEvent<HTMLDivElement>, idx: number) => {
+        if (!editing) return;
+        e.preventDefault();
+        const rect = e.currentTarget.getBoundingClientRect();
+        ghostOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        dragIdxRef.current = idx;
+        setDragIdx(idx);
+        setGhostPos({ x: e.clientX, y: e.clientY });
+        setGhostPoster(draft[idx]?.posterUrl ?? null);
+        setGhostTitle(draft[idx]?.title ?? '');
+
+        const onMove = (me: PointerEvent) => {
+            setGhostPos({ x: me.clientX, y: me.clientY });
+            if (!containerRef.current || dragIdxRef.current === null) return;
+            const cards = containerRef.current.querySelectorAll<HTMLElement>('[data-sfav-idx]');
+            let hovered: number | null = null;
+            cards.forEach(card => {
+                const r = card.getBoundingClientRect();
+                if (me.clientX >= r.left && me.clientX <= r.right && me.clientY >= r.top - 30 && me.clientY <= r.bottom + 30) {
+                    hovered = parseInt(card.dataset.sfavIdx!);
+                }
+            });
+            if (hovered !== null && hovered !== dragIdxRef.current) {
+                const from = dragIdxRef.current;
+                const to = hovered;
+                dragIdxRef.current = to;
+                setDragIdx(to);
+                setDraft(prev => {
+                    const next = [...prev];
+                    const [moved] = next.splice(from, 1);
+                    next.splice(to, 0, moved);
+                    return next;
+                });
+            }
+        };
+
+        const onUp = () => {
+            setDragIdx(null); setGhostPos(null); setGhostPoster(null); setGhostTitle('');
+            dragIdxRef.current = null;
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    };
+
+    const list = editing ? draft : showFavorites;
+
+    if (loading) return <div className="skeleton" style={{ height: 160, borderRadius: 'var(--radius-lg)', marginTop: 'var(--space-xl)' }} />;
+    if (!isOwnProfile && showFavorites.length === 0) return null;
+
+    return (
+        <section style={{ width: '100%', marginTop: 'var(--space-xl)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 'var(--space-md)', gap: 'var(--space-md)' }}>
+                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Tv size={18} style={{ color: accent }} /> Top 5 Series
+                </h2>
+                {isOwnProfile && !editing && (
+                    <button onClick={startEdit} className="btn btn-ghost btn-sm">Edit</button>
+                )}
+                {editing && (
+                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                        <button onClick={cancelEdit} className="btn btn-ghost btn-sm">Cancel</button>
+                        <button onClick={save} disabled={saving} className="btn btn-primary btn-sm"
+                            style={{ background: accent, borderColor: accent }}>
+                            {saving ? 'Saving…' : 'Save'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {ghostPos && (
+                <div style={{
+                    position: 'fixed',
+                    left: ghostPos.x - ghostOffsetRef.current.x,
+                    top: ghostPos.y - ghostOffsetRef.current.y,
+                    width: 125, aspectRatio: '2/3', zIndex: 9999, pointerEvents: 'none',
+                    transform: 'rotate(4deg) scale(1.08)',
+                    transformOrigin: `${ghostOffsetRef.current.x}px ${ghostOffsetRef.current.y}px`,
+                    boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
+                    borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                    border: `2px solid ${accent}`,
+                }}>
+                    {ghostPoster
+                        ? <img src={ghostPoster} alt={ghostTitle} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <div style={{ width: '100%', height: '100%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Tv size={24} style={{ opacity: 0.4 }} />
+                        </div>
+                    }
+                </div>
+            )}
+
+            <div ref={containerRef} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: 4, paddingTop: 12, userSelect: 'none', flexWrap: 'wrap' }}>
+                {list.map((fav, idx) => {
+                    const isDragged = editing && dragIdx === idx;
+                    return (
+                        <div
+                            key={fav.tmdbShowId}
+                            data-sfav-idx={idx}
+                            onPointerDown={e => startDrag(e, idx)}
+                            style={{
+                                flexShrink: 0, width: 125, position: 'relative',
+                                cursor: editing ? (dragIdx !== null ? 'grabbing' : 'grab') : 'default',
+                                opacity: isDragged ? 0.25 : 1,
+                                transform: isDragged ? 'scale(0.95)' : 'scale(1)',
+                                transition: 'opacity 0.12s, transform 0.12s',
+                                touchAction: 'none',
+                            }}>
+                            <Link href={`/shows/${fav.tmdbShowId}`} onClick={e => editing && e.preventDefault()}>
+                                <div style={{ position: 'relative' }}>
+                                    {fav.posterUrl
+                                        ? <img
+                                            src={fav.posterUrl}
+                                            alt={fav.title}
+                                            draggable={false}
+                                            style={{
+                                                width: 125, aspectRatio: '2/3', objectFit: 'cover',
+                                                borderRadius: 'var(--radius-md)', display: 'block',
+                                                boxShadow: idx === 0 && !isDragged
+                                                    ? `0 0 20px ${accent}80, 0 0 0 2px ${accent}99`
+                                                    : '0 4px 12px rgba(0,0,0,0.3)',
+                                                transition: 'box-shadow 0.2s',
+                                            }}
+                                        />
+                                        : <div style={{ width: 125, aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Tv size={24} style={{ opacity: 0.4 }} />
+                                        </div>
+                                    }
+                                    {idx === 0 && !isDragged && (
+                                        <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 20, lineHeight: 1 }}>👑</div>
+                                    )}
+                                    {editing && (
+                                        <div style={{
+                                            position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)',
+                                            background: isDragged ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'background 0.12s',
+                                        }}>
+                                            <GripVertical size={20} style={{ color: '#fff', opacity: 0.9 }} />
+                                        </div>
+                                    )}
+                                </div>
+                            </Link>
+                            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                {fav.title}
+                            </p>
+                            {editing && (
+                                <button
+                                    onClick={() => removeFavorite(idx)}
+                                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', border: '2px solid var(--bg-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                    <X size={10} style={{ color: '#fff' }} />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {editing && draft.length < 5 && (
+                    <button
+                        onClick={() => setShowModal(true)}
+                        style={{ flexShrink: 0, width: 125, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}66`, background: `${accent}11`, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: accent, transition: 'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = `${accent}22`)}
+                        onMouseLeave={e => (e.currentTarget.style.background = `${accent}11`)}
+                    >
+                        <Plus size={20} />
+                        <span style={{ fontSize: 10, fontWeight: 600 }}>Add series</span>
+                    </button>
+                )}
+
+                {!editing && list.length === 0 && isOwnProfile && (
+                    <button
+                        onClick={startEdit}
+                        style={{ flexShrink: 0, width: 100, aspectRatio: '2/3', borderRadius: 'var(--radius-md)', border: `2px dashed ${accent}44`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
+                        <Tv size={20} style={{ opacity: 0.4 }} />
+                        <span style={{ fontSize: 10 }}>Pick series</span>
+                    </button>
+                )}
+            </div>
+
+            {showModal && (
+                <ShowFavoriteSearchModal onSelect={addToFavorites} onClose={() => setShowModal(false)} existing={draft.map(f => f.tmdbShowId)} />
+            )}
+        </section>
+    );
+}
+
 // ─────────────────────────────────────────────────────
 
 function EmptyTab({ icon, text, cta }: { icon: React.ReactNode; text: string; cta?: { label: string; href: string } }) {    return (
@@ -807,6 +1122,7 @@ export default function UserProfilePage() {
     const [reviewsLoaded, setReviewsLoaded] = useState(false);
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [watchlistLoaded, setWatchlistLoaded] = useState(false);
+    const [watchlistSubTab, setWatchlistSubTab] = useState<'movies' | 'shows'>('movies');
     const [network, setNetwork] = useState<{ followers: NetworkUser[]; following: NetworkUser[] } | null>(null);
     const [networkLoaded, setNetworkLoaded] = useState(false);
     const [networkTab, setNetworkTab] = useState<'followers' | 'following'>('followers');
@@ -925,6 +1241,11 @@ export default function UserProfilePage() {
             fetch(`/api/users/${username}/watchlist?limit=200`)
                 .then(r => r.json())
                 .then(d => { if (d.success) setWatchlist(d.data); setWatchlistLoaded(true); });
+        }
+        if (activeTab === 'Watchlist' && !showWatchlistLoaded) {
+            fetch(`/api/users/${username}/show-watchlist?limit=200`)
+                .then(r => r.json())
+                .then(d => { if (d.success) setShowWatchlist(d.data); setShowWatchlistLoaded(true); });
         }
         if (activeTab === 'Network' && !networkLoaded) {
             fetch(`/api/users/${username}/network`)
@@ -1153,6 +1474,7 @@ export default function UserProfilePage() {
                         {/* Top 5 Favorites + Histogram centered together */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <FavoritesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
+                            <TopSeriesSection username={username} isOwnProfile={isOwnProfile} accent={accent} />
 
                             {/* Rating Distribution — right below, same center alignment */}
                             {userRatingHistogram && userRatingHistogram.total > 0 && (
@@ -1444,21 +1766,71 @@ export default function UserProfilePage() {
 
                 {activeTab === 'Watchlist' && (
                     <div>
-                        {!watchlistLoaded ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
-                                {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
-                            </div>
-                        ) : watchlist.length === 0 ? (
-                            <EmptyTab icon={<BookmarkPlus size={48} />} text="Watchlist is empty" cta={isOwnProfile ? { label: 'Browse Films', href: '/movies' } : undefined} />
-                        ) : (
-                            <>
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{watchlist.length} film{watchlist.length !== 1 ? 's' : ''} saved</p>
+                        {/* Sub-tab switcher */}
+                        <div style={{ display: 'flex', gap: 'var(--space-xl)', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-xl)' }}>
+                            {(['movies', 'shows'] as const).map(sub => (
+                                <button key={sub} onClick={() => setWatchlistSubTab(sub)}
+                                    style={{ padding: '0.5rem 0', fontWeight: 700, fontSize: 'var(--text-sm)', color: watchlistSubTab === sub ? 'var(--text-primary)' : 'var(--text-tertiary)', borderBottom: watchlistSubTab === sub ? `2px solid ${accent}` : '2px solid transparent', marginBottom: '-1px', background: 'none', cursor: 'pointer' }}
+                                >
+                                    {sub === 'movies' ? 'Films' : 'TV Shows'}
+                                    <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                                        {sub === 'movies' ? watchlist.length : showWatchlist.length}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Films sub-tab */}
+                        {watchlistSubTab === 'movies' && (
+                            !watchlistLoaded ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
-                                    {watchlist.map(item => (
-                                        <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
-                                    ))}
+                                    {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
                                 </div>
-                            </>
+                            ) : watchlist.length === 0 ? (
+                                <EmptyTab icon={<BookmarkPlus size={48} />} text="Watchlist is empty" cta={isOwnProfile ? { label: 'Browse Films', href: '/movies' } : undefined} />
+                            ) : (
+                                <>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{watchlist.length} film{watchlist.length !== 1 ? 's' : ''} saved</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                        {watchlist.map(item => (
+                                            <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
+                                        ))}
+                                    </div>
+                                </>
+                            )
+                        )}
+
+                        {/* TV Shows sub-tab */}
+                        {watchlistSubTab === 'shows' && (
+                            !showWatchlistLoaded ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                    {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)' }} />)}
+                                </div>
+                            ) : showWatchlist.length === 0 ? (
+                                <EmptyTab icon={<BookmarkPlus size={48} />} text="No shows saved yet" cta={isOwnProfile ? { label: 'Browse Shows', href: '/shows' } : undefined} />
+                            ) : (
+                                <>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{showWatchlist.length} show{showWatchlist.length !== 1 ? 's' : ''} saved</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
+                                        {showWatchlist.map(sw => (
+                                            <Link key={sw.id} href={`/shows/${sw.tmdbShowId}`} className="movie-card">
+                                                {sw.posterUrl ? (
+                                                    <img src={sw.posterUrl} alt={sw.title} loading="lazy" />
+                                                ) : (
+                                                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                        <Tv size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{sw.title}</span>
+                                                    </div>
+                                                )}
+                                                <div className="movie-card-overlay">
+                                                    <div className="movie-card-title">{sw.title}</div>
+                                                    {sw.year && <div className="movie-card-year">{sw.year}</div>}
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </>
+                            )
                         )}
                     </div>
                 )}

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock } from 'lucide-react';
+import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus } from 'lucide-react';
+import ImageUploader from '@/components/ui/ImageUploader';
 
 interface ShowDetail {
     id: string;
@@ -30,7 +31,7 @@ interface ShowDetail {
     cast: { id: number; name: string; character: string; profileUrl: string | null }[];
     trailerKey: string | null;
     similarShows: { id: number; title: string; year: number; posterUrl: string | null }[];
-    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null };
+    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null };
 }
 
 function getLanguageName(code: string | null): string | null {
@@ -64,6 +65,12 @@ export default function ShowDetailPage() {
     const [hoverRating, setHoverRating] = useState(0);
     const [showWatchPrompt, setShowWatchPrompt] = useState(false);
     const [showTrailer, setShowTrailer] = useState(false);
+    const [posterHover, setPosterHover] = useState(false);
+    const [showPosterModal, setShowPosterModal] = useState(false);
+    const [posterTab, setPosterTab] = useState<'pick' | 'upload'>('pick');
+    const [tmdbPosters, setTmdbPosters] = useState<{ thumb: string | null; full: string | null }[]>([]);
+    const [tmdbPostersLoading, setTmdbPostersLoading] = useState(false);
+    const [applyingPoster, setApplyingPoster] = useState<string | null>(null);
 
     const fetchShow = useCallback(async () => {
         try {
@@ -76,6 +83,28 @@ export default function ShowDetailPage() {
     }, [id]);
 
     useEffect(() => { fetchShow(); }, [fetchShow]);
+
+    useEffect(() => {
+        if (!showPosterModal || tmdbPosters.length > 0) return;
+        setTmdbPostersLoading(true);
+        fetch(`/api/shows/${id}/tmdb-posters`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setTmdbPosters(d.data); })
+            .finally(() => setTmdbPostersLoading(false));
+    }, [showPosterModal, id, tmdbPosters.length]);
+
+    const handlePickTmdbPoster = async (fullUrl: string) => {
+        setApplyingPoster(fullUrl);
+        try {
+            await fetch(`/api/shows/${id}/custom-poster`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ posterUrl: fullUrl }),
+            });
+            setShowPosterModal(false);
+            fetchShow();
+        } finally { setApplyingPoster(null); }
+    };
 
     const handleWatchToggle = async () => {
         if (!session) { router.push('/login'); return; }
@@ -94,9 +123,9 @@ export default function ShowDetailPage() {
             setShow(prev => prev ? {
                 ...prev,
                 userInteraction: {
+                    ...prev.userInteraction,
                     watched: !isWatched,
                     inWatchlist: isWatched ? prev.userInteraction.inWatchlist : false,
-                    rating: prev.userInteraction.rating,
                 },
             } : prev);
         } finally { setActionLoading(''); }
@@ -202,16 +231,37 @@ export default function ShowDetailPage() {
                 {/* Hero */}
                 <div style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', paddingTop: 'var(--space-3xl)' }}>
                     {/* Poster */}
-                    <div style={{ flexShrink: 0, width: 220 }}>
+                    <div
+                        style={{ flexShrink: 0, width: 220, position: 'relative' }}
+                        onMouseEnter={() => setPosterHover(true)}
+                        onMouseLeave={() => setPosterHover(false)}
+                    >
                         <div style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', aspectRatio: '2/3' }}>
-                            {show.posterUrl ? (
-                                <img src={show.posterUrl} alt={show.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {show.userInteraction.customPosterUrl || show.posterUrl ? (
+                                <img src={show.userInteraction.customPosterUrl || show.posterUrl!} alt={show.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <div style={{ width: '100%', height: '100%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Tv size={64} style={{ opacity: 0.3 }} />
                                 </div>
                             )}
                         </div>
+                        {session && (
+                            <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 'var(--radius-xl)',
+                                background: 'rgba(0,0,0,0.65)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                opacity: posterHover ? 1 : 0,
+                                transition: 'opacity 0.2s ease',
+                                backdropFilter: 'blur(3px)',
+                            }}>
+                                <button
+                                    onClick={() => setShowPosterModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 999, padding: '8px 16px', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
+                                >
+                                    <ImagePlus size={18} /> Change Poster
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Info */}
@@ -465,6 +515,91 @@ export default function ShowDetailPage() {
                     </section>
                 )}
             </div>
+
+            {/* Poster Change Modal */}
+            {showPosterModal && (
+                <>
+                    <div onClick={() => setShowPosterModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 199, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }} />
+                    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 440, zIndex: 200, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+                        <div style={{ padding: 'var(--space-lg)', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <ImagePlus size={18} style={{ color: 'var(--brand)' }} />
+                                <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', margin: 0 }}>Change Poster</h3>
+                            </div>
+                            <button onClick={() => setShowPosterModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4 }}><X size={20} /></button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)' }}>
+                            {(['pick', 'upload'] as const).map(t => (
+                                <button key={t} onClick={() => setPosterTab(t)} style={{ flex: 1, padding: '10px', fontSize: 'var(--text-sm)', fontWeight: 600, background: 'none', cursor: 'pointer', borderBottom: posterTab === t ? '2px solid var(--brand)' : '2px solid transparent', marginBottom: -1, color: posterTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)', transition: 'color 0.12s' }}>
+                                    {t === 'pick' ? 'Pick from TMDB' : 'Upload Image'}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div style={{ padding: 'var(--space-lg)', flex: 1 }}>
+                            {posterTab === 'pick' && (
+                                <>
+                                    {tmdbPostersLoading && <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-xl)' }}>Loading posters…</p>}
+                                    {!tmdbPostersLoading && tmdbPosters.length === 0 && <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-xl)' }}>No alternate posters available</p>}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                                        {tmdbPosters.map((p, i) => (
+                                            <div key={i} style={{ position: 'relative', cursor: 'pointer', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: applyingPoster === p.full ? '2px solid var(--brand)' : '2px solid transparent', transition: 'border-color 0.12s', opacity: applyingPoster && applyingPoster !== p.full ? 0.5 : 1 }}
+                                                onClick={() => p.full && handlePickTmdbPoster(p.full)}>
+                                                {p.thumb && <img src={p.thumb} alt={`Poster ${i + 1}`} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block' }} />}
+                                                {applyingPoster === p.full && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 20, height: 20, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {show.userInteraction.customPosterUrl && (
+                                        <button onClick={async () => { await fetch(`/api/shows/${id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchShow(); }}
+                                            style={{ marginTop: 'var(--space-lg)', width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid #ef444455', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                            Revert to TMDB Poster
+                                        </button>
+                                    )}
+                                </>
+                            )}
+
+                            {posterTab === 'upload' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                    <ImageUploader
+                                        type="poster"
+                                        currentImageUrl={show.userInteraction.customPosterUrl || show.posterUrl}
+                                        onFileSelect={async (file) => {
+                                            try {
+                                                const presignRes = await fetch('/api/uploads/presign', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ filename: file.name, contentType: file.type, folder: 'posters' }),
+                                                });
+                                                const presignData = await presignRes.json();
+                                                if (!presignData.success) return;
+                                                await fetch(presignData.data.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+                                                await fetch(`/api/shows/${id}/custom-poster`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ posterUrl: presignData.data.publicUrl }),
+                                                });
+                                                setShowPosterModal(false);
+                                                fetchShow();
+                                            } catch { }
+                                        }}
+                                        label="Show Poster"
+                                        aspectRatio="poster"
+                                    />
+                                    {show.userInteraction.customPosterUrl && (
+                                        <button onClick={async () => { await fetch(`/api/shows/${id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchShow(); }}
+                                            style={{ padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid #ef444455', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                            Revert to TMDB Poster
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Trailer modal */}
             {showTrailer && show.trailerKey && (

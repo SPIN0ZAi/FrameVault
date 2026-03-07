@@ -35,6 +35,8 @@ model User {
   watchedShows     WatchedShow[]
   showWatchlist    ShowWatchlistItem[]
   showRatings      ShowRating[]
+  showCustomPosters ShowCustomPoster[]
+  showFavorites     UserShowFavorite[]
 
   @@map("users")
 }
@@ -336,6 +338,36 @@ model ShowRating {
   @@unique([userId, tmdbShowId])
   @@index([userId])
   @@map("show_ratings")
+}
+
+model ShowCustomPoster {
+  id         String @id @default(cuid())
+  userId     String
+  tmdbShowId Int
+  posterUrl  String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbShowId])
+  @@map("show_custom_posters")
+}
+
+model UserShowFavorite {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  tmdbShowId Int      @map("tmdb_show_id")
+  title      String
+  year       Int?
+  posterUrl  String?  @map("poster_url")
+  position   Int      @default(0)
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbShowId])
+  @@unique([userId, position])
+  @@index([userId])
+  @@map("user_show_favorites")
 }
 
 // ─── OSCAR POLLS ─────────────────────────────────────
