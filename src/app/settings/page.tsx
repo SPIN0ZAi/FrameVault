@@ -262,6 +262,7 @@ export default function SettingsPage() {
     };
 
     return (
+        <>
         <div className="page">
             <div className="container" style={{ maxWidth: '1060px' }}>
 
@@ -847,5 +848,6 @@ export default function SettingsPage() {
                 </div>
             </div>
         )}
+        </>
     );
 }
