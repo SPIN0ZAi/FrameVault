@@ -624,10 +624,11 @@ export default function ShowDetailPage() {
                                             setUploadLoading(true);
                                             setUploadError(null);
                                             try {
+                                                const ext = uploadFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
                                                 const presignRes = await fetch('/api/uploads/presign', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ filename: uploadFile.name, contentType: uploadFile.type, folder: 'posters' }),
+                                                    body: JSON.stringify({ type: 'poster', movieId: `show-${id}`, contentType: uploadFile.type, extension: ext }),
                                                 });
                                                 const presignData = await presignRes.json();
                                                 if (!presignData.success) { setUploadError('Failed to get upload URL'); return; }
