@@ -107,7 +107,7 @@ export async function GET(
                 }),
                 prisma.showCustomPoster.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }),
+                }).catch(() => null),
             ]);
             userInteraction = {
                 watched: !!watched,
