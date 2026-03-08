@@ -174,7 +174,7 @@ export default function Header() {
                                         className="user-dropdown-item"
                                         onClick={() => {
                                             setDropdownOpen(false);
-                                            signOut({ callbackUrl: '/' });
+                                            signOut({ callbackUrl: window.location.origin + '/' });
                                         }}
                                         id="logout-button"
                                     >
