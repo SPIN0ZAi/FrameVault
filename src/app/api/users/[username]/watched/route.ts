@@ -23,17 +23,8 @@ export async function GET(
 
         if (!user) return notFoundError('User');
 
-        // Build orderBy
-        const orderBy: object =
-            sort === 'date_asc' ? { watchedAt: 'asc' } :
-            sort === 'title_asc' ? { movie: { title: 'asc' } } :
-            sort === 'title_desc' ? { movie: { title: 'desc' } } :
-            sort === 'rating_desc' ? [{ movie: { ratings: { _count: 'desc' } } }, { watchedAt: 'desc' }] :
-            sort === 'rating_asc' ? [{ movie: { ratings: { _count: 'asc' } } }, { watchedAt: 'desc' }] :
-            { watchedAt: 'desc' }; // date_desc default
-
         // When filtering by minRating, we need to join with ratings
-        const whereClause: object = minRating
+        const whereClause = minRating
             ? {
                 userId: user.id,
                 movie: {
@@ -44,21 +35,32 @@ export async function GET(
             }
             : { userId: user.id };
 
-        const [watched, totalCount] = await Promise.all([
-            prisma.watchedMovie.findMany({
+        // Full movie select (reused in both paths)
+        const movieSelect = {
+            id: true,
+            tmdbId: true,
+            title: true,
+            year: true,
+            posterUrl: true,
+            customPosters: {
+                where: { userId: user.id },
+                select: { posterUrl: true },
+            },
+            ratings: {
+                where: { userId: user.id },
+                select: { value: true },
+            },
+        } as const;
+
+        // ── Rating sort: must sort globally across ALL pages ──────────────────
+        if (sort === 'rating_desc' || sort === 'rating_asc') {
+            // Step 1: fetch all watched IDs + user rating (lightweight)
+            const allWatched = await prisma.watchedMovie.findMany({
                 where: whereClause,
-                include: {
+                select: {
+                    id: true,
                     movie: {
                         select: {
-                            id: true,
-                            tmdbId: true,
-                            title: true,
-                            year: true,
-                            posterUrl: true,
-                            customPosters: {
-                                where: { userId: user.id },
-                                select: { posterUrl: true },
-                            },
                             ratings: {
                                 where: { userId: user.id },
                                 select: { value: true },
@@ -66,6 +68,53 @@ export async function GET(
                         },
                     },
                 },
+            });
+
+            // Sort entirely in memory so we respect the global order
+            allWatched.sort((a, b) => {
+                const ra = a.movie.ratings?.[0]?.value ?? -1;
+                const rb = b.movie.ratings?.[0]?.value ?? -1;
+                return sort === 'rating_desc' ? rb - ra : ra - rb;
+            });
+
+            const totalCount = allWatched.length;
+            const pageSlice = allWatched.slice((page - 1) * limit, page * limit);
+            const pageIds = pageSlice.map(w => w.id);
+
+            // Step 2: fetch full details only for this page's IDs
+            const watched = await prisma.watchedMovie.findMany({
+                where: { id: { in: pageIds } },
+                include: { movie: { select: movieSelect } },
+            });
+
+            // Re-order to match the globally-sorted slice order
+            const idOrder = new Map(pageIds.map((id, i) => [id, i]));
+            watched.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
+
+            const data = watched.map(w => ({
+                ...w,
+                rating: w.movie.ratings?.[0]?.value ?? null,
+            }));
+
+            return successResponse(data, {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+            });
+        }
+
+        // ── All other sorts: let the DB do it ────────────────────────────────
+        const orderBy: object =
+            sort === 'date_asc'   ? { watchedAt: 'asc' } :
+            sort === 'title_asc'  ? { movie: { title: 'asc' } } :
+            sort === 'title_desc' ? { movie: { title: 'desc' } } :
+            { watchedAt: 'desc' }; // date_desc default
+
+        const [watched, totalCount] = await Promise.all([
+            prisma.watchedMovie.findMany({
+                where: whereClause,
+                include: { movie: { select: movieSelect } },
                 orderBy,
                 skip: (page - 1) * limit,
                 take: limit,
@@ -73,20 +122,10 @@ export async function GET(
             prisma.watchedMovie.count({ where: whereClause }),
         ]);
 
-        // Flatten rating into each item for convenience
         const data = watched.map(w => ({
             ...w,
-            rating: (w.movie.ratings?.[0]?.value) ?? null,
+            rating: w.movie.ratings?.[0]?.value ?? null,
         }));
-
-        // For rating sort, sort in memory since Prisma can't sort by a filtered relation's value
-        if (sort === 'rating_desc' || sort === 'rating_asc') {
-            data.sort((a, b) => {
-                const ra = a.rating ?? -1;
-                const rb = b.rating ?? -1;
-                return sort === 'rating_desc' ? rb - ra : ra - rb;
-            });
-        }
 
         return successResponse(data, {
             page,
