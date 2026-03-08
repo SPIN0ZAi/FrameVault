@@ -48,6 +48,18 @@ export default function ForgotPasswordPage() {
                                 The link expires in 1 hour.
                             </p>
                         </div>
+                        <div style={{
+                            padding: 'var(--space-md)',
+                            background: 'rgba(234, 179, 8, 0.08)',
+                            border: '1px solid rgba(234, 179, 8, 0.2)',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: 'var(--text-sm)',
+                            color: '#ca8a04',
+                            marginTop: 'var(--space-md)',
+                            lineHeight: '1.6',
+                        }}>
+                            📁 Don&apos;t see it? Check your <strong>spam or junk folder</strong> — the email may have been filtered. If it&apos;s there, mark it as &quot;Not spam&quot; so future emails reach your inbox.
+                        </div>
                         <div className="auth-footer" style={{ marginTop: 'var(--space-xl)' }}>
                             <Link href="/login">Back to Sign In</Link>
                         </div>
