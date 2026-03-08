@@ -1,16 +1,24 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'FrameVault <noreply@framevault.app>';
 const APP_NAME = 'FrameVault';
+
+function createTransport() {
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.GMAIL_USER,   // your Gmail address
+            pass: process.env.GMAIL_APP_PASSWORD, // 16-char App Password
+        },
+    });
+}
 
 export async function sendPasswordResetEmail(
     to: string,
     resetUrl: string,
 ): Promise<void> {
-    await resend.emails.send({
-        from: FROM_EMAIL,
+    const transporter = createTransport();
+    await transporter.sendMail({
+        from: `${APP_NAME} <${process.env.GMAIL_USER}>`,
         to,
         subject: `Reset your ${APP_NAME} password`,
         html: `
