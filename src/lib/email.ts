@@ -20,7 +20,21 @@ export async function sendPasswordResetEmail(
     await transporter.sendMail({
         from: `${APP_NAME} <${process.env.GMAIL_USER}>`,
         to,
-        subject: `Reset your ${APP_NAME} password`,
+        subject: `Your ${APP_NAME} password reset link`,
+        replyTo: process.env.GMAIL_USER,
+        text: `
+Hi,
+
+You requested a password reset for your ${APP_NAME} account.
+
+Click the link below to set a new password (expires in 1 hour):
+
+${resetUrl}
+
+If you didn't request this, you can safely ignore this email.
+
+— The ${APP_NAME} Team
+        `.trim(),
         html: `
 <!DOCTYPE html>
 <html>
