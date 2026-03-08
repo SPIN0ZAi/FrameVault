@@ -88,7 +88,7 @@ export async function middleware(req: NextRequest) {
 
     // ── Forgot Password (prevent email enumeration / spam) ───────────
     if (pathname === '/api/auth/forgot-password' && req.method === 'POST') {
-        forgotPasswordLimiter = getLimiter(forgotPasswordLimiter, 3, '1 h', 'rl:forgot-password');
+        forgotPasswordLimiter = getLimiter(forgotPasswordLimiter, 5, '1 h', 'rl:forgot-password');
         if (forgotPasswordLimiter) {
             const { success } = await forgotPasswordLimiter.limit(ip);
             if (!success) return rateLimitedResponse();
