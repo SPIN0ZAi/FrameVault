@@ -36,7 +36,8 @@ model User {
   showWatchlist    ShowWatchlistItem[]
   showRatings      ShowRating[]
   showCustomPosters ShowCustomPoster[]
-  showFavorites     UserShowFavorite[]
+  showFavorites         UserShowFavorite[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@map("users")
 }
@@ -399,4 +400,20 @@ model OscarVote {
   @@unique([userId, pollId])
   @@index([pollId])
   @@map("oscar_votes")
+}
+
+// ─── PASSWORD RESET ──────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique   // SHA-256 hash of the raw token sent to user
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

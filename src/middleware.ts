@@ -7,6 +7,8 @@ let loginLimiter: Ratelimit | null = null;
 let registerLimiter: Ratelimit | null = null;
 let passwordLimiter: Ratelimit | null = null;
 let presignLimiter: Ratelimit | null = null;
+let forgotPasswordLimiter: Ratelimit | null = null;
+let resetPasswordLimiter: Ratelimit | null = null;
 
 function getRedis(): Redis | null {
     const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -83,6 +85,25 @@ export async function middleware(req: NextRequest) {
             if (!success) return rateLimitedResponse();
         }
     }
+
+    // ── Forgot Password (prevent email enumeration / spam) ───────────
+    if (pathname === '/api/auth/forgot-password' && req.method === 'POST') {
+        forgotPasswordLimiter = getLimiter(forgotPasswordLimiter, 3, '1 h', 'rl:forgot-password');
+        if (forgotPasswordLimiter) {
+            const { success } = await forgotPasswordLimiter.limit(ip);
+            if (!success) return rateLimitedResponse();
+        }
+    }
+
+    // ── Reset Password ───────────────────────────────────────────────
+    if (pathname === '/api/auth/reset-password' && req.method === 'POST') {
+        resetPasswordLimiter = getLimiter(resetPasswordLimiter, 5, '15 m', 'rl:reset-password');
+        if (resetPasswordLimiter) {
+            const { success } = await resetPasswordLimiter.limit(ip);
+            if (!success) return rateLimitedResponse();
+        }
+    }
+
     return NextResponse.next();
 }
 
@@ -92,5 +113,7 @@ export const config = {
         '/api/auth/register',
         '/api/auth/change-password',
         '/api/uploads/presign',
+        '/api/auth/forgot-password',
+        '/api/auth/reset-password',
     ],
 };
