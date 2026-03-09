@@ -451,24 +451,18 @@ export default function MovieDetailPage() {
         <>
             {/* Backdrop Hero */}
             {movie.backdropUrl && (
-                <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', marginTop: '-80px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#1A1D21' }}>
-                    {/* Image — inset 15% each side so more vertical content is visible */}
+                <div style={{ position: 'relative', width: '100%', height: '460px', overflow: 'hidden', marginTop: '-80px' }}>
                     <img
                         src={movie.backdropUrl}
                         alt=""
-                        style={{ width: '70%', height: '100%', objectFit: 'cover', objectPosition: 'center center', filter: 'brightness(0.45)' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', filter: 'brightness(0.4)' }}
                     />
-                    {/* Bottom fade */}
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(26,29,33,0) 0%, #1A1D21 88%)' }} />
-                    {/* Left fade */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '22%', height: '100%', background: 'linear-gradient(to right, #1A1D21 30%, transparent)' }} />
-                    {/* Right fade */}
-                    <div style={{ position: 'absolute', top: 0, right: 0, width: '22%', height: '100%', background: 'linear-gradient(to left, #1A1D21 30%, transparent)' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(26,29,33,0.1) 0%, rgba(26,29,33,0.5) 60%, #1A1D21 90%)' }} />
                 </div>
             )}
 
             <div className="page" style={{
-                marginTop: movie.backdropUrl ? '-200px' : undefined,
+                marginTop: movie.backdropUrl ? '-120px' : undefined,
                 position: 'relative',
                 zIndex: 1,
             }}>
