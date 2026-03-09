@@ -235,11 +235,11 @@ export default function ActivityPage() {
 
                                                 {/* Poster */}
                                                 <Link href={href} style={{ flexShrink: 0 }}>
-                                                    <div style={{ width: 36, height: 54, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
+                                                    <div style={{ width: 64, height: 96, borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--bg-tertiary)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
                                                         {posterUrl
-                                                            ? <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            ? <img src={posterUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
                                                             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                {isShow ? <Tv size={14} style={{ opacity: 0.3 }} /> : <Film size={14} style={{ opacity: 0.3 }} />}
+                                                                {isShow ? <Tv size={20} style={{ opacity: 0.3 }} /> : <Film size={20} style={{ opacity: 0.3 }} />}
                                                               </div>
                                                         }
                                                     </div>
