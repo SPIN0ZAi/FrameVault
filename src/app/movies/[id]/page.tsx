@@ -449,23 +449,15 @@ export default function MovieDetailPage() {
 
     return (
         <>
-            {/* Backdrop Hero */}
+            {/* Backdrop — fixed full-viewport background, same as TV shows */}
             {movie.backdropUrl && (
-                <div style={{ position: 'relative', width: '100%', height: '540px', overflow: 'hidden', marginTop: '-80px' }}>
-                    <img
-                        src={movie.backdropUrl}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', filter: 'brightness(0.4)' }}
-                    />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(26,29,33,0.1) 0%, rgba(26,29,33,0.5) 60%, #1A1D21 90%)' }} />
+                <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+                    <img src={movie.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.1 }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, var(--bg-primary) 70%)' }} />
                 </div>
             )}
 
-            <div className="page" style={{
-                marginTop: movie.backdropUrl ? '-60px' : undefined,
-                position: 'relative',
-                zIndex: 1,
-            }}>
+            <div className="page" style={{ position: 'relative', zIndex: 1 }}>
                 <div className="container">
                     <div className="movie-detail">
                     {/* Poster */}
