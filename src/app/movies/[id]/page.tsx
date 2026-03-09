@@ -451,7 +451,7 @@ export default function MovieDetailPage() {
         <>
             {/* Backdrop Hero */}
             {movie.backdropUrl && (
-                <div style={{ position: 'relative', width: '100%', height: '460px', overflow: 'hidden', marginTop: '-80px' }}>
+                <div style={{ position: 'relative', width: '100%', height: '540px', overflow: 'hidden', marginTop: '-80px' }}>
                     <img
                         src={movie.backdropUrl}
                         alt=""
@@ -462,7 +462,7 @@ export default function MovieDetailPage() {
             )}
 
             <div className="page" style={{
-                marginTop: movie.backdropUrl ? '-120px' : undefined,
+                marginTop: movie.backdropUrl ? '-60px' : undefined,
                 position: 'relative',
                 zIndex: 1,
             }}>
