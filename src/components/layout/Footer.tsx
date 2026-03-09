@@ -5,7 +5,7 @@ export default function Footer() {
         <footer className="footer">
             <div className="footer-inner">
                 <p className="footer-text">
-                    © {new Date().getFullYear()} LetterSB. Track your movies, your way.
+                    © {new Date().getFullYear()} FrameVault — Every frame tells a story.
                 </p>
                 <div className="footer-links">
                     <Link href="/movies" className="footer-link">Browse</Link>
