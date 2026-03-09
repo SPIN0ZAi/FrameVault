@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "FrameVault — Cinematic Tracking Platform",
   description: "A cinematic tracking platform for modern film curation. Rate, review, and organize your collection.",
   keywords: ["movies", "tracking", "reviews", "ratings", "framevault", "film curation"],
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

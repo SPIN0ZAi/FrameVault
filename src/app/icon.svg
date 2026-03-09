@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background -->
+  <rect width="100" height="100" rx="18" fill="#0f0f1a"/>
+  <!-- Left trapezoid -->
+  <path d="M10 30L45 15V85L10 70V30Z" fill="#00D1C1"/>
+  <!-- Right trapezoid -->
+  <path d="M90 30L55 15V85L90 70V30Z" fill="#00D1C1"/>
+  <!-- Center rectangle (film gate) -->
+  <path d="M30 40H70V60H30V40Z" fill="#0f0f1a"/>
+</svg>
