@@ -451,16 +451,19 @@ export default function MovieDetailPage() {
         <>
             {/* Backdrop Hero */}
             {movie.backdropUrl && (
-                <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', marginTop: '-80px' }}>
+                <div style={{ position: 'relative', width: '100%', height: '420px', overflow: 'hidden', marginTop: '-80px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#1A1D21' }}>
+                    {/* Image — inset 15% each side so more vertical content is visible */}
                     <img
                         src={movie.backdropUrl}
                         alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.4)' }}
+                        style={{ width: '70%', height: '100%', objectFit: 'cover', objectPosition: 'center center', filter: 'brightness(0.45)' }}
                     />
-                    <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'linear-gradient(to bottom, rgba(26,29,33,0) 0%, #1A1D21 88%)',
-                    }} />
+                    {/* Bottom fade */}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(26,29,33,0) 0%, #1A1D21 88%)' }} />
+                    {/* Left fade */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '22%', height: '100%', background: 'linear-gradient(to right, #1A1D21 30%, transparent)' }} />
+                    {/* Right fade */}
+                    <div style={{ position: 'absolute', top: 0, right: 0, width: '22%', height: '100%', background: 'linear-gradient(to left, #1A1D21 30%, transparent)' }} />
                 </div>
             )}
 
