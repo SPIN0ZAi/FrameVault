@@ -98,14 +98,27 @@
 <summary><b>👤 User Profiles</b></summary>
 
 - **Top 5 Favorites** — pin your all-time favourites; prominently displayed on your profile
-- **Custom Posters (Letterboxd-style)** — upload your own poster or pick from TMDB alternatives; propagates everywhere: profile, watchlist, activity feed, and favorites
-- **Films Tab** — paginated watched history with sort options (Latest · Oldest · Top Rated · A–Z) and rating filters
+- **Top 5 Series** — pin your all-time favourite TV shows separately on your profile
+- **Custom Posters (Letterboxd-style)** — upload your own poster or pick from TMDB alternatives for both movies and TV shows; propagates everywhere: profile, watchlist, activity feed, and favorites
+- **Drag-to-reposition Banner & Avatar** — drag your banner and avatar images to crop exactly how you want; position is saved per-user
+- **Films Tab** — paginated watched history with sort options (Latest · Oldest · Top Rated · A–Z) and rating filters; sort by rating is global across your full history, not just the current page
 - **Reviews Tab** — all written reviews with inline star rating, poster, and edit/delete controls
 - **Watchlist Tab** — movies saved to watch later
 - **Lists Tab** — curated public or private film lists you've created
 - **Network Tab** — followers and following with quick follow/unfollow
 - **Ratings Histogram** — visual bar chart of your full rating distribution
 - **Stats Bar** — films · ratings · reviews · watchlist · followers · following · avg rating
+
+</details>
+
+<details open>
+<summary><b>📺 TV Shows</b></summary>
+
+- Full TV show watchlist — track shows you want to watch
+- Mark shows as watched with ratings
+- Custom posters for TV shows — same upload flow as movies
+- Top 5 Series — pin your favourite shows on your profile
+- Show ratings displayed on profile stats
 
 </details>
 
@@ -131,7 +144,18 @@
 </details>
 
 <details open>
-<summary><b>📓 Diary</b></summary>
+<summary><b>� Authentication & Security</b></summary>
+
+- **Forgot Password** — email-based password reset flow; cryptographically random tokens (SHA-256 hashed in DB), 1-hour expiry, single-use, anti-enumeration (always returns 200)
+- **Password strength enforcement** — min 8 chars, uppercase, lowercase, number on all password fields
+- **Rate limiting** — all sensitive endpoints protected via Upstash Redis sliding window: login (10/15m), register (5/1h), change-password (5/15m), forgot-password (5/1h), reset-password (5/15m), presign (20/10m)
+- **Role-based access** — movie creation restricted to `owner` role
+- **Input validation** — Zod schemas on all mutation endpoints
+
+</details>
+
+<details open>
+<summary><b>�📓 Diary</b></summary>
 
 - Chronological film log grouped by year and month
 - Navigate between years with prev/next arrows
@@ -174,12 +198,14 @@
 
 | Layer | Technology |
 |---|---|
-| **Framework** | [Next.js 15](https://nextjs.org) App Router · React 19 · TypeScript |
+| **Framework** | [Next.js 16](https://nextjs.org) App Router · React 19 · TypeScript |
 | **Database** | PostgreSQL via [Supabase](https://supabase.com) |
 | **ORM** | [Prisma](https://www.prisma.io) |
-| **Auth** | [NextAuth.js v5](https://authjs.dev) — credentials + OAuth |
-| **Storage** | Supabase Storage (S3-compatible) for custom poster uploads |
+| **Auth** | [NextAuth.js v5](https://authjs.dev) — credentials, JWT sessions, forgot/reset password |
+| **Email** | [Nodemailer](https://nodemailer.com) via Gmail SMTP — transactional password reset emails |
+| **Storage** | Supabase Storage (S3-compatible) for custom poster & banner uploads |
 | **Movie Data** | [TMDB API](https://www.themoviedb.org/documentation/api) |
+| **Rate Limiting** | [Upstash Redis](https://upstash.com) — sliding window rate limiting on all auth endpoints |
 | **Icons** | [Lucide React](https://lucide.dev) |
 | **Deployment** | [Vercel](https://vercel.com) — auto-deploy on push to `main` |
 
@@ -219,6 +245,14 @@ TMDB_API_KEY="eyJhbGciOiJIUzI1NiJ9..."
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+# Email — Gmail SMTP (for forgot-password emails)
+GMAIL_USER="youraddress@gmail.com"
+GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"  # Google App Password (not your login password)
+
+# Rate limiting (optional — feature is disabled if not set)
+UPSTASH_REDIS_REST_URL="https://..."
+UPSTASH_REDIS_REST_TOKEN="your-token"
 ```
 
 ### 3. Database setup
@@ -253,6 +287,8 @@ src/
 │   ├── activity/page.tsx           # Friends activity feed
 │   ├── members/page.tsx            # Members directory
 │   ├── lists/                      # List creation & viewing
+│   ├── forgot-password/page.tsx    # Request password reset form
+│   ├── reset-password/page.tsx     # Set new password (token from URL)
 │   ├── settings/page.tsx           # Account settings & import/export
 │   └── api/
 │       ├── movies/                 # Movie CRUD · ratings · reviews · watched
@@ -261,7 +297,7 @@ src/
 │       ├── recommendations/        # Genre-based personalized recommendations
 │       ├── activity/               # Activity feed
 │       ├── genres/                 # Genre list
-│       └── auth/                   # NextAuth handlers
+│       └── auth/                   # NextAuth · register · change-password · forgot-password · reset-password
 ├── components/
 │   ├── layout/                     # Header · Footer
 │   ├── providers/                  # NextAuth + SWR providers
@@ -271,11 +307,12 @@ src/
 │       ├── PersonalizedRecs.tsx    # "Picked For You" section
 │       ├── ScrollRow.tsx           # Horizontal scroll container
 │       └── ImageUploader.tsx       # Custom poster uploader
-├── lib/
-│   ├── tmdb.ts                     # TMDB API client + adult content filter
-│   ├── prisma.ts                   # Prisma singleton
-│   ├── auth/                       # NextAuth configuration
-│   └── sync-movie.ts               # TMDB → local DB sync utility
+│   ├── lib/
+│   │   ├── tmdb.ts                     # TMDB API client + adult content filter
+│   │   ├── prisma.ts                   # Prisma singleton
+│   │   ├── email.ts                    # Nodemailer Gmail SMTP helper
+│   │   ├── auth/                       # NextAuth configuration + password utils
+│   │   └── sync-movie.ts               # TMDB → local DB sync utility
 └── types/
     └── next-auth.d.ts              # Session type augmentation
 prisma/
