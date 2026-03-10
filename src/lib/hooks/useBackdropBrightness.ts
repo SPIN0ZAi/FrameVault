@@ -16,5 +16,5 @@ export function useBackdropBrightness(): number {
         revalidateOnFocus: false,
         dedupingInterval: 60_000,
     });
-    return data?.data?.profile?.backdropBrightness ?? 40;
+    return data?.data?.profile?.backdropBrightness ?? 60;
 }

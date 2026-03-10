@@ -71,7 +71,7 @@ model UserProfile {
   themeMode  String  @default("dark")
   bannerPosition    String? @default("50% 50%")
   avatarPosition    String? @default("50% 50%")
-  backdropBrightness Int     @default(40)
+  backdropBrightness Int     @default(60)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -78,7 +78,7 @@ export async function PATCH(req: Request) {
                     themeMode: themeMode || 'dark',
                     bannerPosition: bannerPosition ?? '50% 50%',
                     avatarPosition: avatarPosition ?? '50% 50%',
-                    backdropBrightness: backdropBrightness ?? 40,
+                    backdropBrightness: backdropBrightness ?? 60,
                 }
             });
         }

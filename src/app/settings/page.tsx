@@ -88,7 +88,7 @@ export default function SettingsPage() {
 
     // Appearance
     const [themeColor, setThemeColor] = useState('#00D1C1');
-    const [backdropBrightness, setBackdropBrightness] = useState(40);
+    const [backdropBrightness, setBackdropBrightness] = useState(60);
 
     // Password
     const [currentPw, setCurrentPw] = useState('');
@@ -529,7 +529,7 @@ export default function SettingsPage() {
                                                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', minWidth: 28, textAlign: 'right' }}>75%</span>
                                             </div>
                                             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-                                                Low = very dim &amp; subtle &nbsp;·&nbsp; High = bright &amp; vivid. Default is <strong style={{ color: 'var(--text-secondary)' }}>40%</strong>.
+                                                Low = very dim &amp; subtle &nbsp;·&nbsp; High = bright &amp; vivid. Default is <strong style={{ color: 'var(--text-secondary)' }}>60%</strong>.
                                             </p>
                                         </div>
                                     </div>
