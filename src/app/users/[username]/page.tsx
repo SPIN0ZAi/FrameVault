@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievement-defs';
+import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
 //  Types 
 
@@ -135,24 +136,17 @@ interface TMDBShowSearchResult {
 
 //  Helpers 
 
-function MoviePosterCard({ href, posterUrl, title, year }: {
-    href: string; posterUrl: string | null; title: string; year: number;
+function MoviePosterCard({ href, posterUrl, title, year, tmdbId }: {
+    href: string; posterUrl: string | null; title: string; year: number; tmdbId?: string | null;
 }) {
     return (
-        <Link href={href} className="movie-card">
-            {posterUrl ? (
-                <img src={posterUrl} alt={title} loading="lazy" />
-            ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                    <Film size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
-                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{title}</span>
-                </div>
-            )}
-            <div className="movie-card-overlay">
-                <div className="movie-card-title">{title}</div>
-                <div className="movie-card-year">{year}</div>
-            </div>
-        </Link>
+        <MovieHoverCard
+            id={tmdbId ?? href.replace('/movies/', '')}
+            href={href}
+            title={title}
+            year={year}
+            posterUrl={posterUrl}
+        />
     );
 }
 

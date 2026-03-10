@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Film, Search, SlidersHorizontal, X } from 'lucide-react';
+import MovieHoverCard from '@/components/ui/MovieHoverCard';
+import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
 interface Movie {
     id: string;
@@ -233,19 +234,15 @@ function MoviesInner() {
                 ) : (
                     <div className="grid grid-movies">
                         {movies.map(movie => (
-                            <Link href={`/movies/${movie.id}`} key={movie.id} className="movie-card">
-                                {movie.posterUrl ? <img src={movie.posterUrl} alt={movie.title} loading="lazy" /> : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                                        <Film size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{movie.title}</span>
-                                    </div>
-                                )}
-                                {movie.averageRating && <div className="movie-card-rating">★ {movie.averageRating}</div>}
-                                <div className="movie-card-overlay">
-                                    <div className="movie-card-title">{movie.title}</div>
-                                    <div className="movie-card-year">{movie.year}</div>
-                                </div>
-                            </Link>
+                            <MovieHoverCard
+                                key={movie.id}
+                                id={movie.id}
+                                href={`/movies/${movie.id}`}
+                                title={movie.title}
+                                year={movie.year}
+                                posterUrl={movie.posterUrl}
+                                averageRating={movie.averageRating}
+                            />
                         ))}
                     </div>
                 )}

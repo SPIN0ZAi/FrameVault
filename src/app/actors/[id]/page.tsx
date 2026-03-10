@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Film, MapPin, Calendar, ArrowLeft } from 'lucide-react';
+import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
 interface ActorMovie {
     id: number;
@@ -183,30 +184,21 @@ export default function ActorPage() {
 
                 <div className="grid grid-movies">
                     {actor.movies.map(movie => (
-                        <Link href={`/movies/${movie.id}`} key={movie.id} className="movie-card">
-                                {movie.posterUrl ? (
-                                    <img src={movie.posterUrl} alt={movie.title} loading="lazy" />
-                                ) : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                                        <Film size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{movie.title}</span>
-                                    </div>
-                                )}
-                                {movie.averageRating && (
-                                    <div className="movie-card-rating">★ {movie.averageRating}</div>
-                                )}
-                                <div className="movie-card-overlay">
-                                    <div className="movie-card-title">{movie.title}</div>
-                                    <div className="movie-card-year">{movie.year ?? '—'}</div>
-                                    {movie.character && (
-                                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-                                            as {movie.character}
-                                        </div>
-                                    )}
+                        <MovieHoverCard
+                            key={movie.id}
+                            id={movie.id.toString()}
+                            href={`/movies/${movie.id}`}
+                            title={movie.title}
+                            year={movie.year ?? 0}
+                            posterUrl={movie.posterUrl}
+                            averageRating={movie.averageRating}
+                            badge={movie.character ? (
+                                <div style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)' }}>
+                                    as {movie.character}
                                 </div>
-                            </Link>
-                        )
-                    )}
+                            ) : undefined}
+                        />
+                    ))}
                 </div>
             </div>
         </div>
