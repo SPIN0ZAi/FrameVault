@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Clapperboard, BookMarked, LayoutDashboard } from 'lucide-react';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Clapperboard, BookMarked, LayoutDashboard, Trophy } from 'lucide-react';
 
 export default function Header() {
     const { data: session } = useSession();
@@ -59,6 +59,9 @@ export default function Header() {
                     </Link>
                     <Link href="/members" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Users size={14} /> Members
+                    </Link>
+                    <Link href="/leaderboard" className="header-nav-link" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Trophy size={14} /> Leaderboard
                     </Link>
                     {session && (
                         <>
