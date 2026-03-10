@@ -10,7 +10,8 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
-    ...(process.env["DIRECT_URL"] ? { directUrl: process.env["DIRECT_URL"] } : {}),
+    // Use the direct (non-pooler) URL for Prisma CLI operations (db push, migrate, etc.)
+    // Runtime queries use DATABASE_URL via the PrismaPg adapter in src/lib/prisma.ts
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"]!,
   },
 });

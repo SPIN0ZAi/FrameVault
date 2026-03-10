@@ -69,8 +69,9 @@ model UserProfile {
   bannerUrl  String?
   themeColor String  @default("#6366f1")
   themeMode  String  @default("dark")
-  bannerPosition String? @default("50% 50%")
-  avatarPosition String? @default("50% 50%")
+  bannerPosition    String? @default("50% 50%")
+  avatarPosition    String? @default("50% 50%")
+  backdropBrightness Int     @default(40)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

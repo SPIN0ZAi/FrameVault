@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
+import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
 interface MovieDetail {
     id: string;
@@ -174,6 +175,7 @@ export default function MovieDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
     const router = useRouter();
+    const backdropBrightness = useBackdropBrightness();
     const [movie, setMovie] = useState<MovieDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [hoverRating, setHoverRating] = useState(0);
@@ -452,7 +454,7 @@ export default function MovieDetailPage() {
             {/* Backdrop — fixed full-viewport background, same as TV shows */}
             {movie.backdropUrl && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-                    <img src={movie.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.1 }} />
+                    <img src={movie.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: (backdropBrightness / 100) * 0.25 }} />
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, var(--bg-primary) 70%)' }} />
                 </div>
             )}

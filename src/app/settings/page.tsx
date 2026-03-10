@@ -88,6 +88,7 @@ export default function SettingsPage() {
 
     // Appearance
     const [themeColor, setThemeColor] = useState('#00D1C1');
+    const [backdropBrightness, setBackdropBrightness] = useState(40);
 
     // Password
     const [currentPw, setCurrentPw] = useState('');
@@ -119,6 +120,7 @@ export default function SettingsPage() {
                     setAvatarUrl(u.avatarUrl || null);
                     setBannerUrl(u.profile?.bannerUrl || null);
                     setThemeColor(u.profile?.themeColor || '#00D1C1');
+                    setBackdropBrightness(u.profile?.backdropBrightness ?? 40);
                     setBannerPosition(u.profile?.bannerPosition ?? '50% 50%');
                     setAvatarPosition(u.profile?.avatarPosition ?? '50% 50%');
                 }
@@ -158,7 +160,7 @@ export default function SettingsPage() {
             const res = await fetch('/api/users/me', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bio, location, themeColor, avatarUrl: finalAvatar, bannerUrl: finalBanner, avatarPosition, bannerPosition }),
+                body: JSON.stringify({ bio, location, themeColor, backdropBrightness, avatarUrl: finalAvatar, bannerUrl: finalBanner, avatarPosition, bannerPosition }),
             });
             const data = await res.json();
             if (data.success) {
@@ -497,6 +499,38 @@ export default function SettingsPage() {
                                                     ))}
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Backdrop Brightness ── */}
+                                <div style={card}>
+                                    <div style={cardHead}>
+                                        <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Backdrop Brightness</h2>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>How bright background images appear on the home carousel and movie/show detail pages</p>
+                                    </div>
+                                    <div style={{ padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <label style={{ ...labelStyle, marginBottom: 0 }}>Brightness</label>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--brand)', minWidth: 42, textAlign: 'right' }}>{backdropBrightness}%</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', minWidth: 28 }}>5%</span>
+                                                <input
+                                                    type="range"
+                                                    min={5}
+                                                    max={75}
+                                                    step={5}
+                                                    value={backdropBrightness}
+                                                    onChange={(e) => setBackdropBrightness(Number(e.target.value))}
+                                                    style={{ flex: 1, accentColor: 'var(--brand)', cursor: 'pointer' }}
+                                                />
+                                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', minWidth: 28, textAlign: 'right' }}>75%</span>
+                                            </div>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+                                                Low = very dim &amp; subtle &nbsp;·&nbsp; High = bright &amp; vivid. Default is <strong style={{ color: 'var(--text-secondary)' }}>40%</strong>.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

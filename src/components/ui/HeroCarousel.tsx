@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Play, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
 interface HeroMovie {
     id: string;
@@ -25,6 +26,7 @@ export default function HeroCarousel({ movies, isLoggedIn }: HeroCarouselProps) 
     const [current, setCurrent] = useState(0);
     const [visible, setVisible] = useState(0); // lags behind for crossfade
     const [transitioning, setTransitioning] = useState(false);
+    const backdropBrightness = useBackdropBrightness();
 
     const goTo = useCallback((next: number) => {
         if (transitioning || next === current) return;
@@ -72,7 +74,7 @@ export default function HeroCarousel({ movies, isLoggedIn }: HeroCarouselProps) 
                         backgroundImage: `url(${m.backdropUrl || m.posterUrl || ''})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center 25%',
-                        filter: 'blur(2px) brightness(0.45)',
+                        filter: `blur(2px) brightness(${(backdropBrightness / 100).toFixed(2)})`,
                         transform: 'scale(1.04)',
                         opacity: i === visible ? 1 : 0,
                         transition: 'opacity 0.6s ease',

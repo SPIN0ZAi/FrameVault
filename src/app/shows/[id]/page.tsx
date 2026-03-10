@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
+import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
 interface ShowDetail {
     id: string;
@@ -59,6 +60,7 @@ export default function ShowDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
     const router = useRouter();
+    const backdropBrightness = useBackdropBrightness();
     const [show, setShow] = useState<ShowDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState('');
@@ -234,7 +236,7 @@ export default function ShowDetailPage() {
             {/* Backdrop */}
             {show.backdropUrl && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-                    <img src={show.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.1 }} />
+                    <img src={show.backdropUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: (backdropBrightness / 100) * 0.25 }} />
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 0%, var(--bg-primary) 70%)' }} />
                 </div>
             )}
