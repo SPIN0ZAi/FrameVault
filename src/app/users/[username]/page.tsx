@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -1143,11 +1143,12 @@ export default function UserProfilePage() {
     interface StatsData {
         monthlyWatches: { month: string; year: number; count: number }[];
         genreBreakdown: { genre: string; count: number }[];
-        heatmap: { date: string; count: number }[];
+        heatmap: { date: string; count: number; items: { title: string; href: string; type: 'movie' | 'show' }[] }[];
         summary: { totalWatched: number; totalShows: number; totalRatings: number; totalReviews: number; avgRating: number | null };
     }
     const [statsData, setStatsData] = useState<StatsData | null>(null);
     const [statsLoaded, setStatsLoaded] = useState(false);
+    const [heatmapSelectedDate, setHeatmapSelectedDate] = useState<string | null>(null);
 
     // ── Achievements state ──────────────────────────────────────────────────
     type EarnedMap = Record<string, { earnedAt: string }>;
@@ -2224,14 +2225,16 @@ export default function UserProfilePage() {
                                     <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Overview</h2>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
                                         {([
-                                            { label: 'Films Logged', value: statsData.summary.totalWatched.toLocaleString(), icon: '🎬' },
-                                            { label: 'Shows Watched', value: statsData.summary.totalShows.toLocaleString(), icon: '📺' },
-                                            { label: 'Films Rated', value: statsData.summary.totalRatings.toLocaleString(), icon: '⭐' },
-                                            { label: 'Reviews', value: statsData.summary.totalReviews.toLocaleString(), icon: '✍️' },
-                                            ...(statsData.summary.avgRating != null ? [{ label: 'Avg Rating', value: `${(statsData.summary.avgRating / 2).toFixed(2)} ★`, icon: '📊' }] : []),
-                                        ] as { label: string; value: string; icon: string }[]).map(s => (
-                                            <div key={s.label} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                <span style={{ fontSize: 22 }}>{s.icon}</span>
+                                            { label: 'Films Logged',  value: statsData.summary.totalWatched.toLocaleString(),  icon: <Clapperboard size={18} color={accent} /> },
+                                            { label: 'Shows Watched', value: statsData.summary.totalShows.toLocaleString(),    icon: <Tv            size={18} color={accent} /> },
+                                            { label: 'Films Rated',   value: statsData.summary.totalRatings.toLocaleString(),  icon: <Star          size={18} color={accent} /> },
+                                            { label: 'Reviews',       value: statsData.summary.totalReviews.toLocaleString(),  icon: <PenLine       size={18} color={accent} /> },
+                                            ...(statsData.summary.avgRating != null ? [{ label: 'Avg Rating', value: `${(statsData.summary.avgRating / 2).toFixed(2)} ★`, icon: <BarChart3 size={18} color={accent} /> }] : []),
+                                        ] as { label: string; value: string; icon: React.ReactNode }[]).map(s => (
+                                            <div key={s.label} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {s.icon}
+                                                </div>
                                                 <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{s.value}</span>
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</span>
                                             </div>
@@ -2296,7 +2299,7 @@ export default function UserProfilePage() {
                                 {statsData.heatmap.length > 0 && (
                                     <section>
                                         <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Activity — Past Year</h2>
-                                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', overflowX: 'auto' }}>
+                                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)' }}>
                                             {(() => {
                                                 const today = new Date();
                                                 today.setHours(0, 0, 0, 0);
@@ -2304,6 +2307,7 @@ export default function UserProfilePage() {
                                                 startDate.setDate(today.getDate() - today.getDay() - 51 * 7);
 
                                                 const dateCountMap = new Map(statsData.heatmap.map(h => [h.date, h.count]));
+                                                const itemsMap     = new Map(statsData.heatmap.map(h => [h.date, h.items ?? []]));
                                                 const maxCount = Math.max(...statsData.heatmap.map(h => h.count), 1);
 
                                                 const weeks: (Date | null)[][] = [];
@@ -2320,39 +2324,115 @@ export default function UserProfilePage() {
                                                 const toKey = (d: Date) =>
                                                     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                                 const todayKey = toKey(today);
-                                                const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                                const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                                const DAYS   = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+                                                const CELL = 13, GAP = 4;
+
+                                                // Build month label per week column
+                                                let prevMonth = -1;
+                                                const monthLabels = weeks.map(week => {
+                                                    const first = week.find(d => d !== null);
+                                                    if (!first) return '';
+                                                    const m = first.getMonth();
+                                                    if (m !== prevMonth) { prevMonth = m; return MONTHS[m]; }
+                                                    return '';
+                                                });
+
+                                                // Selected date details
+                                                const selItems = heatmapSelectedDate ? (itemsMap.get(heatmapSelectedDate) ?? []) : [];
+                                                const selLabel = heatmapSelectedDate
+                                                    ? (() => { const [yr, mo, dy] = heatmapSelectedDate.split('-').map(Number); return `${MONTHS[mo - 1]} ${dy}, ${yr}`; })()
+                                                    : '';
 
                                                 return (
                                                     <div>
-                                                        <div style={{ display: 'flex', gap: 3 }}>
-                                                            {weeks.map((week, wi) => (
-                                                                <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                                                    {week.map((day, di) => {
-                                                                        if (!day) return <div key={di} style={{ width: 11, height: 11 }} />;
-                                                                        const key = toKey(day);
-                                                                        const count = dateCountMap.get(key) ?? 0;
-                                                                        const intensity = count > 0 ? 0.2 + (count / maxCount) * 0.8 : 1;
-                                                                        return (
-                                                                            <div
-                                                                                key={di}
-                                                                                title={`${MS[day.getMonth()]} ${day.getDate()}, ${day.getFullYear()}${count > 0 ? ` - ${count} film${count > 1 ? 's' : ''}` : ''}`}
-                                                                                style={{
-                                                                                    width: 11, height: 11, borderRadius: 2,
-                                                                                    background: count > 0 ? accent : 'rgba(255,255,255,0.07)',
-                                                                                    opacity: count > 0 ? intensity : 1,
-                                                                                    outline: key === todayKey ? `1px solid ${accent}` : undefined,
-                                                                                    cursor: 'default',
-                                                                                }}
-                                                                            />
-                                                                        );
-                                                                    })}
+                                                        <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+                                                            <div style={{ display: 'flex', gap: 0, minWidth: 'max-content' }}>
+                                                                {/* Day-of-week labels */}
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, paddingTop: 18, marginRight: 6, flexShrink: 0 }}>
+                                                                    {DAYS.map((label, i) => (
+                                                                        <div key={i} style={{ height: CELL, fontSize: 9, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', userSelect: 'none' }}>{label}</div>
+                                                                    ))}
                                                                 </div>
-                                                            ))}
+                                                                {/* Grid */}
+                                                                <div>
+                                                                    {/* Month labels */}
+                                                                    <div style={{ display: 'flex', gap: GAP, height: 14, marginBottom: 4 }}>
+                                                                        {weeks.map((_, wi) => (
+                                                                            <div key={wi} style={{ width: CELL, fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'visible', flexShrink: 0, userSelect: 'none' }}>
+                                                                                {monthLabels[wi]}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                    {/* Cells */}
+                                                                    <div style={{ display: 'flex', gap: GAP }}>
+                                                                        {weeks.map((week, wi) => (
+                                                                            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
+                                                                                {week.map((day, di) => {
+                                                                                    if (!day) return <div key={di} style={{ width: CELL, height: CELL, flexShrink: 0 }} />;
+                                                                                    const key        = toKey(day);
+                                                                                    const count      = dateCountMap.get(key) ?? 0;
+                                                                                    const isSelected = heatmapSelectedDate === key;
+                                                                                    const isToday    = key === todayKey;
+                                                                                    const intensity  = count > 0 ? 0.2 + (count / maxCount) * 0.8 : 1;
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={di}
+                                                                                            title={`${MONTHS[day.getMonth()]} ${day.getDate()}, ${day.getFullYear()}${count > 0 ? ` — ${count} title${count > 1 ? 's' : ''}` : ''}`}
+                                                                                            onClick={() => count > 0 && setHeatmapSelectedDate(isSelected ? null : key)}
+                                                                                            style={{
+                                                                                                width: CELL, height: CELL, borderRadius: 3, flexShrink: 0,
+                                                                                                background: count > 0 ? accent : 'rgba(255,255,255,0.07)',
+                                                                                                opacity: count > 0 ? intensity : 1,
+                                                                                                outline: isSelected ? '2px solid rgba(255,255,255,0.85)' : isToday ? `1px solid ${accent}` : 'none',
+                                                                                                outlineOffset: isSelected ? '1px' : '0px',
+                                                                                                cursor: count > 0 ? 'pointer' : 'default',
+                                                                                                transform: isSelected ? 'scale(1.3)' : 'scale(1)',
+                                                                                                transition: 'transform 0.12s ease',
+                                                                                            }}
+                                                                                        />
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+
+                                                        {/* Selected day panel */}
+                                                        {heatmapSelectedDate && (
+                                                            <div style={{ marginTop: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${accent}55`, borderRadius: 10, padding: '10px 14px' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                                                        {selLabel} — {selItems.length} title{selItems.length !== 1 ? 's' : ''}
+                                                                    </span>
+                                                                    <button onClick={() => setHeatmapSelectedDate(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex', alignItems: 'center' }}>
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                </div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                                    {selItems.map((item, idx) => (
+                                                                        <Link
+                                                                            key={idx}
+                                                                            href={item.href}
+                                                                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none', border: '1px solid var(--border-subtle)' }}
+                                                                        >
+                                                                            {item.type === 'movie'
+                                                                                ? <Film size={11} style={{ color: accent, flexShrink: 0 }} />
+                                                                                : <Tv   size={11} style={{ color: accent, flexShrink: 0 }} />}
+                                                                            {item.title}
+                                                                        </Link>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Legend */}
+                                                        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
                                                             <span style={{ fontSize: 10, color: 'var(--text-muted)', marginRight: 4 }}>Less</span>
-                                                            {[0, 0.35, 0.55, 0.75, 1].map((op, i) => (
-                                                                <div key={i} style={{ width: 11, height: 11, borderRadius: 2, background: i === 0 ? 'rgba(255,255,255,0.07)' : accent, opacity: i === 0 ? 1 : op }} />
+                                                            {[0, 0.3, 0.5, 0.75, 1].map((op, i) => (
+                                                                <div key={i} style={{ width: CELL, height: CELL, borderRadius: 3, background: i === 0 ? 'rgba(255,255,255,0.07)' : accent, opacity: i === 0 ? 1 : op }} />
                                                             ))}
                                                             <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>More</span>
                                                         </div>

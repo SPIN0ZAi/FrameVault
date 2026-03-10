@@ -71,22 +71,35 @@ export async function GET(
         const [heatmapMovies, heatmapShows] = await Promise.all([
             prisma.watchedMovie.findMany({
                 where: { userId: user.id, watchedAt: { gte: oneYearAgo } },
-                select: { watchedAt: true },
+                select: { watchedAt: true, movie: { select: { id: true, title: true, tmdbId: true } } },
             }),
             prisma.watchedShow.findMany({
                 where: { userId: user.id, watchedAt: { gte: oneYearAgo } },
-                select: { watchedAt: true },
+                select: { watchedAt: true, tmdbShowId: true, title: true },
             }),
         ]);
 
-        const dateMap = new Map<string, number>();
-        for (const item of [...heatmapMovies, ...heatmapShows]) {
-            const d   = item.watchedAt;
+        type HeatItem  = { title: string; href: string; type: 'movie' | 'show' };
+        type HeatEntry = { count: number; items: HeatItem[] };
+        const dateMap = new Map<string, HeatEntry>();
+        for (const wm of heatmapMovies) {
+            const d   = wm.watchedAt;
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            dateMap.set(key, (dateMap.get(key) ?? 0) + 1);
+            const entry = dateMap.get(key) ?? { count: 0, items: [] };
+            entry.count++;
+            entry.items.push({ title: wm.movie.title, href: `/movies/${wm.movie.tmdbId ?? wm.movie.id}`, type: 'movie' });
+            dateMap.set(key, entry);
+        }
+        for (const ws of heatmapShows) {
+            const d   = ws.watchedAt;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const entry = dateMap.get(key) ?? { count: 0, items: [] };
+            entry.count++;
+            entry.items.push({ title: ws.title, href: `/tv/${ws.tmdbShowId}`, type: 'show' });
+            dateMap.set(key, entry);
         }
         const heatmap = Array.from(dateMap.entries())
-            .map(([date, count]) => ({ date, count }))
+            .map(([date, data]) => ({ date, count: data.count, items: data.items }))
             .sort((a, b) => a.date.localeCompare(b.date));
 
         // ── Summary totals ─────────────────────────────────────────────────
