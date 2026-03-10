@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Film, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Film, Search, SlidersHorizontal, X, Shuffle, Loader2 } from 'lucide-react';
 import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
 interface Movie {
@@ -86,6 +86,21 @@ function MoviesInner() {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
+    const [surprising, setSurprising] = useState(false);
+
+    const handleSurpriseMe = async () => {
+        if (surprising) return;
+        setSurprising(true);
+        try {
+            const url = selectedGenre
+                ? `/api/movies/surprise?genre=${selectedGenre}`
+                : '/api/movies/surprise';
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) router.push(`/movies/${data.data.id}`);
+        } catch { }
+        finally { setSurprising(false); }
+    };
 
     // Keep search input in sync with URL (e.g. after back/forward navigation)
     useEffect(() => { setSearchInput(search); }, [search]);
@@ -160,6 +175,13 @@ function MoviesInner() {
                             </button>
                         )}
                     </div>
+                    <button onClick={handleSurpriseMe} disabled={surprising}
+                        className="btn btn-ghost btn-sm"
+                        title={selectedGenre ? `Surprise me in ${selectedGenre}` : 'Surprise me'}
+                        style={{ flexShrink: 0, gap: 6, whiteSpace: 'nowrap' }}>
+                        {surprising ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Shuffle size={14} />}
+                        Surprise Me
+                    </button>
                     <button onClick={() => setShowFilters(f => !f)}
                         className={`btn btn-sm ${showFilters || hasFilters ? 'btn-primary' : 'btn-ghost'}`}
                         style={{ flexShrink: 0, gap: 6 }}>
