@@ -6,7 +6,7 @@ import { X, Shuffle } from 'lucide-react';
 
 export interface SpinMovie {
     id: string;
-    tmdbId: number | null;
+    href: string;
     title: string;
     year: number;
     posterUrl: string | null;
@@ -64,7 +64,7 @@ export default function SpinWheelModal({ movies, onClose, accent = 'var(--brand)
         setTranslateY(0);
     };
 
-    const movieHref = winner ? `/movies/${winner.tmdbId ?? winner.id}` : '#';
+    const movieHref = winner ? winner.href : '#';
 
     return (
         <div

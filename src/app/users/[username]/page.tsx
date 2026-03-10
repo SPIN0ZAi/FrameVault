@@ -1130,6 +1130,7 @@ export default function UserProfilePage() {
     const [watchlistLoaded, setWatchlistLoaded] = useState(false);
     const [watchlistSubTab, setWatchlistSubTab] = useState<'movies' | 'shows'>('movies');
     const [showSpinWheel, setShowSpinWheel] = useState(false);
+    const [showSpinWheelShows, setShowSpinWheelShows] = useState(false);
     const [network, setNetwork] = useState<{ followers: NetworkUser[]; following: NetworkUser[] } | null>(null);
     const [networkLoaded, setNetworkLoaded] = useState(false);
     const [networkTab, setNetworkTab] = useState<'followers' | 'following'>('followers');
@@ -1777,12 +1778,25 @@ export default function UserProfilePage() {
                             <SpinWheelModal
                                 movies={watchlist.map(item => ({
                                     id: item.movie.id,
-                                    tmdbId: item.movie.tmdbId ?? null,
+                                    href: `/movies/${item.movie.tmdbId ?? item.movie.id}`,
                                     title: item.movie.title,
                                     year: item.movie.year,
                                     posterUrl: item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl,
                                 }))}
                                 onClose={() => setShowSpinWheel(false)}
+                                accent={accent}
+                            />
+                        )}
+                        {showSpinWheelShows && showWatchlist.length > 0 && (
+                            <SpinWheelModal
+                                movies={showWatchlist.map(sw => ({
+                                    id: sw.id,
+                                    href: `/shows/${sw.tmdbShowId}`,
+                                    title: sw.title,
+                                    year: sw.year ?? 0,
+                                    posterUrl: sw.posterUrl,
+                                }))}
+                                onClose={() => setShowSpinWheelShows(false)}
                                 accent={accent}
                             />
                         )}
@@ -1801,6 +1815,14 @@ export default function UserProfilePage() {
                             {isOwnProfile && watchlistSubTab === 'movies' && watchlist.length > 1 && (
                                 <button
                                     onClick={() => setShowSpinWheel(true)}
+                                    style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: 700, background: `${accent}18`, color: accent, border: `1px solid ${accent}44`, cursor: 'pointer', marginBottom: '-1px', flexShrink: 0 }}
+                                >
+                                    🎰 Spin the Wheel
+                                </button>
+                            )}
+                            {isOwnProfile && watchlistSubTab === 'shows' && showWatchlist.length > 1 && (
+                                <button
+                                    onClick={() => setShowSpinWheelShows(true)}
                                     style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: 700, background: `${accent}18`, color: accent, border: `1px solid ${accent}44`, cursor: 'pointer', marginBottom: '-1px', flexShrink: 0 }}
                                 >
                                     🎰 Spin the Wheel
