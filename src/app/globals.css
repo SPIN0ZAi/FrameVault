@@ -973,8 +973,7 @@ select {
 .spoiler-wrapper {
   position: relative;
   border-radius: var(--radius-sm);
-  overflow: hidden;
-  min-height: 56px;
+  min-height: 90px;
   cursor: pointer;
 }
 
@@ -986,6 +985,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  padding: 12px;
   background: rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-sm);
 }
