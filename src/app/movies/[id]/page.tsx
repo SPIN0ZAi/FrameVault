@@ -879,14 +879,20 @@ export default function MovieDetailPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            <div
-                                                className={`review-content ${review.containsSpoilers && !revealedSpoilers.has(review.id) ? 'blurred' : ''}`}
-                                                onClick={() => { if (review.containsSpoilers && !revealedSpoilers.has(review.id)) setRevealedSpoilers(new Set([...revealedSpoilers, review.id])); }}
-                                            >
-                                                {review.content}
-                                            </div>
-                                            {review.containsSpoilers && !revealedSpoilers.has(review.id) && (
-                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>Click to reveal spoiler</p>
+                                            {review.containsSpoilers && !revealedSpoilers.has(review.id) ? (
+                                                <div className="spoiler-wrapper" onClick={() => setRevealedSpoilers(new Set([...revealedSpoilers, review.id]))}>
+                                                    <div className="review-content blurred">{review.content}</div>
+                                                    <div className="spoiler-overlay">
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 999, padding: '4px 12px', fontSize: 'var(--text-xs)', color: 'var(--warning)', fontWeight: 600 }}>
+                                                            <AlertTriangle size={12} /> Spoiler
+                                                        </span>
+                                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, background: 'rgba(0,209,193,0.1)', border: '1px solid rgba(0,209,193,0.25)', borderRadius: 999, padding: '4px 14px', cursor: 'pointer' }}>
+                                                            Tap to reveal
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="review-content">{review.content}</div>
                                             )}
                                             {/* Like button */}
                                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-sm)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border-subtle)' }}>

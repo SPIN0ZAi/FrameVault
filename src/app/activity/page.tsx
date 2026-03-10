@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Tv, Star, Eye, MessageSquare, Activity, Users } from 'lucide-react';
+import { Film, Tv, Star, Eye, MessageSquare, Activity, Users, AlertTriangle } from 'lucide-react';
 
 interface ActivityEvent {
     id: string;
@@ -218,12 +218,18 @@ export default function ActivityPage() {
 
                                                     {ev.type === 'reviewed' && ev.reviewContent && (
                                                         isSpoiler ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginTop: 4 }}>
-                                                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--warning)' }}>Contains spoilers</span>
-                                                                <button onClick={() => setRevealedReviews(prev => new Set([...prev, ev.id]))}
-                                                                    style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>
-                                                                    Reveal
-                                                                </button>
+                                                            <div className="spoiler-wrapper" style={{ marginTop: 4 }} onClick={() => setRevealedReviews(prev => new Set([...prev, ev.id]))}>
+                                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>
+                                                                    {ev.reviewContent}
+                                                                </p>
+                                                                <div className="spoiler-overlay">
+                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 999, padding: '3px 10px', fontSize: 10, color: 'var(--warning)', fontWeight: 600 }}>
+                                                                        <AlertTriangle size={10} /> Spoiler
+                                                                    </span>
+                                                                    <span style={{ fontSize: 10, color: 'var(--brand)', fontWeight: 600, background: 'rgba(0,209,193,0.1)', border: '1px solid rgba(0,209,193,0.25)', borderRadius: 999, padding: '3px 10px', cursor: 'pointer' }}>
+                                                                        Tap to reveal
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>

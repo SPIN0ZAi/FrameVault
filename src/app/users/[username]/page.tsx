@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard } from 'lucide-react';
+import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard, AlertTriangle } from 'lucide-react';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievement-defs';
 import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
@@ -973,9 +973,18 @@ function ReviewCard({
                         </div>
                     </div>
                 ) : review.containsSpoilers && !revealed ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', padding: 'var(--space-sm)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius-sm)' }}>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--warning)' }}>Contains spoilers</span>
-                        <button onClick={onReveal} style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, background: 'none', cursor: 'pointer' }}>Reveal</button>
+                    <div className="spoiler-wrapper" onClick={onReveal}>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const, filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
+                            {review.content}
+                        </p>
+                        <div className="spoiler-overlay">
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 999, padding: '4px 12px', fontSize: 'var(--text-xs)', color: 'var(--warning)', fontWeight: 600 }}>
+                                <AlertTriangle size={12} /> Spoiler
+                            </span>
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600, background: 'rgba(0,209,193,0.1)', border: '1px solid rgba(0,209,193,0.25)', borderRadius: 999, padding: '4px 14px', cursor: 'pointer' }}>
+                                Tap to reveal
+                            </span>
+                        </div>
                     </div>
                 ) : (
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const }}>

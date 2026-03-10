@@ -964,14 +964,30 @@ select {
 }
 
 .review-content.blurred {
-  filter: blur(6px);
-  cursor: pointer;
+  filter: blur(5px);
   user-select: none;
+  pointer-events: none;
   transition: filter var(--duration-normal) var(--ease-out);
 }
 
-.review-content.blurred:hover {
-  filter: blur(3px);
+.spoiler-wrapper {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  min-height: 56px;
+  cursor: pointer;
+}
+
+.spoiler-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-sm);
 }
 
 /* ═══════════════════════════════════════════════════
