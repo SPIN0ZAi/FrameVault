@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2,
 } from 'lucide-react';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
@@ -102,6 +102,12 @@ export default function SettingsPage() {
     // Export
     const [isExporting, setIsExporting] = useState(false);
     const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Trakt import
+    const [traktUsername, setTraktUsername] = useState('');
+    const [traktImporting, setTraktImporting] = useState(false);
+    const [traktMsg, setTraktMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [traktResult, setTraktResult] = useState<{ importedMovies: number; importedShows: number; skippedMovies: number; skippedShows: number } | null>(null);
 
     // Danger zone
     const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -222,6 +228,32 @@ export default function SettingsPage() {
             setExportMsg({ type: 'error', text: 'Export failed. Please try again.' });
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleTraktImport = async () => {
+        if (!traktUsername.trim()) return;
+        setTraktImporting(true);
+        setTraktMsg(null);
+        setTraktResult(null);
+        try {
+            const res = await fetch('/api/trakt/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ traktUsername: traktUsername.trim() }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                const { importedMovies, importedShows, skippedMovies, skippedShows } = data.data;
+                setTraktResult({ importedMovies, importedShows, skippedMovies, skippedShows });
+                setTraktMsg({ type: 'success', text: `Import complete! ${importedMovies} film${importedMovies !== 1 ? 's' : ''} and ${importedShows} show${importedShows !== 1 ? 's' : ''} synced.` });
+            } else {
+                setTraktMsg({ type: 'error', text: data.error?.message || 'Import failed. Check the username and try again.' });
+            }
+        } catch {
+            setTraktMsg({ type: 'error', text: 'Network error. Please try again.' });
+        } finally {
+            setTraktImporting(false);
         }
     };
 
@@ -637,6 +669,93 @@ export default function SettingsPage() {
                                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Upload your CSV export to sync watched films, ratings &amp; reviews</p>
                                             </div>
                                         </Link>
+                                    </div>
+                                </div>
+
+                                {/* ── Trakt.tv Import ── */}
+                                <div style={card}>
+                                    <div style={cardHead}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            {/* Trakt red logo pill */}
+                                            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: '#ed1c24', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                <span style={{ fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: '-0.03em' }}>tv</span>
+                                            </div>
+                                            <div>
+                                                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Sync from Trakt.tv</h2>
+                                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 2 }}>Import your public watch history from Trakt directly — no sign-in required</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={cardBody}>
+                                        {/* How it works */}
+                                        <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: 10 }}>
+                                            <Link2 size={15} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.7, margin: 0 }}>
+                                                Enter your Trakt username below. Your watch history must be set to <strong style={{ color: 'var(--text-secondary)' }}>public</strong> on Trakt.
+                                                We'll import all films and TV shows — existing entries won't be overwritten.
+                                                Visit <a href="https://trakt.tv/settings/sharing" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>trakt.tv/settings/sharing</a> to check your privacy settings.
+                                            </p>
+                                        </div>
+
+                                        {/* Username input + button */}
+                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', maxWidth: 480, flexWrap: 'wrap' }}>
+                                            <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
+                                                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, pointerEvents: 'none' }}>trakt.tv/</span>
+                                                <input
+                                                    className="input"
+                                                    type="text"
+                                                    placeholder="username"
+                                                    value={traktUsername}
+                                                    onChange={e => { setTraktUsername(e.target.value); setTraktMsg(null); setTraktResult(null); }}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleTraktImport(); }}
+                                                    style={{ width: '100%', paddingLeft: 72 }}
+                                                    disabled={traktImporting}
+                                                />
+                                            </div>
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={handleTraktImport}
+                                                disabled={traktImporting || !traktUsername.trim()}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+                                            >
+                                                {traktImporting
+                                                    ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Importing…</>
+                                                    : <><Upload size={15} /> Import</>}
+                                            </button>
+                                        </div>
+
+                                        {/* Progress / result */}
+                                        {traktImporting && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
+                                                <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                                                Fetching history from Trakt and syncing to your account… this may take a minute.
+                                            </div>
+                                        )}
+
+                                        {/* Result breakdown */}
+                                        {traktResult && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-sm)' }}>
+                                                {[
+                                                    { label: 'Films imported',  value: traktResult.importedMovies, color: 'var(--brand)' },
+                                                    { label: 'Shows imported',  value: traktResult.importedShows,  color: 'var(--brand)' },
+                                                    { label: 'Films skipped',   value: traktResult.skippedMovies,  color: 'var(--text-tertiary)' },
+                                                    { label: 'Shows skipped',   value: traktResult.skippedShows,   color: 'var(--text-tertiary)' },
+                                                ].map(stat => (
+                                                    <div key={stat.label} style={{ padding: '10px 14px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 10 }}>
+                                                        <div style={{ fontSize: 20, fontWeight: 900, color: stat.color }}>{stat.value.toLocaleString()}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{stat.label}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Status message */}
+                                        {traktMsg && (
+                                            <div style={{ padding: '10px var(--space-md)', borderRadius: 'var(--radius-md)', maxWidth: 480, background: traktMsg.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${traktMsg.type === 'success' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, fontSize: 'var(--text-sm)', color: traktMsg.type === 'success' ? '#10b981' : 'var(--error)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                {traktMsg.type === 'success' ? <Check size={15} /> : <AlertTriangle size={15} />}
+                                                {traktMsg.text}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
