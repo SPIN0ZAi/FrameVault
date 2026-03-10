@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown } from 'lucide-react';
+import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown, RefreshCw } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
@@ -43,6 +43,8 @@ interface MovieDetail {
         rating: number | null;
         hasReview: boolean;
         customPosterUrl: string | null;
+        rewatchCount: number;
+        lastRewatchedAt: string | null;
     } | null;
 }
 
@@ -307,6 +309,28 @@ export default function MovieDetailPage() {
         }
     };
 
+    const handleRewatch = async () => {
+        if (!session) { router.push('/login'); return; }
+        setActionLoading('rewatch');
+        try {
+            const res = await fetch(`/api/movies/${id}/rewatch`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setMovie(prev => prev ? {
+                    ...prev,
+                    userInteraction: prev.userInteraction ? {
+                        ...prev.userInteraction,
+                        watched: true,
+                        rewatchCount: data.data.rewatchCount,
+                        lastRewatchedAt: data.data.lastRewatchedAt,
+                    } : prev.userInteraction,
+                } : prev);
+            }
+        } finally {
+            setActionLoading('');
+        }
+    };
+
     const handleWatchlist = async () => {
         if (!session) { router.push('/login'); return; }
         setActionLoading('watchlist');
@@ -507,6 +531,30 @@ export default function MovieDetailPage() {
                                 </button>
                             </div>
                         )}
+
+                        {/* Rewatch stamp badge */}
+                        {(movie.userInteraction?.rewatchCount ?? 0) > 0 && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 10,
+                                left: 10,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                background: 'rgba(0,0,0,0.82)',
+                                border: '1.5px solid var(--brand)',
+                                borderRadius: 999,
+                                padding: '4px 10px 4px 7px',
+                                backdropFilter: 'blur(6px)',
+                                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                                pointerEvents: 'none',
+                            }}>
+                                <RefreshCw size={11} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', letterSpacing: '0.02em', lineHeight: 1 }}>
+                                    ×{movie.userInteraction!.rewatchCount}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Info */}
@@ -575,6 +623,24 @@ export default function MovieDetailPage() {
                                     <><Eye size={18} /> Mark as Watched</>
                                 )}
                             </button>
+
+                            {/* Rewatch button — shown only when the film is already watched */}
+                            {session && movie.userInteraction?.watched && (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={handleRewatch}
+                                    disabled={actionLoading === 'rewatch'}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}
+                                    title={movie.userInteraction.rewatchCount > 0 ? `Rewatched ×${movie.userInteraction.rewatchCount}` : 'Mark as rewatched'}
+                                >
+                                    {actionLoading === 'rewatch'
+                                        ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                        : <RefreshCw size={18} />}
+                                    {movie.userInteraction.rewatchCount > 0
+                                        ? <>Rewatch &nbsp;<span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px', marginLeft: -2 }}>×{movie.userInteraction.rewatchCount}</span></>
+                                        : <>Rewatch</>}
+                                </button>
+                            )}
                             <button
                                 className={`btn ${movie.userInteraction?.watchlisted ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={handleWatchlist}

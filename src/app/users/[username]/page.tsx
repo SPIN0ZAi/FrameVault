@@ -42,6 +42,7 @@ interface UserProfile {
 interface WatchedMovie {
     id: string;
     watchedAt: string;
+    rewatchCount: number;
     movie: {
         id: string;
         tmdbId: number | null;
@@ -1518,7 +1519,15 @@ export default function UserProfilePage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {watchedMovies.map(wm => (
-                                        <MoviePosterCard key={wm.id} href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
+                                        <div key={wm.id} style={{ position: 'relative' }}>
+                                            <MoviePosterCard href={`/movies/${wm.movie.tmdbId ?? wm.movie.id}`} posterUrl={wm.movie.customPosters?.[0]?.posterUrl ?? wm.movie.posterUrl} title={wm.movie.title} year={wm.movie.year} />
+                                            {wm.rewatchCount > 0 && (
+                                                <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.82)', border: '1.5px solid var(--brand)', borderRadius: 999, padding: '2px 7px 2px 5px', backdropFilter: 'blur(4px)', boxShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', lineHeight: 1 }}>×{wm.rewatchCount}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </section>
@@ -1619,6 +1628,12 @@ export default function UserProfilePage() {
                                             {(wm as WatchedMovie & { rating?: number }).rating && (
                                                 <div style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.75)', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#fbbf24' }}>
                                                     {(wm as WatchedMovie & { rating?: number }).rating}★
+                                                </div>
+                                            )}
+                                            {(wm as WatchedMovie).rewatchCount > 0 && (
+                                                <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.82)', border: '1.5px solid var(--brand)', borderRadius: 999, padding: '2px 7px 2px 5px', backdropFilter: 'blur(4px)', boxShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', lineHeight: 1 }}>×{(wm as WatchedMovie).rewatchCount}</span>
                                                 </div>
                                             )}
                                         </div>

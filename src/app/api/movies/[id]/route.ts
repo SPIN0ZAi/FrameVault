@@ -80,6 +80,7 @@ export async function GET(
             const [watched, watchlisted, rating, review, customPoster] = await Promise.all([
                 prisma.watchedMovie.findUnique({
                     where: { userId_movieId: { userId: session.user.id, movieId: localMovie.id } },
+                    select: { rewatchCount: true, lastRewatchedAt: true },
                 }),
                 prisma.watchlistItem.findUnique({
                     where: { userId_movieId: { userId: session.user.id, movieId: localMovie.id } },
@@ -103,6 +104,8 @@ export async function GET(
                 rating: rating?.value ?? null,
                 hasReview: !!review,
                 customPosterUrl: customPoster?.posterUrl || null,
+                rewatchCount: watched?.rewatchCount ?? 0,
+                lastRewatchedAt: watched?.lastRewatchedAt?.toISOString() ?? null,
             };
         }
 

@@ -105,6 +105,8 @@ export default function SettingsPage() {
 
     // Trakt import
     const [traktUsername, setTraktUsername] = useState('');
+    const [traktSavedUsername, setTraktSavedUsername] = useState('');
+    const [traktLastSync, setTraktLastSync] = useState<string | null>(null);
     const [traktImporting, setTraktImporting] = useState(false);
     const [traktMsg, setTraktMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [traktResult, setTraktResult] = useState<{ importedMovies: number; importedShows: number; skippedMovies: number; skippedShows: number } | null>(null);
@@ -129,6 +131,10 @@ export default function SettingsPage() {
                     setBackdropBrightness(u.profile?.backdropBrightness ?? 40);
                     setBannerPosition(u.profile?.bannerPosition ?? '50% 50%');
                     setAvatarPosition(u.profile?.avatarPosition ?? '50% 50%');
+                    const savedTrakt = u.profile?.traktUsername || '';
+                    setTraktUsername(savedTrakt);
+                    setTraktSavedUsername(savedTrakt);
+                    setTraktLastSync(u.profile?.traktLastSync || null);
                 }
             } finally {
                 setIsLoading(false);
@@ -244,11 +250,35 @@ export default function SettingsPage() {
             });
             const data = await res.json();
             if (data.success) {
-                const { importedMovies, importedShows, skippedMovies, skippedShows } = data.data;
+                const { importedMovies, importedShows, skippedMovies, skippedShows, traktLastSync: syncTime } = data.data;
                 setTraktResult({ importedMovies, importedShows, skippedMovies, skippedShows });
+                setTraktSavedUsername(traktUsername.trim());
+                if (syncTime) setTraktLastSync(syncTime);
                 setTraktMsg({ type: 'success', text: `Import complete! ${importedMovies} film${importedMovies !== 1 ? 's' : ''} and ${importedShows} show${importedShows !== 1 ? 's' : ''} synced.` });
             } else {
                 setTraktMsg({ type: 'error', text: data.error?.message || 'Import failed. Check the username and try again.' });
+            }
+        } catch {
+            setTraktMsg({ type: 'error', text: 'Network error. Please try again.' });
+        } finally {
+            setTraktImporting(false);
+        }
+    };
+
+    const handleSyncNow = async () => {
+        setTraktImporting(true);
+        setTraktMsg(null);
+        setTraktResult(null);
+        try {
+            const res = await fetch('/api/trakt/import');
+            const data = await res.json();
+            if (data.success) {
+                const { importedMovies, importedShows, skippedMovies, skippedShows, traktLastSync: syncTime } = data.data;
+                setTraktResult({ importedMovies, importedShows, skippedMovies, skippedShows });
+                if (syncTime) setTraktLastSync(syncTime);
+                setTraktMsg({ type: 'success', text: `Sync complete! ${importedMovies} film${importedMovies !== 1 ? 's' : ''} and ${importedShows} show${importedShows !== 1 ? 's' : ''} synced.` });
+            } else {
+                setTraktMsg({ type: 'error', text: data.error?.message || 'Sync failed. Please try again.' });
             }
         } catch {
             setTraktMsg({ type: 'error', text: 'Network error. Please try again.' });
@@ -723,6 +753,33 @@ export default function SettingsPage() {
                                                     : <><Upload size={15} /> Import</>}
                                             </button>
                                         </div>
+
+                                        {/* Saved username quick-sync row */}
+                                        {traktSavedUsername && (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(0,209,193,0.05)', border: '1px solid rgba(0,209,193,0.2)', borderRadius: 10, flexWrap: 'wrap', gap: 8 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                                                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                                        Linked: <span style={{ color: 'var(--brand)' }}>trakt.tv/{traktSavedUsername}</span>
+                                                    </span>
+                                                    {traktLastSync && (
+                                                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                                                            &bull; Last synced {new Date(traktLastSync).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={handleSyncNow}
+                                                    disabled={traktImporting}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 12px' }}
+                                                >
+                                                    {traktImporting
+                                                        ? <><Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> Syncing…</>
+                                                        : <>↻ Sync Now</>}
+                                                </button>
+                                            </div>
+                                        )}
 
                                         {/* Progress / result */}
                                         {traktImporting && (

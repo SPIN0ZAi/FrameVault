@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
                     create: { userId, movieId, watchedAt },
                     update: { watchedAt },
                 });
+                // Remove from watchlist if present
+                await prisma.watchlistItem.deleteMany({ where: { userId, movieId } });
                 importedMovies++;
             } catch {
                 skippedMovies++;
@@ -157,18 +159,67 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ── Persist username + sync timestamp ────────────────────────────────
+        const traktLastSync = new Date();
+        await prisma.userProfile.upsert({
+            where: { userId },
+            update: { traktUsername, traktLastSync },
+            create: {
+                userId,
+                traktUsername,
+                traktLastSync,
+                themeColor: '#00D1C1',
+                themeMode: 'dark',
+                bannerPosition: '50% 50%',
+                avatarPosition: '50% 50%',
+                backdropBrightness: 60,
+            },
+        });
+
         return successResponse({
             importedMovies,
             importedShows,
             skippedMovies,
             skippedShows,
             totalProcessed: allHistory.length,
+            traktLastSync: traktLastSync.toISOString(),
         });
     } catch (error) {
         console.error('[trakt/import] error:', error);
         if ((error as Error).message === 'TRAKT_CLIENT_ID env variable is not set') {
             return errorResponse({ code: 'CONFIG_ERROR', message: 'Trakt integration is not configured on this server.' }, 503);
         }
+        return serverError();
+    }
+}
+
+// GET /api/trakt/import — auto-sync using saved traktUsername
+export async function GET() {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return errorResponse({ code: 'UNAUTHORIZED', message: 'Not authenticated' }, 401);
+        }
+
+        const userId = session.user.id;
+        const profile = await prisma.userProfile.findUnique({
+            where: { userId },
+            select: { traktUsername: true, traktLastSync: true },
+        });
+
+        if (!profile?.traktUsername) {
+            return errorResponse({ code: 'NOT_CONFIGURED', message: 'No Trakt username saved. Import manually first.' }, 400);
+        }
+
+        // Re-use POST logic by constructing a synthetic request body
+        const syntheticReq = new Request('http://localhost/api/trakt/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ traktUsername: profile.traktUsername }),
+        });
+        return POST(syntheticReq as NextRequest);
+    } catch (error) {
+        console.error('[trakt/import GET] error:', error);
         return serverError();
     }
 }

@@ -11,9 +11,10 @@ const updateMeSchema = z.object({
     bannerUrl: z.string().url('Invalid banner URL').max(2048).optional().nullable(),
     themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid hex color').optional(),
     themeMode: z.enum(['light', 'dark', 'system']).optional(),
-    bannerPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.\d+)?% (100|[1-9]?[0-9])(\.\d+)?%$/).max(25).optional().nullable(),
-    avatarPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.\d+)?% (100|[1-9]?[0-9])(\.\d+)?%$/).max(25).optional().nullable(),
+    bannerPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.[0-9]+)?% (100|[1-9]?[0-9])(\.[0-9]+)?%$/).max(25).optional().nullable(),
+    avatarPosition: z.string().regex(/^(100|[1-9]?[0-9])(\.[0-9]+)?% (100|[1-9]?[0-9])(\.[0-9]+)?%$/).max(25).optional().nullable(),
     backdropBrightness: z.number().int().min(5).max(75).optional(),
+    traktUsername: z.string().max(100).optional().nullable(),
 });
 
 export async function GET() {
@@ -51,12 +52,12 @@ export async function PATCH(req: Request) {
         if (!parsed.success) {
             return validationError(parsed.error.issues[0].message);
         }
-        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode, bannerPosition, avatarPosition, backdropBrightness } = parsed.data;
+        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode, bannerPosition, avatarPosition, backdropBrightness, traktUsername } = parsed.data;
 
         const userId = session.user.id;
 
-        // Update User Profile (bio, location, banner, theme)
-        if (bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined || bannerPosition !== undefined || avatarPosition !== undefined || backdropBrightness !== undefined) {
+        // Update User Profile (bio, location, banner, theme, trakt)
+        if (bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined || bannerPosition !== undefined || avatarPosition !== undefined || backdropBrightness !== undefined || traktUsername !== undefined) {
             await prisma.userProfile.upsert({
                 where: { userId },
                 update: {
@@ -68,6 +69,7 @@ export async function PATCH(req: Request) {
                     ...(bannerPosition !== undefined && { bannerPosition }),
                     ...(avatarPosition !== undefined && { avatarPosition }),
                     ...(backdropBrightness !== undefined && { backdropBrightness }),
+                    ...(traktUsername !== undefined && { traktUsername }),
                 },
                 create: {
                     userId,
@@ -79,6 +81,7 @@ export async function PATCH(req: Request) {
                     bannerPosition: bannerPosition ?? '50% 50%',
                     avatarPosition: avatarPosition ?? '50% 50%',
                     backdropBrightness: backdropBrightness ?? 60,
+                    traktUsername: traktUsername ?? null,
                 }
             });
         }

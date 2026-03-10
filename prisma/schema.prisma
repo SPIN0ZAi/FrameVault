@@ -72,6 +72,8 @@ model UserProfile {
   bannerPosition    String? @default("50% 50%")
   avatarPosition    String? @default("50% 50%")
   backdropBrightness Int     @default(60)
+  traktUsername  String?
+  traktLastSync  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -143,6 +145,8 @@ model WatchedMovie {
   userId    String
   movieId   String
   watchedAt DateTime @default(now())
+  rewatchCount     Int      @default(0)
+  lastRewatchedAt  DateTime?
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
