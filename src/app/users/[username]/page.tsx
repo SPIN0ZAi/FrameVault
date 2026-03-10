@@ -212,6 +212,167 @@ function RatingHistogramCard({ counts, average, total }: {
                         </div>
                     </div>
                 )}
+
+                {/* ══════════════════════════ STATS TAB ══════════════════════════ */}
+                {activeTab === 'Stats' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)' }}>
+                        {!statsLoaded ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-3xl)' }}>
+                                <div style={{ width: 32, height: 32, border: '3px solid var(--border-default)', borderTopColor: accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                            </div>
+                        ) : statsData ? (
+                            <>
+                                {/* Summary cards */}
+                                <section>
+                                    <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Overview</h2>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
+                                        {([
+                                            { label: 'Films Logged', value: statsData.summary.totalWatched.toLocaleString(), icon: '🎬' },
+                                            { label: 'Shows Watched', value: statsData.summary.totalShows.toLocaleString(), icon: '📺' },
+                                            { label: 'Films Rated', value: statsData.summary.totalRatings.toLocaleString(), icon: '⭐' },
+                                            { label: 'Reviews', value: statsData.summary.totalReviews.toLocaleString(), icon: '✍️' },
+                                            ...(statsData.summary.avgRating != null ? [{ label: 'Avg Rating', value: `${(statsData.summary.avgRating / 2).toFixed(2)} \u2605`, icon: '📊' }] : []),
+                                        ] as { label: string; value: string; icon: string }[]).map(s => (
+                                            <div key={s.label} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                <span style={{ fontSize: 22 }}>{s.icon}</span>
+                                                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{s.value}</span>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                {/* Monthly activity bar chart */}
+                                {statsData.monthlyWatches.some(m => m.count > 0) && (
+                                    <section>
+                                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Films per Month</h2>
+                                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)' }}>
+                                            {(() => {
+                                                const maxCount = Math.max(...statsData.monthlyWatches.map(m => m.count), 1);
+                                                return (
+                                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
+                                                        {statsData.monthlyWatches.map((m, i) => {
+                                                            const h = Math.max(4, Math.round((m.count / maxCount) * 104));
+                                                            return (
+                                                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                                                                    <span style={{ fontSize: 9, fontWeight: 700, color: m.count > 0 ? 'var(--text-secondary)' : 'transparent' }}>{m.count}</span>
+                                                                    <div
+                                                                        title={`${m.month} ${m.year}: ${m.count} film${m.count !== 1 ? 's' : ''}`}
+                                                                        style={{ width: '100%', height: h, background: m.count > 0 ? accent : 'rgba(255,255,255,0.06)', borderRadius: '3px 3px 0 0', cursor: 'default', opacity: m.count > 0 ? 1 : 0.4 }}
+                                                                        onMouseEnter={e => { if (m.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '0.75'; }}
+                                                                        onMouseLeave={e => { if (m.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
+                                                                    />
+                                                                    <span style={{ fontSize: 9, color: 'var(--text-tertiary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{m.month}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Genre breakdown */}
+                                {statsData.genreBreakdown.length > 0 && (
+                                    <section>
+                                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Top Genres</h2>
+                                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                            {(() => {
+                                                const maxCount = Math.max(...statsData.genreBreakdown.map(g => g.count), 1);
+                                                return statsData.genreBreakdown.map((g, i) => (
+                                                    <div key={g.genre} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                                                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', width: 18, textAlign: 'right', flexShrink: 0 }}>#{i + 1}</span>
+                                                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)', width: 100, flexShrink: 0 }}>{g.genre}</span>
+                                                        <div style={{ flex: 1, height: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 5, overflow: 'hidden' }}>
+                                                            <div style={{ width: `${(g.count / maxCount) * 100}%`, height: '100%', background: accent, borderRadius: 5, transition: 'width 0.6s ease' }} />
+                                                        </div>
+                                                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-secondary)', width: 34, textAlign: 'right', flexShrink: 0 }}>{g.count}</span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Activity heatmap */}
+                                {statsData.heatmap.length > 0 && (
+                                    <section>
+                                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Activity — Past Year</h2>
+                                        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', overflowX: 'auto' }}>
+                                            {(() => {
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                const startDate = new Date(today);
+                                                startDate.setDate(today.getDate() - today.getDay() - 51 * 7);
+
+                                                const dateCountMap = new Map(statsData.heatmap.map(h => [h.date, h.count]));
+                                                const maxCount = Math.max(...statsData.heatmap.map(h => h.count), 1);
+
+                                                const weeks: (Date | null)[][] = [];
+                                                const cur = new Date(startDate);
+                                                for (let w = 0; w < 53; w++) {
+                                                    const week: (Date | null)[] = [];
+                                                    for (let d = 0; d < 7; d++) {
+                                                        week.push(cur <= today ? new Date(cur) : null);
+                                                        cur.setDate(cur.getDate() + 1);
+                                                    }
+                                                    weeks.push(week);
+                                                }
+
+                                                const toKey = (d: Date) =>
+                                                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                const todayKey = toKey(today);
+                                                const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+                                                return (
+                                                    <div>
+                                                        <div style={{ display: 'flex', gap: 3 }}>
+                                                            {weeks.map((week, wi) => (
+                                                                <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                                    {week.map((day, di) => {
+                                                                        if (!day) return <div key={di} style={{ width: 11, height: 11 }} />;
+                                                                        const key = toKey(day);
+                                                                        const count = dateCountMap.get(key) ?? 0;
+                                                                        const intensity = count > 0 ? 0.2 + (count / maxCount) * 0.8 : 1;
+                                                                        return (
+                                                                            <div
+                                                                                key={di}
+                                                                                title={`${MS[day.getMonth()]} ${day.getDate()}, ${day.getFullYear()}${count > 0 ? ` - ${count} film${count > 1 ? 's' : ''}` : ''}`}
+                                                                                style={{
+                                                                                    width: 11, height: 11, borderRadius: 2,
+                                                                                    background: count > 0 ? accent : 'rgba(255,255,255,0.07)',
+                                                                                    opacity: count > 0 ? intensity : 1,
+                                                                                    outline: key === todayKey ? `1px solid ${accent}` : undefined,
+                                                                                    cursor: 'default',
+                                                                                }}
+                                                                            />
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+                                                            <span style={{ fontSize: 10, color: 'var(--text-muted)', marginRight: 4 }}>Less</span>
+                                                            {[0, 0.35, 0.55, 0.75, 1].map((op, i) => (
+                                                                <div key={i} style={{ width: 11, height: 11, borderRadius: 2, background: i === 0 ? 'rgba(255,255,255,0.07)' : accent, opacity: i === 0 ? 1 : op }} />
+                                                            ))}
+                                                            <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>More</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </section>
+                                )}
+                            </>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: 'var(--space-3xl)', color: 'var(--text-tertiary)' }}>
+                                No stats available yet. Start logging films to see your stats here.
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1096,10 +1257,10 @@ export default function UserProfilePage() {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<'not_found' | 'server_error' | null>(null);
-    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements'>(() => {
+    const [activeTab, setActiveTab] = useState<'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements' | 'Stats'>(() => {
         const tab = searchParams.get('tab');
-        const valid = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'];
-        return (valid.includes(tab ?? '') ? tab : 'Profile') as 'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements';
+        const valid = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements', 'Stats'];
+        return (valid.includes(tab ?? '') ? tab : 'Profile') as 'Profile' | 'Films' | 'TV' | 'Reviews' | 'Watchlist' | 'Lists' | 'Network' | 'Achievements' | 'Stats';
     });
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
@@ -1139,6 +1300,16 @@ export default function UserProfilePage() {
     const [listsLoaded, setListsLoaded] = useState(false);
     const [userRatingHistogram, setUserRatingHistogram] = useState<{ counts: number[]; average: number | null; total: number } | null>(null);
 
+    // ── Stats state ─────────────────────────────────────────────────────────
+    interface StatsData {
+        monthlyWatches: { month: string; year: number; count: number }[];
+        genreBreakdown: { genre: string; count: number }[];
+        heatmap: { date: string; count: number }[];
+        summary: { totalWatched: number; totalShows: number; totalRatings: number; totalReviews: number; avgRating: number | null };
+    }
+    const [statsData, setStatsData] = useState<StatsData | null>(null);
+    const [statsLoaded, setStatsLoaded] = useState(false);
+
     // ── Achievements state ──────────────────────────────────────────────────
     type EarnedMap = Record<string, { earnedAt: string }>;
     const [earnedMap, setEarnedMap] = useState<EarnedMap>({});
@@ -1161,7 +1332,7 @@ export default function UserProfilePage() {
     const [voteLoading, setVoteLoading] = useState(false);
 
     const isOwnProfile = session?.user?.username === username;
-    const TABS = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements'] as const;
+    const TABS = ['Profile', 'Films', 'TV', 'Reviews', 'Watchlist', 'Lists', 'Network', 'Achievements', 'Stats'] as const;
     const accent = user?.profile?.themeColor || 'var(--brand)';
     const switchTab = (tab: typeof TABS[number]) => {
         setActiveTab(tab);
@@ -1285,7 +1456,12 @@ export default function UserProfilePage() {
                     .then(d => { if (d.success) setPollData(d.data); setPollLoaded(true); });
             }
         }
-    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showsRatingFilter, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded]);
+        if (activeTab === 'Stats' && !statsLoaded) {
+            fetch(`/api/users/${username}/stats`)
+                .then(r => r.json())
+                .then(d => { if (d.success) setStatsData(d.data); setStatsLoaded(true); });
+        }
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showsRatingFilter, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded, statsLoaded]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
