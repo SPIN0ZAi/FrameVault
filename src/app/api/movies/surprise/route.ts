@@ -49,9 +49,9 @@ export async function GET(req: NextRequest) {
         }
 
         const pick = candidates[Math.floor(Math.random() * candidates.length)];
-        const localId = await syncTMDBMovie(pick.id);
+        await syncTMDBMovie(pick.id); // ensure it exists in local DB
 
-        return successResponse({ id: localId, title: pick.title });
+        return successResponse({ id: pick.id.toString(), title: pick.title });
     } catch (err) {
         console.error('[surprise] error:', err);
         return errorResponse({ code: 'INTERNAL_ERROR', message: 'Failed to pick a surprise movie' }, 500);
