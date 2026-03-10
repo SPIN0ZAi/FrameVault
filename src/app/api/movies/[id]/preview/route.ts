@@ -21,7 +21,7 @@ export async function GET(
         }));
 
         const backdropUrl = movie?.backdrop_path
-            ? getTMDBImageUrl(movie.backdrop_path, 'w780')
+            ? getTMDBImageUrl(movie.backdrop_path, 'w500')
             : null;
 
         const description = movie?.overview ?? null;
