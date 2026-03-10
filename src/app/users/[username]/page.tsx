@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Film, Tv, Star, MapPin, Calendar, BookmarkPlus, MessageSquare, Eye, Users, List, Globe, Lock, Crown, Search, X, Plus, GripVertical, Pencil, Trash2, Trophy, Shield, Sparkles, PenLine, BookOpen, BookMarked, Award, BarChart3, Gem, Heart, Flame, LayoutList, Archive, CheckCircle2, Sunrise, Clapperboard, AlertTriangle } from 'lucide-react';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, RARITY_COLORS, type AchievementDef, type AchievementRarity } from '@/lib/achievement-defs';
 import MovieHoverCard from '@/components/ui/MovieHoverCard';
+import SpinWheelModal from '@/components/ui/SpinWheelModal';
 
 //  Types 
 
@@ -1128,6 +1129,7 @@ export default function UserProfilePage() {
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [watchlistLoaded, setWatchlistLoaded] = useState(false);
     const [watchlistSubTab, setWatchlistSubTab] = useState<'movies' | 'shows'>('movies');
+    const [showSpinWheel, setShowSpinWheel] = useState(false);
     const [network, setNetwork] = useState<{ followers: NetworkUser[]; following: NetworkUser[] } | null>(null);
     const [networkLoaded, setNetworkLoaded] = useState(false);
     const [networkTab, setNetworkTab] = useState<'followers' | 'following'>('followers');
@@ -1771,8 +1773,21 @@ export default function UserProfilePage() {
 
                 {activeTab === 'Watchlist' && (
                     <div>
+                        {showSpinWheel && watchlist.length > 0 && (
+                            <SpinWheelModal
+                                movies={watchlist.map(item => ({
+                                    id: item.movie.id,
+                                    tmdbId: item.movie.tmdbId ?? null,
+                                    title: item.movie.title,
+                                    year: item.movie.year,
+                                    posterUrl: item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl,
+                                }))}
+                                onClose={() => setShowSpinWheel(false)}
+                                accent={accent}
+                            />
+                        )}
                         {/* Sub-tab switcher */}
-                        <div style={{ display: 'flex', gap: 'var(--space-xl)', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-xl)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xl)', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-xl)' }}>
                             {(['movies', 'shows'] as const).map(sub => (
                                 <button key={sub} onClick={() => setWatchlistSubTab(sub)}
                                     style={{ padding: '0.5rem 0', fontWeight: 700, fontSize: 'var(--text-sm)', color: watchlistSubTab === sub ? 'var(--text-primary)' : 'var(--text-tertiary)', borderBottom: watchlistSubTab === sub ? `2px solid ${accent}` : '2px solid transparent', marginBottom: '-1px', background: 'none', cursor: 'pointer' }}
@@ -1783,6 +1798,14 @@ export default function UserProfilePage() {
                                     </span>
                                 </button>
                             ))}
+                            {isOwnProfile && watchlistSubTab === 'movies' && watchlist.length > 1 && (
+                                <button
+                                    onClick={() => setShowSpinWheel(true)}
+                                    style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: 700, background: `${accent}18`, color: accent, border: `1px solid ${accent}44`, cursor: 'pointer', marginBottom: '-1px', flexShrink: 0 }}
+                                >
+                                    🎰 Spin the Wheel
+                                </button>
+                            )}
                         </div>
 
                         {/* Films sub-tab */}
