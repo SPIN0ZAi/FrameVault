@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Film, Search, SlidersHorizontal, X } from 'lucide-react';
 import MovieHoverCard from '@/components/ui/MovieHoverCard';
-import MovieHoverCard from '@/components/ui/MovieHoverCard';
 
 interface Movie {
     id: string;
