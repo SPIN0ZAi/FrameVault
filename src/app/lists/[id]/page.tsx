@@ -324,9 +324,9 @@ export default function ListDetailPage() {
                 }}>
                     {/* Custom banner */}
                     {bannerSrc && <img src={bannerSrc} alt="List banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                    {/* Auto blurred poster banner */}
+                    {/* Auto blurred poster banner — scaled wide to cover edges, light blur */}
                     {!bannerSrc && autoBannerPoster && (
-                        <img src={autoBannerPoster} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'blur(28px) brightness(0.55) saturate(1.3)', transform: 'scale(1.12)' }} />
+                        <div style={{ position: 'absolute', inset: '-30px', backgroundImage: `url(${autoBannerPoster})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(6px) brightness(0.45) saturate(1.4)' }} />
                     )}
                     {/* Editing empty placeholder */}
                     {!bannerSrc && !autoBannerPoster && editing && (
