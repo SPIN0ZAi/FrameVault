@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { successResponse, unauthorizedError, notFoundError, serverError } from '@/lib/api-response';
+import { successResponse, unauthorizedError, forbiddenError, notFoundError, serverError } from '@/lib/api-response';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -18,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
         });
         if (!original) return notFoundError('List');
         if (!original.isPublic && original.userId !== session.user.id) {
-            return successResponse({ error: 'Cannot clone a private list' }, 403);
+            return forbiddenError('Cannot clone a private list');
         }
 
         // Create the cloned list

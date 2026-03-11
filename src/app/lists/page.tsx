@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { List, Plus, Lock, Globe, Film, Star, Loader2, X, Heart } from 'lucide-react';
+import { List, Plus, Lock, Globe, Film, Star, Loader2, X, Heart, Download } from 'lucide-react';
 
 interface ListItem {
     id: string;
@@ -27,6 +27,39 @@ export default function ListsPage() {
     const [newDesc, setNewDesc] = useState('');
     const [newPublic, setNewPublic] = useState(true);
     const [creating, setCreating] = useState(false);
+
+    // ── Letterboxd import modal ──
+    const [showImport, setShowImport]           = useState(false);
+    const [importUrl, setImportUrl]             = useState('');
+    const [importCustomTitle, setImportCustomTitle] = useState('');
+    const [importing, setImporting]             = useState(false);
+    const [importMsg, setImportMsg]             = useState<{ ok: boolean; text: string } | null>(null);
+
+    const handleImport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importUrl.trim()) return;
+        setImporting(true);
+        setImportMsg(null);
+        try {
+            const res = await fetch('/api/letterboxd-import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: importUrl, customTitle: importCustomTitle }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                setImportMsg({ ok: false, text: data.error || 'Import failed' });
+            } else {
+                setImportMsg({ ok: true, text: `Imported ${data.added} of ${data.total} films!` });
+                await fetchLists();
+                setTimeout(() => { router.push(`/lists/${data.listId}`); }, 1200);
+            }
+        } catch {
+            setImportMsg({ ok: false, text: 'Network error — please try again.' });
+        } finally {
+            setImporting(false);
+        }
+    };
 
     const fetchLists = async () => {
         const res = await fetch('/api/lists');
@@ -73,13 +106,22 @@ export default function ListsPage() {
                         </p>
                     </div>
                     {session && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setShowCreate(true)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                        >
-                            <Plus size={18} /> New List
-                        </button>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => { setShowImport(true); setImportMsg(null); setImportUrl(''); setImportCustomTitle(''); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                            >
+                                <Download size={15} /> Import from Letterboxd
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => setShowCreate(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                            >
+                                <Plus size={18} /> New List
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -211,6 +253,80 @@ export default function ListsPage() {
                                 <button type="submit" className="btn btn-primary" disabled={!newTitle.trim() || creating} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     {creating && <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
                                     {creating ? 'Creating…' : 'Create List'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Import from Letterboxd Modal ── */}
+            {showImport && (
+                <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}
+                    onClick={() => !importing && setShowImport(false)}
+                >
+                    <div
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', width: '100%', maxWidth: 480 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-lg)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Download size={18} style={{ color: 'var(--brand)' }} />
+                                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>Import from Letterboxd</h2>
+                            </div>
+                            {!importing && (
+                                <button onClick={() => setShowImport(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                    <X size={20} />
+                                </button>
+                            )}
+                        </div>
+
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', lineHeight: 1.6 }}>
+                            Paste a public Letterboxd list URL and all its films will be added to a new list automatically. Short links (<code>boxd.it/…</code>) also work.
+                        </p>
+
+                        <form onSubmit={handleImport} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            <div>
+                                <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Letterboxd List URL *</label>
+                                <input
+                                    className="input"
+                                    value={importUrl}
+                                    onChange={(e) => setImportUrl(e.target.value)}
+                                    placeholder="https://letterboxd.com/username/list/list-name/"
+                                    style={{ width: '100%' }}
+                                    disabled={importing}
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                                    Custom list title <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional — uses Letterboxd title if blank)</span>
+                                </label>
+                                <input
+                                    className="input"
+                                    value={importCustomTitle}
+                                    onChange={(e) => setImportCustomTitle(e.target.value)}
+                                    placeholder="Leave blank to use the original list title"
+                                    style={{ width: '100%' }}
+                                    disabled={importing}
+                                />
+                            </div>
+
+                            {importMsg && (
+                                <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: importMsg.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${importMsg.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`, fontSize: 'var(--text-sm)', color: importMsg.ok ? 'rgb(34,197,94)' : '#ef4444', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {importMsg.ok ? '✅' : '❌'} {importMsg.text}
+                                    {importMsg.ok && <span style={{ marginLeft: 4, opacity: 0.7 }}>Redirecting…</span>}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', marginTop: 'var(--space-sm)' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowImport(false)} disabled={importing}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={!importUrl.trim() || importing} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 140 }}>
+                                    {importing
+                                        ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Importing films…</>
+                                        : <><Download size={15} /> Import List</>
+                                    }
                                 </button>
                             </div>
                         </form>
