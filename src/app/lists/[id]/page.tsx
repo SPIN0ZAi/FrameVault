@@ -126,6 +126,47 @@ export default function ListDetailPage() {
     const [addingId, setAddingId] = useState<string | null>(null);
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
+    // Poster picker
+    const [posterPickerItem, setPosterPickerItem] = useState<ListItem | null>(null);
+    const [posterOptions, setPosterOptions] = useState<string[]>([]);
+    const [posterLoading, setPosterLoading] = useState(false);
+    const [savingPoster, setSavingPoster] = useState(false);
+
+    const openPosterPicker = async (item: ListItem) => {
+        setPosterPickerItem(item);
+        setPosterOptions([]);
+        setPosterLoading(true);
+        try {
+            const endpoint = item.mediaType === 'show'
+                ? `https://api.themoviedb.org/3/tv/${item.tmdbId}/images?include_image_language=en,null`
+                : `https://api.themoviedb.org/3/movie/${item.tmdbId}/images?include_image_language=en,null`;
+            const res = await fetch(`/api/tmdb-proxy?url=${encodeURIComponent(endpoint)}`);
+            const d = await res.json();
+            const posters: string[] = (d.posters ?? [])
+                .sort((a: { vote_average: number }, b: { vote_average: number }) => b.vote_average - a.vote_average)
+                .slice(0, 12)
+                .map((p: { file_path: string }) => `https://image.tmdb.org/t/p/w342${p.file_path}`);
+            // Always include the current poster first if not already there
+            if (item.posterUrl && !posters.includes(item.posterUrl)) posters.unshift(item.posterUrl);
+            setPosterOptions(posters);
+        } catch { setPosterOptions(item.posterUrl ? [item.posterUrl] : []); }
+        setPosterLoading(false);
+    };
+
+    const handlePickPoster = async (posterUrl: string) => {
+        if (!posterPickerItem || savingPoster) return;
+        setSavingPoster(true);
+        const item = posterPickerItem;
+        await fetch(`/api/lists/${id}/movies/${item.tmdbId}?mediaType=${item.mediaType}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ posterUrl }),
+        });
+        setItems((prev) => prev.map((m) => m.id === item.id ? { ...m, posterUrl } : m));
+        setPosterPickerItem(null);
+        setSavingPoster(false);
+    };
+
     // Search for movies/shows to add
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handleAddSearch = (q: string, type: 'movie' | 'show') => {
@@ -311,22 +352,33 @@ export default function ListDetailPage() {
     const hasGroups = Array.from(grouped.keys()).some((k) => k !== '');
 
     return (
-        <div className="page" style={{ paddingBottom: 'var(--space-3xl)' }}>
+        <div className="page" style={{ paddingBottom: 'var(--space-3xl)', paddingTop: (bannerSrc || autoBannerPoster) ? 0 : undefined }}>
 
             {/* ── Banner ── */}
             {(bannerSrc || autoBannerPoster || editing) && (
                 <div style={{
                     position: 'relative', width: '100%',
-                    height: (bannerSrc || autoBannerPoster) ? 280 : 140,
+                    height: (bannerSrc || autoBannerPoster) ? 300 : 140,
                     overflow: 'hidden',
                     background: 'var(--bg-secondary)',
+                    marginBottom: 0,
                     borderBottom: !bannerSrc && !autoBannerPoster ? '2px dashed rgba(99,102,241,0.3)' : undefined,
                 }}>
                     {/* Custom banner */}
                     {bannerSrc && <img src={bannerSrc} alt="List banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                    {/* Auto blurred poster banner — scaled wide to cover edges, light blur */}
+                    {/* Auto blurred banner: tile poster 3× side by side so it fills the wide area naturally */}
                     {!bannerSrc && autoBannerPoster && (
-                        <div style={{ position: 'absolute', inset: '-30px', backgroundImage: `url(${autoBannerPoster})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(6px) brightness(0.45) saturate(1.4)' }} />
+                        <div style={{
+                            position: 'absolute', inset: '-20px',
+                            display: 'flex', gap: 0,
+                        }}>
+                            {[0,1,2,3].map((i) => (
+                                <img key={i} src={autoBannerPoster} alt="" style={{
+                                    flex: '1 0 25%', height: '100%', objectFit: 'cover',
+                                    filter: 'blur(5px) brightness(0.5) saturate(1.3)',
+                                }} />
+                            ))}
+                        </div>
                     )}
                     {/* Editing empty placeholder */}
                     {!bannerSrc && !autoBannerPoster && editing && (
@@ -541,12 +593,12 @@ export default function ListDetailPage() {
                                         </button>
                                     )}
                                     {!collapsedGroups.has(groupKey) && (
-                                        <ItemGrid groupItems={gItems} isOwner={isOwner} removingId={removingId} handleRemoveItem={handleRemoveItem} globalOffset={items.indexOf(gItems[0])} />
+                                        <ItemGrid groupItems={gItems} isOwner={isOwner} removingId={removingId} handleRemoveItem={handleRemoveItem} globalOffset={items.indexOf(gItems[0])} onChangePoster={isOwner ? openPosterPicker : undefined} />
                                     )}
                                 </div>
                             ))
                         ) : (
-                            <ItemGrid groupItems={items} isOwner={isOwner} removingId={removingId} handleRemoveItem={handleRemoveItem} globalOffset={0} />
+                            <ItemGrid groupItems={items} isOwner={isOwner} removingId={removingId} handleRemoveItem={handleRemoveItem} globalOffset={0} onChangePoster={isOwner ? openPosterPicker : undefined} />
                         )}
                     </div>
                 )}
@@ -638,6 +690,47 @@ export default function ListDetailPage() {
                 </div>
             )}
 
+            {/* ── Poster Picker Modal ── */}
+            {posterPickerItem && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}
+                    onClick={() => !savingPoster && setPosterPickerItem(null)}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', width: '100%', maxWidth: 560 }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-lg)' }}>
+                            <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Choose Poster — {posterPickerItem.title}</h2>
+                            <button onClick={() => setPosterPickerItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+                        </div>
+                        {posterLoading ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-2xl)' }}>
+                                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
+                            </div>
+                        ) : posterOptions.length === 0 ? (
+                            <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 'var(--space-xl)' }}>No posters found</p>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
+                                {posterOptions.map((url, i) => {
+                                    const isCurrent = url === posterPickerItem.posterUrl;
+                                    return (
+                                        <button key={i} onClick={() => handlePickPoster(url)} disabled={savingPoster}
+                                            style={{ padding: 0, background: 'none', border: `2px solid ${isCurrent ? 'var(--brand)' : 'transparent'}`, borderRadius: 'var(--radius-md)', cursor: 'pointer', overflow: 'hidden', aspectRatio: '2/3', transition: 'border-color 0.15s, transform 0.15s', position: 'relative' }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.transform = 'scale(1.04)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = isCurrent ? 'var(--brand)' : 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                        >
+                                            <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                            {isCurrent && (
+                                                <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--brand)', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Check size={12} color="white" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* ── Delete Modal ── */}
             {showDelete && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }} onClick={() => setShowDelete(false)}>
@@ -668,9 +761,10 @@ interface ItemGridProps {
     removingId: string | null;
     handleRemoveItem: (tmdbId: number, mediaType: string) => void;
     globalOffset: number;
+    onChangePoster?: (item: ListItem) => void;
 }
 
-function ItemGrid({ groupItems, isOwner, removingId, handleRemoveItem, globalOffset }: ItemGridProps) {
+function ItemGrid({ groupItems, isOwner, removingId, handleRemoveItem, globalOffset, onChangePoster }: ItemGridProps) {
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
             {groupItems.map((item, idx) => {
@@ -678,7 +772,10 @@ function ItemGrid({ groupItems, isOwner, removingId, handleRemoveItem, globalOff
                 const href = isShow ? `/shows/${item.tmdbId}` : `/movies/${item.tmdbId}`;
                 const key = `${item.tmdbId}:${item.mediaType}`;
                 return (
-                    <div key={key} style={{ position: 'relative' }}>
+                    <div key={key} style={{ position: 'relative' }}
+                        onMouseEnter={(e) => { const ov = e.currentTarget.querySelector<HTMLElement>('.hover-actions'); if (ov) ov.style.opacity = '1'; }}
+                        onMouseLeave={(e) => { const ov = e.currentTarget.querySelector<HTMLElement>('.hover-actions'); if (ov) ov.style.opacity = '0'; }}
+                    >
                         <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                             <div style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--bg-secondary)', marginBottom: 8, position: 'relative' }}>
                                 {item.posterUrl
@@ -695,22 +792,32 @@ function ItemGrid({ groupItems, isOwner, removingId, handleRemoveItem, globalOff
                                         <Tv size={9} /> TV
                                     </div>
                                 )}
+                                {/* Owner hover actions */}
+                                {isOwner && (
+                                    <div className="hover-actions" style={{ position: 'absolute', inset: 0, opacity: 0, transition: 'opacity 0.15s' }}>
+                                        <button
+                                            onClick={(e) => { e.preventDefault(); handleRemoveItem(item.tmdbId, item.mediaType); }}
+                                            disabled={removingId === key}
+                                            title="Remove from list"
+                                            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', background: 'rgba(239,68,68,0.9)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            <X size={13} color="white" />
+                                        </button>
+                                        {onChangePoster && (
+                                            <button
+                                                onClick={(e) => { e.preventDefault(); onChangePoster(item); }}
+                                                title="Change poster"
+                                                style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '3px 7px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: 4 }}
+                                            >
+                                                🖼 Poster
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.3, marginBottom: 2, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{item.title}</p>
                             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{item.year}</p>
                         </Link>
-                        {isOwner && (
-                            <button
-                                onClick={() => handleRemoveItem(item.tmdbId, item.mediaType)}
-                                disabled={removingId === key}
-                                title="Remove from list"
-                                style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: '50%', background: 'rgba(239,68,68,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: removingId === key ? 0.5 : 0, transition: 'opacity 0.15s' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                onMouseLeave={(e) => (e.currentTarget.style.opacity = removingId === key ? '0.5' : '0')}
-                            >
-                                <X size={12} color="white" />
-                            </button>
-                        )}
                     </div>
                 );
             })}
