@@ -144,7 +144,7 @@
 </details>
 
 <details open>
-<summary><b>� Authentication & Security</b></summary>
+<summary><b> Authentication & Security</b></summary>
 
 - **Forgot Password** — email-based password reset flow; cryptographically random tokens (SHA-256 hashed in DB), 1-hour expiry, single-use, anti-enumeration (always returns 200)
 - **Password strength enforcement** — min 8 chars, uppercase, lowercase, number on all password fields
@@ -155,7 +155,7 @@
 </details>
 
 <details open>
-<summary><b>�📓 Diary</b></summary>
+<summary><b>📓 Diary</b></summary>
 
 - Chronological film log grouped by year and month
 - Navigate between years with prev/next arrows
@@ -344,4 +344,5 @@ MIT — free to use, modify, and distribute.
 <div align="center">
   <sub>Built with ❤️ by <a href="https://github.com/SPIN0ZAi">SPIN0ZAi</a> &nbsp;·&nbsp; Powered by <a href="https://www.themoviedb.org">TMDB</a></sub>
 </div>
+
 
