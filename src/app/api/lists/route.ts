@@ -17,7 +17,7 @@ export async function GET() {
                 user: { select: { id: true, username: true, avatarUrl: true } },
                 _count: { select: { movies: true, likes: true } },
             },
-            orderBy: { updatedAt: 'desc' },
+            orderBy: [{ isOfficial: 'desc' }, { isFeatured: 'desc' }, { updatedAt: 'desc' }],
         });
 
         return successResponse(lists);
@@ -33,8 +33,10 @@ export async function POST(req: NextRequest) {
         const session = await auth();
         if (!session?.user) return unauthorizedError();
 
-        const { title, description, isPublic } = await req.json();
+        const { title, description, isPublic, isFeatured, isOfficial } = await req.json();
         if (!title?.trim()) return serverError('Title is required');
+
+        const isAdmin = session.user.role === 'admin';
 
         const list = await prisma.list.create({
             data: {
@@ -42,6 +44,8 @@ export async function POST(req: NextRequest) {
                 title: title.trim().slice(0, 200),
                 description: description?.trim() || null,
                 isPublic: isPublic !== false,
+                isFeatured: isAdmin ? Boolean(isFeatured) : false,
+                isOfficial: isAdmin ? Boolean(isOfficial) : false,
             },
         });
 

@@ -240,6 +240,8 @@ model List {
   description   String?     @db.Text
   bannerUrl     String?     @map("banner_url")
   isPublic      Boolean     @default(true) @map("is_public")
+  isFeatured    Boolean     @default(false) @map("is_featured")
+  isOfficial    Boolean     @default(false) @map("is_official")
   clonedFromId  String?     @map("cloned_from_id")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")

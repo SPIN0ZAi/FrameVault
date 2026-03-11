@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { List, Plus, Lock, Globe, Film, Star, Loader2, X, Heart, Download } from 'lucide-react';
+import { List, Plus, Lock, Globe, Film, Star, Loader2, X, Heart, Download, Shield, Bookmark } from 'lucide-react';
 
 interface ListItem {
     id: string;
     title: string;
     description: string | null;
     isPublic: boolean;
+    isFeatured: boolean;
+    isOfficial: boolean;
     createdAt: string;
     updatedAt: string;
     user: { id: string; username: string; avatarUrl: string | null };
@@ -26,7 +28,11 @@ export default function ListsPage() {
     const [newTitle, setNewTitle] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [newPublic, setNewPublic] = useState(true);
+    const [newFeatured, setNewFeatured] = useState(false);
+    const [newOfficial, setNewOfficial] = useState(false);
     const [creating, setCreating] = useState(false);
+
+    const isAdmin = session?.user?.role === 'admin';
 
     // ── Letterboxd import modal ──
     const [showImport, setShowImport]           = useState(false);
@@ -77,7 +83,7 @@ export default function ListsPage() {
         const res = await fetch('/api/lists', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: newTitle, description: newDesc, isPublic: newPublic }),
+            body: JSON.stringify({ title: newTitle, description: newDesc, isPublic: newPublic, isFeatured: newFeatured, isOfficial: newOfficial }),
         });
         const data = await res.json();
         setCreating(false);
@@ -88,8 +94,10 @@ export default function ListsPage() {
         }
     };
 
-    const myLists = lists.filter((l) => l.user.id === session?.user?.id);
-    const otherLists = lists.filter((l) => l.user.id !== session?.user?.id);
+    const myLists       = lists.filter((l) => l.user.id === session?.user?.id);
+    const featuredLists = lists.filter((l) => l.isFeatured && !l.isOfficial);
+    const officialLists = lists.filter((l) => l.isOfficial);
+    const communityLists = lists.filter((l) => l.user.id !== session?.user?.id && !l.isFeatured && !l.isOfficial);
 
     return (
         <div className="page">
@@ -125,47 +133,33 @@ export default function ListsPage() {
                     )}
                 </div>
 
-                {/* Featured: Top 250 */}
+                {/* ── Official & Featured section ── */}
                 <section style={{ marginBottom: 'var(--space-3xl)' }}>
-                    <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, marginBottom: 'var(--space-lg)' }}>
-                        Featured
-                    </h2>
-                    <Link href="/lists/top-250" style={{ textDecoration: 'none' }}>
-                        <div style={{
-                            background: 'linear-gradient(135deg, #1a1d21 0%, #2c3136 100%)',
-                            border: '1px solid var(--border-default)',
-                            borderRadius: 'var(--radius-lg)',
-                            padding: 'var(--space-xl)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--space-xl)',
-                            cursor: 'pointer',
-                            transition: 'border-color 0.2s, transform 0.2s',
-                            position: 'relative',
-                            overflow: 'hidden',
-                        }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--brand)'; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; }}
-                        >
-                            {/* Gold accent bar */}
-                            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'linear-gradient(to bottom, #f59e0b, #ef4444)' }} />
-                            <div style={{ paddingLeft: 'var(--space-sm)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                                    <Star size={22} fill="#f59e0b" color="#f59e0b" />
-                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Global · Official</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--space-lg)' }}>
+                        <Shield size={18} style={{ color: '#f59e0b' }} />
+                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>Official &amp; Featured</h2>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+                        {/* Always-show Top 250 card */}
+                        <Link href="/lists/top-250" style={{ textDecoration: 'none' }}>
+                            <div className="card" style={{ cursor: 'pointer', height: '100%', background: 'linear-gradient(135deg, #1a1d21 0%, #2c3136 100%)', borderLeft: '3px solid #f59e0b' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <Star size={14} fill="#f59e0b" color="#f59e0b" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Global · Official</span>
                                 </div>
-                                <h3 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 8 }}>
-                                    Top 250 Films of All Time
-                                </h3>
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', maxWidth: 560 }}>
-                                    The 250 highest-rated films on TMDB — from timeless classics to modern masterpieces. Updated weekly.
-                                </p>
-                                <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-                                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--brand)' }}>250 films →</span>
-                                </div>
+                                <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', marginBottom: 8 }}>Top 250 Films of All Time</h3>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>The 250 highest-rated films on TMDB. Updated weekly.</p>
+                                <p style={{ marginTop: 12, fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--brand)' }}>250 films →</p>
                             </div>
-                        </div>
-                    </Link>
+                        </Link>
+                        {/* Official lists (isOfficial=true) */}
+                        {officialLists.map((list) => <ListCard key={list.id} list={list} badge="official" />)}
+                        {/* Featured lists (isFeatured=true) */}
+                        {featuredLists.map((list) => <ListCard key={list.id} list={list} badge="featured" />)}
+                    </div>
                 </section>
 
                 {loading ? (
@@ -185,11 +179,11 @@ export default function ListsPage() {
                         )}
 
                         {/* Community Lists */}
-                        {otherLists.length > 0 && (
+                        {communityLists.length > 0 && (
                             <section>
                                 <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, marginBottom: 'var(--space-lg)' }}>Community Lists</h2>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
-                                    {otherLists.map((list) => <ListCard key={list.id} list={list} />)}
+                                    {communityLists.map((list) => <ListCard key={list.id} list={list} />)}
                                 </div>
                             </section>
                         )}
@@ -248,6 +242,21 @@ export default function ListsPage() {
                                 <Globe size={15} style={{ color: 'var(--text-tertiary)' }} />
                                 Make this list public
                             </label>
+                            {session?.user?.role === 'admin' && (
+                                <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin Options</p>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                        <input type="checkbox" checked={newFeatured} onChange={(e) => setNewFeatured(e.target.checked)} />
+                                        <Star size={15} style={{ color: 'var(--brand)' }} />
+                                        Mark as Featured
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                        <input type="checkbox" checked={newOfficial} onChange={(e) => setNewOfficial(e.target.checked)} />
+                                        <Shield size={15} style={{ color: '#f59e0b' }} />
+                                        Mark as Official / Global
+                                    </label>
+                                </div>
+                            )}
                             <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', marginTop: 'var(--space-sm)' }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={!newTitle.trim() || creating} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -337,22 +346,28 @@ export default function ListsPage() {
     );
 }
 
-function ListCard({ list }: { list: ListItem }) {
+function ListCard({ list, badge }: { list: ListItem; badge?: 'official' | 'featured' }) {
     return (
         <Link href={`/lists/${list.id}`} style={{ textDecoration: 'none' }}>
             <div
                 className="card"
-                style={{ cursor: 'pointer', height: '100%', transition: 'border-color 0.2s', borderColor: 'var(--border-default)' }}
+                style={{ cursor: 'pointer', height: '100%', transition: 'border-color 0.2s', borderColor: badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'var(--border-default)' }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'var(--border-default)')}
             >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: badge ? 6 : 10 }}>
                     <h3 style={{ fontWeight: 700, fontSize: 'var(--text-base)', lineHeight: 1.3 }}>{list.title}</h3>
                     {list.isPublic
                         ? <Globe size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
                         : <Lock size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
                     }
                 </div>
+                {badge && (
+                    <div style={{ marginBottom: 8 }}>
+                        {badge === 'official' && <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🌐 Official</span>}
+                        {badge === 'featured' && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>⭐ Featured</span>}
+                    </div>
+                )}
                 {list.description && (
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {list.description}

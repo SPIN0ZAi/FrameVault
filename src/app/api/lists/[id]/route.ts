@@ -82,7 +82,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         if (!list) return notFoundError('List');
         if (list.userId !== session.user.id) return forbiddenError();
 
-        const { title, description, isPublic, bannerUrl } = await req.json();
+        const { title, description, isPublic, bannerUrl, isFeatured, isOfficial } = await req.json();
+        const isAdmin = session.user.role === 'admin';
 
         const updated = await prisma.list.update({
             where: { id },
@@ -91,6 +92,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 ...(description !== undefined && { description: description?.trim() || null }),
                 ...(isPublic !== undefined && { isPublic }),
                 ...(bannerUrl !== undefined && { bannerUrl: bannerUrl || null }),
+                ...(isAdmin && isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
+                ...(isAdmin && isOfficial !== undefined && { isOfficial: Boolean(isOfficial) }),
             },
         });
 
