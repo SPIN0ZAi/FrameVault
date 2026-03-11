@@ -1,0 +1,250 @@
+#,Title,Year,Director
+1,Interstellar,2014,Christopher Nolan
+2,Dead Poets Society,1989,Peter Weir
+3,La La Land,2016,Damien Chazelle
+4,Eternal Sunshine of the Spotless Mind,2004,Michel Gondry
+5,10 Things I Hate About You,1999,Gil Junger
+6,The Perks of Being a Wallflower,2012,Stephen Chbosky
+7,Whiplash,2014,Damien Chazelle
+8,Fight Club,1999,David Fincher
+9,Good Will Hunting,1997,Gus Van Sant
+10,Little Women,2019,Greta Gerwig
+11,Pride & Prejudice,2005,Joe Wright
+12,Everything Everywhere All at Once,2022,Daniel Kwan & Daniel Scheinert
+13,Call Me by Your Name,2017,Luca Guadagnino
+14,Coraline,2009,Henry Selick
+15,Parasite,2019,Bong Joon-ho
+16,Fantastic Mr. Fox,2009,Wes Anderson
+17,The Dark Knight,2008,Christopher Nolan
+18,The Shawshank Redemption,1994,Frank Darabont
+19,Se7en,1995,David Fincher
+20,Howl's Moving Castle,2004,Hayao Miyazaki
+21,Spirited Away,2001,Hayao Miyazaki
+22,Black Swan,2010,Darren Aronofsky
+23,Star Wars: Episode III ? Revenge of the Sith,2005,George Lucas
+24,Pulp Fiction,1994,Quentin Tarantino
+25,The Notebook,2004,Nick Cassavetes
+26,Forrest Gump,1994,Robert Zemeckis
+27,The Godfather,1972,Francis Ford Coppola
+28,Little Miss Sunshine,2006,Jonathan Dayton & Valerie Faris
+29,Kill Bill: Vol. 1,2003,Quentin Tarantino
+30,Scream,1996,Wes Craven
+31,Inglourious Basterds,2009,Quentin Tarantino
+32,Spider-Man: Into the Spider-Verse,2018,"Bob Persichetti, Peter Ramsey & Rodney Rothman"
+33,The Lord of the Rings: The Return of the King,2003,Peter Jackson
+34,Donnie Darko,2001,Richard Kelly
+35,Back to the Future,1985,Robert Zemeckis
+36,Inception,2010,Christopher Nolan
+37,Mamma Mia!,2008,Phyllida Lloyd
+38,Aftersun,2022,Charlotte Wells
+39,The Truman Show,1998,Peter Weir
+40,Scott Pilgrim vs. the World,2010,Edgar Wright
+41,GoodFellas,1990,Martin Scorsese
+42,Before Sunrise,1995,Richard Linklater
+43,Dune: Part Two,2024,Denis Villeneuve
+44,The Grand Budapest Hotel,2014,Wes Anderson
+45,The Batman,2022,Matt Reeves
+46,About Time,2013,Richard Curtis
+47,Beautiful Boy,2018,Felix van Groeningen
+48,The Lord of the Rings: The Fellowship of the Ring,2001,Peter Jackson
+49,Spider-Man: Across the Spider-Verse,2023,"Joaquim Dos Santos, Kemp Powers & Justin K. Thompson"
+50,The Silence of the Lambs,1991,Jonathan Demme
+51,Am‚lie,2001,Jean-Pierre Jeunet
+52,How to Lose a Guy in 10 Days,2003,Donald Petrie
+53,La Haine,1995,Mathieu Kassovitz
+54,Lady Bird,2017,Greta Gerwig
+55,Harry Potter and the Prisoner of Azkaban,2004,Alfonso Cuar¢n
+56,Portrait of a Lady on Fire,2019,C‚line Sciamma
+57,12 Angry Men,1957,Sidney Lumet
+58,The Shining,1980,Stanley Kubrick
+59,Princess Mononoke,1997,Hayao Miyazaki
+60,Shutter Island,2010,Martin Scorsese
+61,Mulholland Drive,2001,David Lynch
+62,Arrival,2016,Denis Villeneuve
+63,"Girl, Interrupted",1999,James Mangold
+64,Django Unchained,2012,Quentin Tarantino
+65,The Empire Strikes Back,1980,Irvin Kershner
+66,Sinners,2025,Ryan Coogler
+67,City of God,2002,Fernando Meirelles
+68,Bones and All,2022,Luca Guadagnino
+69,The Hunger Games: Catching Fire,2013,Francis Lawrence
+70,The Thing,1982,John Carpenter
+71,The Virgin Suicides,1999,Sofia Coppola
+72,Tangled,2010,Nathan Greno & Byron Howard
+73,Jurassic Park,1993,Steven Spielberg
+74,In the Mood for Love,2000,Wong Kar-wai
+75,Taxi Driver,1976,Martin Scorsese
+76,Brokeback Mountain,2005,Ang Lee
+77,Ratatouille,2007,Brad Bird
+78,(500) Days of Summer,2009,Marc Webb
+79,The Devil Wears Prada,2006,David Frankel
+80,Alien,1979,Ridley Scott
+81,2001: A Space Odyssey,1968,Stanley Kubrick
+82,Prisoners,2013,Denis Villeneuve
+83,Trainspotting,1996,Danny Boyle
+84,Oldboy,2003,Park Chan-wook
+85,Blade Runner 2049,2017,Denis Villeneuve
+86,Blade Runner,1982,Ridley Scott
+87,Titanic,1997,James Cameron
+88,Twilight,2008,Catherine Hardwicke
+89,Avatar,2009,James Cameron
+90,Stand by Me,1986,Rob Reiner
+91,The Matrix,1999,Lana & Lilly Wachowski
+92,Perfect Blue,1997,Satoshi Kon
+93,Past Lives,2023,Celine Song
+94,The Princess Bride,1987,Rob Reiner
+95,The Prestige,2006,Christopher Nolan
+96,Midsommar,2019,Ari Aster
+97,No Country for Old Men,2007,Joel & Ethan Coen
+98,How to Train Your Dragon,2010,Chris Sanders & Dean DeBlois
+99,Requiem for a Dream,2000,Darren Aronofsky
+100,Scarface,1983,Brian De Palma
+101,A Clockwork Orange,1971,Stanley Kubrick
+102,Oppenheimer,2023,Christopher Nolan
+103,Mad Max: Fury Road,2015,George Miller
+104,The Handmaiden,2016,Park Chan-wook
+105,The Social Network,2010,David Fincher
+106,There Will Be Blood,2007,Paul Thomas Anderson
+107,Lost in Translation,2003,Sofia Coppola
+108,Knives Out,2019,Rian Johnson
+109,Chungking Express,1994,Wong Kar-wai
+110,"Paris, Texas",1984,Wim Wenders
+111,Baby Driver,2017,Edgar Wright
+112,Moonlight,2016,Barry Jenkins
+113,Apocalypse Now,1979,Francis Ford Coppola
+114,The Big Lebowski,1998,Joel Coen
+115,The Godfather Part II,1974,Francis Ford Coppola
+116,When Harry Met Sally...,1989,Rob Reiner
+117,Your Name,2016,Makoto Shinkai
+118,The Wolf of Wall Street,2013,Martin Scorsese
+119,Get Out,2017,Jordan Peele
+120,Almost Famous,2000,Cameron Crowe
+121,Ferris Bueller's Day Off,1986,John Hughes
+122,Drive,2011,Nicolas Winding Refn
+123,Juno,2007,Jason Reitman
+124,Neon Genesis Evangelion: The End of Evangelion,1997,Hideaki Anno & Kazuya Tsurumaki
+125,Joker,2019,Todd Phillips
+126,Shrek 2,2004,"Andrew Adamson, Kelly Asbury & Conrad Vernon"
+127,Star Wars: A New Hope,1977,George Lucas
+128,Bottoms,2023,Emma Seligman
+129,The Rocky Horror Picture Show,1975,Jim Sharman
+130,Cinema Paradiso,1988,Giuseppe Tornatore
+131,Superbad,2007,Greg Mottola
+132,The Lighthouse,2019,Robert Eggers
+133,The Lord of the Rings: The Two Towers,2002,Peter Jackson
+134,Barbie,2023,Greta Gerwig
+135,Poor Things,2023,Yorgos Lanthimos
+136,X,2022,Ti West
+137,The Royal Tenenbaums,2001,Wes Anderson
+138,The Worst Person in the World,2021,Joachim Trier
+139,Gladiator,2000,Ridley Scott
+140,The Breakfast Club,1985,John Hughes
+141,Mean Girls,2004,Mark Waters
+142,Dune: Part One,2021,Denis Villeneuve
+143,"The Good, the Bad and the Ugly",1966,Sergio Leone
+144,Memento,2000,Christopher Nolan
+145,Avengers: Endgame,2019,Anthony & Joe Russo
+146,Challengers,2024,Luca Guadagnino
+147,But I'm a Cheerleader,1999,Jamie Babbit
+148,Once Upon a Time in Hollywood,2019,Quentin Tarantino
+149,Frances Ha,2012,Noah Baumbach
+150,WALLúE,2008,Andrew Stanton
+151,Corpse Bride,2005,Tim Burton & Mike Johnson
+152,The Nightmare Before Christmas,1993,Henry Selick
+153,L‚on: The Professional,1994,Luc Besson
+154,Before Sunset,2004,Richard Linklater
+155,Ponyo,2008,Hayao Miyazaki
+156,Jojo Rabbit,2019,Taika Waititi
+157,Pan's Labyrinth,2006,Guillermo del Toro
+158,Memories of Murder,2003,Bong Joon-ho
+159,Babylon,2022,Damien Chazelle
+160,The Secret Life of Walter Mitty,2013,Ben Stiller
+161,The Holdovers,2023,Alexander Payne
+162,Heat,1995,Michael Mann
+163,Tangerine,2017,Sean Baker
+164,Spider-Man: No Way Home,2021,Jon Watts
+165,Jaws,1975,Steven Spielberg
+166,The Departed,2006,Martin Scorsese
+167,Clueless,1995,Amy Heckerling
+168,Edward Scissorhands,1990,Tim Burton
+169,Avengers: Infinity War,2018,Anthony & Joe Russo
+170,Halloween,1978,John Carpenter
+171,My Neighbor Totoro,1988,Hayao Miyazaki
+172,Hot Fuzz,2007,Edgar Wright
+173,Kiki's Delivery Service,1989,Hayao Miyazaki
+174,Eyes Wide Shut,1999,Stanley Kubrick
+175,Spider-Man 2,2004,Sam Raimi
+176,Mysterious Skin,2004,Gregg Araki
+177,Akira,1988,Katsuhiro Otomo
+178,It's a Wonderful Life,1946,Frank Capra
+179,Pitch Perfect,2012,Jason Moore
+180,Avatar: The Way of Water,2022,James Cameron
+181,Perfect Days,2023,Wim Wenders
+182,Cars,2006,John Lasseter
+183,Moonrise Kingdom,2012,Wes Anderson
+184,Dazed and Confused,1993,Richard Linklater
+185,A Silent Voice,2016,Naoko Yamada
+186,Schindler's List,1993,Steven Spielberg
+187,Stalker,1979,Andrei Tarkovsky
+188,Moulin Rouge!,2001,Baz Luhrmann
+189,The Lion King,1994,Roger Allers & Rob Minkoff
+190,Notting Hill,1999,Roger Michell
+191,Waves,2019,Trey Edward Shults
+192,Tuck Everlasting,2002,Gary Winick
+193,Manchester by the Sea,2016,Kenneth Lonergan
+194,The Sound of Music,1965,Robert Wise
+195,One Flew Over the Cuckoo's Nest,1975,Milo? Forman
+196,Carol,2015,Todd Haynes
+197,Labyrinth,1986,Jim Henson
+198,Jennifer's Body,2009,Karyn Kusama
+199,Reservoir Dogs,1992,Quentin Tarantino
+200,The Hunger Games,2012,Gary Ross
+201,Singin' in the Rain,1952,Gene Kelly & Stanley Donen
+202,The Parent Trap,1998,Nancy Meyers
+203,Raiders of the Lost Ark,1981,Steven Spielberg
+204,Heathers,1989,Michael Lehmann
+205,Children of Men,2006,Alfonso Cuar¢n
+206,Possession,1981,Andrzej Zulawski
+207,Casablanca,1942,Michael Curtiz
+208,Saw,2004,James Wan
+209,Persona,1966,Ingmar Bergman
+210,Dirty Dancing,1987,Emile Ardolino
+211,The Pianist,2002,Roman Polanski
+212,Mid90s,2018,Jonah Hill
+213,The Texas Chain Saw Massacre,1974,Tobe Hooper
+214,Rear Window,1954,Alfred Hitchcock
+215,Life Is Beautiful,1997,Roberto Benigni
+216,Legally Blonde,2001,Robert Luketic
+217,Top Gun: Maverick,2022,Joseph Kosinski
+218,Twin Peaks: Fire Walk with Me,1992,David Lynch
+219,Psycho,1960,Alfred Hitchcock
+220,The Substance,2024,Coralie Fargeat
+221,Vertigo,1958,Alfred Hitchcock
+222,I Saw the TV Glow,2024,Jane Schoenbrun
+223,Nope,2022,Jordan Peele
+224,Amadeus,1984,Milo? Forman
+225,Catch Me If You Can,2002,Steven Spielberg
+226,Phantom Thread,2017,Paul Thomas Anderson
+227,Monster,2023,Hirokazu Kore-eda
+228,American Beauty,1999,Sam Mendes
+229,Marty Supreme,2024,Jonah Hill
+230,Terminator 2: Judgment Day,1991,James Cameron
+231,Marie Antoinette,2006,Sofia Coppola
+232,Come and See,1985,Elem Klimov
+233,1917,2019,Sam Mendes
+234,Whisper of the Heart,1995,Yoshifumi Kondo
+235,Isle of Dogs,2018,Wes Anderson
+236,Coco,2017,Lee Unkrich
+237,Beetlejuice,1988,Tim Burton
+238,The Banshees of Inisherin,2022,Martin McDonagh
+239,Into the Wild,2007,Sean Penn
+240,The Green Mile,1999,Frank Darabont
+241,Shrek,2001,Andrew Adamson & Vicky Jenson
+242,The Greatest Showman,2016,Michael Gracey
+243,Nightcrawler,2014,Dan Gilroy
+244,Magnolia,1999,Paul Thomas Anderson
+245,Zodiac,2007,David Fincher
+246,All About Lily Chou-Chou,2001,Shunji Iwai
+247,Fargo,1996,Joel Coen
+248,Teenage Dream,2022,
+249,Flipped,2010,Rob Reiner

@@ -16,11 +16,22 @@ export async function GET() {
             include: {
                 user: { select: { id: true, username: true, avatarUrl: true } },
                 _count: { select: { movies: true, likes: true } },
+                movies: {
+                    where: { posterUrl: { not: null } },
+                    orderBy: { position: 'asc' },
+                    take: 5,
+                    select: { posterUrl: true },
+                },
             },
             orderBy: [{ isOfficial: 'desc' }, { isFeatured: 'desc' }, { updatedAt: 'desc' }],
         });
 
-        return successResponse(lists);
+        const shaped = lists.map(({ movies, ...rest }) => ({
+            ...rest,
+            previewPosters: movies.map((m) => m.posterUrl as string),
+        }));
+
+        return successResponse(shaped);
     } catch (error) {
         console.error('GET /api/lists error:', error);
         return serverError();

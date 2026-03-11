@@ -17,6 +17,7 @@ interface ListItem {
     updatedAt: string;
     user: { id: string; username: string; avatarUrl: string | null };
     _count: { movies: number; likes: number };
+    previewPosters: string[];
 }
 
 export default function ListsPage() {
@@ -142,17 +143,28 @@ export default function ListsPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
                         {/* Always-show Top 250 card */}
                         <Link href="/lists/top-250" style={{ textDecoration: 'none' }}>
-                            <div className="card" style={{ cursor: 'pointer', height: '100%', background: 'linear-gradient(135deg, #1a1d21 0%, #2c3136 100%)', borderLeft: '3px solid #f59e0b' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
+                            <div className="card" style={{
+                                cursor: 'pointer', height: '100%', padding: 0, overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column',
+                                borderLeft: '3px solid #f59e0b', transition: 'border-color 0.2s, transform 0.15s',
+                            }}
+                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f5c842'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.transform = 'translateY(0)'; }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                    <Star size={14} fill="#f59e0b" color="#f59e0b" />
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Global · Official</span>
+                                {/* Decorative gold header bar */}
+                                <div style={{ height: 88, background: 'linear-gradient(135deg, #1c1a0e 0%, #2c2610 50%, #1a1d21 100%)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                                    <Star size={52} fill="rgba(245,158,11,0.12)" color="rgba(245,158,11,0.12)" style={{ position: 'absolute' }} />
+                                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(13,14,18,0.85) 100%)' }} />
                                 </div>
-                                <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', marginBottom: 8 }}>Top 250 Films of All Time</h3>
-                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>The 250 highest-rated films on TMDB. Updated weekly.</p>
-                                <p style={{ marginTop: 12, fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--brand)' }}>250 films →</p>
+                                <div style={{ padding: '12px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                        <Star size={11} fill="#f59e0b" color="#f59e0b" />
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Global · Official</span>
+                                    </div>
+                                    <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', marginBottom: 6, lineHeight: 1.3 }}>Top 250 Films of All Time</h3>
+                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>The 250 highest-rated films on TMDB. Updated weekly.</p>
+                                    <p style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}>250 films →</p>
+                                </div>
                             </div>
                         </Link>
                         {/* Official lists (isOfficial=true) */}
@@ -347,51 +359,92 @@ export default function ListsPage() {
 }
 
 function ListCard({ list, badge }: { list: ListItem; badge?: 'official' | 'featured' }) {
+    const accentColor = badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'rgba(255,255,255,0.12)';
+    const borderColor = badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'var(--border-default)';
+    const hoverBorder = badge === 'official' ? '#f5c842' : 'var(--brand)';
+    const posters = list.previewPosters.slice(0, 5);
+
     return (
         <Link href={`/lists/${list.id}`} style={{ textDecoration: 'none' }}>
             <div
                 className="card"
-                style={{ cursor: 'pointer', height: '100%', transition: 'border-color 0.2s', borderColor: badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'var(--border-default)' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--brand)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = badge === 'official' ? '#f59e0b' : badge === 'featured' ? 'var(--brand)' : 'var(--border-default)')}
+                style={{
+                    cursor: 'pointer', height: '100%', padding: 0, overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column',
+                    borderLeft: `3px solid ${borderColor}`,
+                    transition: 'border-color 0.2s, transform 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = hoverBorder; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: badge ? 6 : 10 }}>
-                    <h3 style={{ fontWeight: 700, fontSize: 'var(--text-base)', lineHeight: 1.3 }}>{list.title}</h3>
-                    {list.isPublic
-                        ? <Globe size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
-                        : <Lock size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
-                    }
-                </div>
-                {badge && (
-                    <div style={{ marginBottom: 8 }}>
-                        {badge === 'official' && <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🌐 Official</span>}
-                        {badge === 'featured' && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>⭐ Featured</span>}
+                {/* Poster strip */}
+                {posters.length > 0 ? (
+                    <div style={{ height: 88, display: 'flex', overflow: 'hidden', position: 'relative', background: '#0d0e12', flexShrink: 0 }}>
+                        {posters.map((src, i) => (
+                            <img key={i} src={src} alt="" style={{
+                                flex: 1, minWidth: 0, height: '100%', objectFit: 'cover',
+                                opacity: 1 - i * 0.06,
+                                borderRight: i < posters.length - 1 ? '1px solid rgba(0,0,0,0.35)' : 'none',
+                            }} />
+                        ))}
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 50%, rgba(13,14,18,0.85) 100%)' }} />
+                    </div>
+                ) : (
+                    <div style={{ height: 88, background: 'linear-gradient(135deg, #1a1d21, #22262b)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Film size={28} style={{ opacity: 0.15 }} />
                     </div>
                 )}
-                {list.description && (
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {list.description}
-                    </p>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-primary)', flexShrink: 0 }}>
-                            {list.user.avatarUrl
-                                ? <img src={list.user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--brand)' }}>{list.user.username.charAt(0).toUpperCase()}</div>
-                            }
-                        </div>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>@{list.user.username}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Film size={11} /> {list._count.movies}
-                        </span>
-                        {list._count.likes > 0 && (
-                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <Heart size={11} /> {list._count.likes}
-                            </span>
+
+                <div style={{ padding: '12px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {/* Badge row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: badge ? 6 : 0 }}>
+                        {badge && (
+                            <>
+                                <Star size={11} fill={accentColor} color={accentColor} />
+                                <span style={{ fontSize: 10, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                    {badge === 'official' ? 'Global \u00b7 Official' : 'Featured'}
+                                </span>
+                            </>
                         )}
+                    </div>
+
+                    {/* Title */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                        <h3 style={{ fontWeight: 700, fontSize: 'var(--text-base)', lineHeight: 1.3, flex: 1 }}>{list.title}</h3>
+                        {list.isPublic
+                            ? <Globe size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 3 }} />
+                            : <Lock size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 3 }} />
+                        }
+                    </div>
+
+                    {/* Description */}
+                    {list.description && (
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {list.description}
+                        </p>
+                    )}
+
+                    {/* Footer */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-primary)', flexShrink: 0 }}>
+                                {list.user.avatarUrl
+                                    ? <img src={list.user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--brand)' }}>{list.user.username.charAt(0).toUpperCase()}</div>
+                                }
+                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>@{list.user.username}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <Film size={10} /> {list._count.movies}
+                            </span>
+                            {list._count.likes > 0 && (
+                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <Heart size={10} /> {list._count.likes}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

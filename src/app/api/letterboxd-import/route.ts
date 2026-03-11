@@ -70,31 +70,62 @@ function parseFilms(html: string): LbFilm[] {
     const results: LbFilm[] = [];
     const seen = new Set<string>();
 
+    // Strategy 1: data-item-slug + data-item-name (most common for list pages)
     const slugs: string[] = [];
     const names: string[] = [];
-
     let m: RegExpExecArray | null;
-    const slugRe = /data-item-slug="([^"]+)"/g;
-    const nameRe = /data-item-name="([^"]+)"/g;
+    const slugRe  = /data-item-slug="([^"]+)"/g;
+    const nameRe  = /data-item-name="([^"]+)"/g;
+    while ((m = slugRe.exec(html))  !== null) slugs.push(m[1]);
+    while ((m = nameRe.exec(html))  !== null) names.push(decodeEntities(m[1]));
 
-    while ((m = slugRe.exec(html)) !== null) slugs.push(m[1]);
-    while ((m = nameRe.exec(html)) !== null) names.push(decodeEntities(m[1]));
+    if (slugs.length > 0) {
+        for (let i = 0; i < slugs.length; i++) {
+            const slug = slugs[i];
+            if (!slug || seen.has(slug)) continue;
+            seen.add(slug);
+            const nameStr  = names[i] ?? '';
+            const yearMatch = nameStr.match(/\((\d{4})\)\s*$/);
+            const year      = yearMatch ? +yearMatch[1] : undefined;
+            const title     = yearMatch ? nameStr.slice(0, nameStr.lastIndexOf('(')).trim() : (nameStr || slug.replace(/-/g, ' '));
+            results.push({ slug, title, year });
+        }
+        return results;
+    }
 
-    for (let i = 0; i < slugs.length; i++) {
-        const slug = slugs[i];
+    // Strategy 2: data-film-slug (older list layout / watchlists)
+    const filmRe   = /data-film-slug="([^"]+)"/g;
+    const filmSlugs: string[] = [];
+    while ((m = filmRe.exec(html)) !== null) filmSlugs.push(m[1]);
+
+    // Also try to get titles from data-film-name or alt attributes near those slugs
+    const altTitleRe = /data-film-slug="([^"]+)"[^>]*>[^<]*<img[^>]+alt="([^"]+)"/g;
+    const slugToTitle: Record<string, string> = {};
+    while ((m = altTitleRe.exec(html)) !== null) {
+        slugToTitle[m[1]] = decodeEntities(m[2]);
+    }
+
+    for (const slug of filmSlugs) {
         if (!slug || seen.has(slug)) continue;
         seen.add(slug);
-
-        const nameStr = names[i] ?? '';
-        // "Before Midnight (2013)" → title="Before Midnight", year=2013
-        const yearMatch = nameStr.match(/\((\d{4})\)\s*$/);
-        const year = yearMatch ? +yearMatch[1] : undefined;
-        const title = yearMatch
-            ? nameStr.slice(0, nameStr.lastIndexOf('(')).trim()
-            : nameStr || slug.replace(/-/g, ' ');
-
+        const rawTitle  = slugToTitle[slug] ?? '';
+        const yearMatch  = rawTitle.match(/\((\d{4})\)\s*$/);
+        const year       = yearMatch ? +yearMatch[1] : undefined;
+        const title      = yearMatch ? rawTitle.slice(0, rawTitle.lastIndexOf('(')).trim() : (rawTitle || slug.replace(/-/g, ' '));
         results.push({ slug, title, year });
     }
+
+    // Strategy 3: data-target-link="/film/slug/"
+    if (results.length === 0) {
+        const targetRe = /data-target-link="\/film\/([^/"]+)\/"/g;
+        while ((m = targetRe.exec(html)) !== null) {
+            const slug = m[1];
+            if (!slug || seen.has(slug)) continue;
+            seen.add(slug);
+            results.push({ slug, title: slug.replace(/-/g, ' '), year: undefined });
+        }
+    }
+
     return results;
 }
 
@@ -169,24 +200,35 @@ interface TmdbHit { tmdbId: number; title: string; year: number | null; posterUr
 
 async function tmdbSearch(title: string, year?: number): Promise<TmdbHit | null> {
     const key = process.env.TMDB_API_KEY;
-    if (!key) return null;
+    if (!key) { console.error('[import] TMDB_API_KEY not set'); return null; }
     const q = encodeURIComponent(title);
     const y = year ? `&year=${year}` : '';
-    const apiUrl = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}${y}&language=en-US&page=1`;
+    const apiUrl = `https://api.themoviedb.org/3/search/movie?query=${q}${y}&language=en-US&page=1&include_adult=false`;
     try {
-        const res = await fetch(apiUrl);
+        const res = await fetch(apiUrl, {
+            headers: { Authorization: `Bearer ${key}`, accept: 'application/json' },
+            signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            console.error(`[import] TMDB returned ${res.status} for "${title}":`, body.slice(0, 200));
+            return null;
+        }
         const d = await res.json();
         if (d.results?.length > 0) {
-            const m = d.results[0];
+            const hit = d.results[0];
             return {
-                tmdbId:    m.id,
-                title:     m.title,
-                year:      m.release_date ? +m.release_date.split('-')[0] : null,
-                posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w342${m.poster_path}` : null,
+                tmdbId:    hit.id,
+                title:     hit.title,
+                year:      hit.release_date ? +hit.release_date.split('-')[0] : null,
+                posterUrl: hit.poster_path ? `https://image.tmdb.org/t/p/w342${hit.poster_path}` : null,
             };
         }
-    } catch { /* ignore */ }
-    return null;
+        return null;
+    } catch (err) {
+        console.error(`[import] TMDB fetch error for "${title}":`, err instanceof Error ? err.message : err);
+        return null;
+    }
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -231,8 +273,14 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < films.length; i += BATCH) {
             const batch = films.slice(i, i + BATCH);
             const resolved = await Promise.all(batch.map(async (film, bi) => {
+                // Try with year first, then without, then by slug-derived title
                 let hit = await tmdbSearch(film.title, film.year);
                 if (!hit && film.year) hit = await tmdbSearch(film.title);
+                if (!hit && film.slug !== film.title) {
+                    const slugTitle = film.slug.replace(/-/g, ' ');
+                    hit = await tmdbSearch(slugTitle, film.year);
+                    if (!hit) hit = await tmdbSearch(slugTitle);
+                }
                 return { hit, position: i + bi };
             }));
 
@@ -253,6 +301,7 @@ export async function POST(req: NextRequest) {
             notFound += batch.length - rows.length;
         }
 
+        console.log(`[import] "${finalTitle}": ${films.length} films scraped, ${added} added, ${notFound} not found`);
         return NextResponse.json({ listId: list.id, title: finalTitle, total: films.length, added, notFound });
     } catch (error) {
         console.error('POST /api/letterboxd-import error:', error);

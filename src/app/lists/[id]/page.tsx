@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
     ArrowLeft, Edit2, Trash2, Film, Tv, Globe, Lock, X, Check, Loader2,
     AlertTriangle, Heart, Copy, GripVertical, Tag, UploadCloud,
-    ChevronDown, ChevronUp,
+    ChevronDown, ChevronUp, Plus, Search,
 } from 'lucide-react';
 
 interface ListItem {
@@ -116,6 +116,57 @@ export default function ListDetailPage() {
 
     // Collapsed groups
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+    // Add item modal
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [addQuery, setAddQuery] = useState('');
+    const [addMediaType, setAddMediaType] = useState<'movie' | 'show'>('movie');
+    const [addResults, setAddResults] = useState<{ id: string; title: string; year: number; posterUrl: string | null }[]>([]);
+    const [addSearching, setAddSearching] = useState(false);
+    const [addingId, setAddingId] = useState<string | null>(null);
+    const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+    // Search for movies/shows to add
+    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleAddSearch = (q: string, type: 'movie' | 'show') => {
+        setAddQuery(q);
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        if (!q.trim()) { setAddResults([]); return; }
+        searchDebounceRef.current = setTimeout(async () => {
+            setAddSearching(true);
+            try {
+                const endpoint = type === 'show' ? '/api/shows' : '/api/movies';
+                const res = await fetch(`${endpoint}?search=${encodeURIComponent(q)}&page=1`);
+                const data = await res.json();
+                const results = (data.data?.results ?? data.data ?? []).slice(0, 12).map((m: { id: string; title?: string; name?: string; year: number; posterUrl: string | null }) => ({
+                    id: m.id,
+                    title: m.title ?? m.name ?? '',
+                    year: m.year,
+                    posterUrl: m.posterUrl,
+                }));
+                setAddResults(results);
+            } catch { setAddResults([]); }
+            setAddSearching(false);
+        }, 400);
+    };
+
+    const handleAddItem = async (item: { id: string; title: string; year: number; posterUrl: string | null }) => {
+        if (addingId) return;
+        setAddingId(item.id);
+        const res = await fetch(`/api/lists/${id}/movies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tmdbId: Number(item.id), title: item.title, year: item.year, posterUrl: item.posterUrl, mediaType: addMediaType }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            setAddedIds((prev) => new Set(prev).add(item.id));
+            const newItem = data.data;
+            setItems((prev) => [...prev, newItem]);
+            setList((prev) => prev ? { ...prev, _count: { ...prev, movies: (prev.movies?.length ?? 0) + 1 } } : prev);
+        }
+        setAddingId(null);
+    };
 
     const fetchList = useCallback(async () => {
         const res = await fetch(`/api/lists/${id}`);
@@ -253,6 +304,8 @@ export default function ListDetailPage() {
     );
 
     const bannerSrc = editing ? (editBannerPreview ?? list.bannerUrl) : list.bannerUrl;
+    // Auto-banner: use first movie's poster (blurred + faded) when no custom banner
+    const autoBannerPoster = !bannerSrc && items.length > 0 ? items[0].posterUrl : null;
     const watchedPct = items.length > 0 ? Math.round((list.watchedCount / items.length) * 100) : 0;
     const grouped = groupItems(items);
     const hasGroups = Array.from(grouped.keys()).some((k) => k !== '');
@@ -261,21 +314,30 @@ export default function ListDetailPage() {
         <div className="page" style={{ paddingBottom: 'var(--space-3xl)' }}>
 
             {/* ── Banner ── */}
-            {(bannerSrc || editing) && (
+            {(bannerSrc || autoBannerPoster || editing) && (
                 <div style={{
                     position: 'relative', width: '100%',
-                    height: bannerSrc ? 280 : 140,
+                    height: (bannerSrc || autoBannerPoster) ? 280 : 140,
                     overflow: 'hidden',
-                    background: bannerSrc ? 'var(--bg-secondary)' : 'rgba(99,102,241,0.05)',
-                    borderBottom: !bannerSrc ? '2px dashed rgba(99,102,241,0.3)' : undefined,
+                    background: 'var(--bg-secondary)',
+                    borderBottom: !bannerSrc && !autoBannerPoster ? '2px dashed rgba(99,102,241,0.3)' : undefined,
                 }}>
+                    {/* Custom banner */}
                     {bannerSrc && <img src={bannerSrc} alt="List banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                    {!bannerSrc && editing && (
+                    {/* Auto blurred poster banner */}
+                    {!bannerSrc && autoBannerPoster && (
+                        <img src={autoBannerPoster} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'blur(28px) brightness(0.55) saturate(1.3)', transform: 'scale(1.12)' }} />
+                    )}
+                    {/* Editing empty placeholder */}
+                    {!bannerSrc && !autoBannerPoster && editing && (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>No banner — click to upload</span>
                         </div>
                     )}
-                    {bannerSrc && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.75) 100%)' }} />}
+                    {/* Gradient fade */}
+                    {(bannerSrc || autoBannerPoster) && (
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 35%, rgba(13,14,18,0.7) 75%, var(--bg-primary) 100%)' }} />
+                    )}
                     {editing && (
                         <>
                             <button type="button" onClick={() => bannerInputRef.current?.click()} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 'var(--radius-md)', padding: '6px 14px', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -299,8 +361,8 @@ export default function ListDetailPage() {
                 </div>
             )}
 
-            <div className="container" style={{ marginTop: bannerSrc ? '-48px' : 'var(--space-xl)', position: 'relative', zIndex: 1 }}>
-                <Link href="/lists" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: bannerSrc ? 'rgba(255,255,255,0.85)' : 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', textDecoration: 'none' }}>
+            <div className="container" style={{ marginTop: (bannerSrc || autoBannerPoster) ? '-48px' : 'var(--space-xl)', position: 'relative', zIndex: 1 }}>
+                <Link href="/lists" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: (bannerSrc || autoBannerPoster) ? 'rgba(255,255,255,0.85)' : 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', textDecoration: 'none' }}>
                     <ArrowLeft size={15} /> Back to Lists
                 </Link>
 
@@ -373,6 +435,9 @@ export default function ListDetailPage() {
                                     </button>
                                     {isOwner && (
                                         <>
+                                            <button className="btn btn-primary btn-sm" onClick={() => { setShowAddModal(true); setAddQuery(''); setAddResults([]); setAddedIds(new Set()); }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <Plus size={14} /> Add Item
+                                            </button>
                                             <button className="btn btn-secondary btn-sm" onClick={() => setReorderMode((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                 <GripVertical size={14} /> {reorderMode ? 'Exit Reorder' : 'Reorder'}
                                             </button>
@@ -494,6 +559,84 @@ export default function ListDetailPage() {
                     </p>
                 )}
             </div>
+
+            {/* ── Add Item Modal ── */}
+            {showAddModal && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}
+                    onClick={() => setShowAddModal(false)}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', width: '100%', maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-lg)' }}>
+                            <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>Add to List</h2>
+                            <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+                        </div>
+
+                        {/* Media type toggle */}
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--space-md)' }}>
+                            {(['movie', 'show'] as const).map((t) => (
+                                <button key={t} onClick={() => { setAddMediaType(t); handleAddSearch(addQuery, t); }}
+                                    style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-md)', border: `1px solid ${addMediaType === t ? 'var(--brand)' : 'var(--border-default)'}`, background: addMediaType === t ? 'rgba(99,102,241,0.15)' : 'transparent', color: addMediaType === t ? 'var(--brand)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    {t === 'movie' ? <Film size={14} /> : <Tv size={14} />}
+                                    {t === 'movie' ? 'Movie' : 'TV Show'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search input */}
+                        <div style={{ position: 'relative', marginBottom: 'var(--space-md)' }}>
+                            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                            <input className="input" value={addQuery} onChange={(e) => handleAddSearch(e.target.value, addMediaType)}
+                                placeholder={`Search ${addMediaType === 'movie' ? 'movies' : 'TV shows'}…`}
+                                style={{ width: '100%', paddingLeft: 38 }} autoFocus />
+                        </div>
+
+                        {/* Results */}
+                        <div style={{ overflowY: 'auto', flex: 1 }}>
+                            {addSearching && (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-xl)' }}>
+                                    <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
+                                </div>
+                            )}
+                            {!addSearching && addResults.length === 0 && addQuery.length > 0 && (
+                                <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 'var(--space-xl)', fontSize: 'var(--text-sm)' }}>No results found</p>
+                            )}
+                            {!addSearching && addQuery.length === 0 && (
+                                <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 'var(--space-xl)', fontSize: 'var(--text-sm)' }}>Type to search…</p>
+                            )}
+                            {!addSearching && addResults.length > 0 && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 'var(--space-sm)' }}>
+                                    {addResults.map((item) => {
+                                        const alreadyAdded = addedIds.has(item.id) || items.some(m => m.tmdbId === Number(item.id) && m.mediaType === addMediaType);
+                                        const isAdding = addingId === item.id;
+                                        return (
+                                            <button key={item.id} onClick={() => !alreadyAdded && handleAddItem(item)} disabled={alreadyAdded || isAdding}
+                                                style={{ background: 'var(--bg-primary)', border: `1px solid ${alreadyAdded ? 'rgba(34,197,94,0.4)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-md)', padding: 0, cursor: alreadyAdded ? 'default' : 'pointer', overflow: 'hidden', textAlign: 'left', opacity: alreadyAdded ? 0.7 : 1, position: 'relative', transition: 'border-color 0.15s' }}
+                                                onMouseEnter={(e) => { if (!alreadyAdded) e.currentTarget.style.borderColor = 'var(--brand)'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = alreadyAdded ? 'rgba(34,197,94,0.4)' : 'var(--border-default)'; }}
+                                            >
+                                                <div style={{ aspectRatio: '2/3', background: 'var(--bg-secondary)', overflow: 'hidden', position: 'relative' }}>
+                                                    {item.posterUrl
+                                                        ? <img src={item.posterUrl} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            {addMediaType === 'show' ? <Tv size={22} style={{ opacity: 0.3 }} /> : <Film size={22} style={{ opacity: 0.3 }} />}
+                                                          </div>
+                                                    }
+                                                    {isAdding && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'white' }} /></div>}
+                                                    {alreadyAdded && <div style={{ position: 'absolute', inset: 0, background: 'rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={22} color="rgb(34,197,94)" /></div>}
+                                                </div>
+                                                <div style={{ padding: '6px 8px 8px' }}>
+                                                    <p style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>{item.title}</p>
+                                                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>{item.year}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Delete Modal ── */}
             {showDelete && (
