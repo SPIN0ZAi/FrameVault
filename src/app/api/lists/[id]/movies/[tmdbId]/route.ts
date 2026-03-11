@@ -5,8 +5,8 @@ import { successResponse, unauthorizedError, notFoundError, forbiddenError, serv
 
 type Ctx = { params: Promise<{ id: string; tmdbId: string }> };
 
-// DELETE /api/lists/[id]/movies/[tmdbId] — remove a movie from the list
-export async function DELETE(_req: NextRequest, { params }: Ctx) {
+// DELETE /api/lists/[id]/movies/[tmdbId] — remove a movie or show from the list
+export async function DELETE(req: NextRequest, { params }: Ctx) {
     try {
         const { id, tmdbId } = await params;
         const session = await auth();
@@ -16,8 +16,11 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
         if (!list) return notFoundError('List');
         if (list.userId !== session.user.id) return forbiddenError();
 
+        const { searchParams } = new URL(req.url);
+        const mediaType = searchParams.get('mediaType') === 'show' ? 'show' : 'movie';
+
         await prisma.listMovie.delete({
-            where: { listId_tmdbId: { listId: id, tmdbId: Number(tmdbId) } },
+            where: { listId_tmdbId_mediaType: { listId: id, tmdbId: Number(tmdbId), mediaType } },
         });
 
         return successResponse({ deleted: true });

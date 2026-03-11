@@ -5,8 +5,9 @@ import { successResponse, unauthorizedError, validationError, serverError } from
 import { z } from 'zod';
 
 const presignSchema = z.object({
-    type: z.enum(['avatar', 'banner', 'poster']),
+    type: z.enum(['avatar', 'banner', 'poster', 'list-banner']),
     movieId: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid movieId').max(50).optional(),
+    listId: z.string().max(100).optional(),
     contentType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'Only images are allowed'),
     extension: z.string().regex(/^(jpg|jpeg|png|webp|gif)$/, 'Invalid extension'),
 });
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
             return validationError(parsed.error.issues[0]?.message ?? 'Invalid input');
         }
 
-        const { type, movieId, contentType, extension } = parsed.data;
+        const { type, movieId, listId, contentType, extension } = parsed.data;
 
         if (type === 'poster' && !movieId) {
             return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'movieId is required for poster uploads' } }, { status: 400 });
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
             filePath = `avatars/${userId}-${Date.now()}.${extension}`;
         } else if (type === 'banner') {
             filePath = `banners/${userId}-${Date.now()}.${extension}`;
+        } else if (type === 'list-banner') {
+            filePath = `list-banners/${listId || userId}-${Date.now()}.${extension}`;
         } else if (type === 'poster') {
             filePath = `posters/custom/${userId}_${movieId}-${Date.now()}.${extension}`;
         }

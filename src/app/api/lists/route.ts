@@ -15,7 +15,7 @@ export async function GET() {
                 : { isPublic: true },
             include: {
                 user: { select: { id: true, username: true, avatarUrl: true } },
-                _count: { select: { movies: true } },
+                _count: { select: { movies: true, likes: true } },
             },
             orderBy: { updatedAt: 'desc' },
         });

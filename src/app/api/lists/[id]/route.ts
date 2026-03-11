@@ -10,26 +10,68 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     try {
         const { id } = await params;
         const session = await auth();
+        const userId = session?.user?.id;
 
-        const list = await prisma.list.findUnique({
-            where: { id },
-            include: {
-                user: { select: { id: true, username: true, avatarUrl: true } },
-                movies: { orderBy: { position: 'asc' } },
-            },
-        });
+        const [list, likeCount, userLike] = await Promise.all([
+            prisma.list.findUnique({
+                where: { id },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                    movies: { orderBy: { position: 'asc' } },
+                    clonedFrom: { select: { id: true, title: true, user: { select: { username: true } } } },
+                },
+            }),
+            prisma.listLike.count({ where: { listId: id } }),
+            userId ? prisma.listLike.findUnique({ where: { userId_listId: { userId, listId: id } } }) : null,
+        ]);
 
         if (!list) return notFoundError('List');
-        if (!list.isPublic && list.userId !== session?.user?.id) return forbiddenError();
+        if (!list.isPublic && list.userId !== userId) return forbiddenError();
 
-        return successResponse(list);
+        // Compute watched count for viewer
+        let watchedCount = 0;
+        if (userId && list.movies.length > 0) {
+            const tmdbMovieIds = list.movies.filter(m => m.mediaType === 'movie').map(m => m.tmdbId);
+            const tmdbShowIds  = list.movies.filter(m => m.mediaType === 'show').map(m => m.tmdbId);
+
+            const [watchedMovies, watchedShows] = await Promise.all([
+                tmdbMovieIds.length > 0
+                    ? prisma.watchedMovie.findMany({
+                        where: { userId, movie: { tmdbId: { in: tmdbMovieIds } } },
+                        include: { movie: { select: { tmdbId: true } } },
+                    })
+                    : [],
+                tmdbShowIds.length > 0
+                    ? prisma.watchedShow.findMany({
+                        where: { userId, tmdbShowId: { in: tmdbShowIds } },
+                        select: { tmdbShowId: true },
+                    })
+                    : [],
+            ]);
+
+            const watchedMovieTmdbIds = new Set(watchedMovies.map(w => w.movie.tmdbId));
+            const watchedShowTmdbIds  = new Set(watchedShows.map(w => w.tmdbShowId));
+
+            watchedCount = list.movies.filter(m =>
+                m.mediaType === 'movie'
+                    ? watchedMovieTmdbIds.has(m.tmdbId)
+                    : watchedShowTmdbIds.has(m.tmdbId)
+            ).length;
+        }
+
+        return successResponse({
+            ...list,
+            likeCount,
+            likedByMe: !!userLike,
+            watchedCount,
+        });
     } catch (error) {
         console.error('GET /api/lists/[id] error:', error);
         return serverError();
     }
 }
 
-// PATCH /api/lists/[id] — update title / description / visibility
+// PATCH /api/lists/[id] — update title / description / visibility / bannerUrl
 export async function PATCH(req: NextRequest, { params }: Ctx) {
     try {
         const { id } = await params;
@@ -40,7 +82,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         if (!list) return notFoundError('List');
         if (list.userId !== session.user.id) return forbiddenError();
 
-        const { title, description, isPublic } = await req.json();
+        const { title, description, isPublic, bannerUrl } = await req.json();
 
         const updated = await prisma.list.update({
             where: { id },
@@ -48,6 +90,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
                 ...(title !== undefined && { title: title.trim().slice(0, 200) }),
                 ...(description !== undefined && { description: description?.trim() || null }),
                 ...(isPublic !== undefined && { isPublic }),
+                ...(bannerUrl !== undefined && { bannerUrl: bannerUrl || null }),
             },
         });
 

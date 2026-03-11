@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus } from 'lucide-react';
+import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus, ListPlus, Edit3, Loader2, Pencil, Trash2, Crown, AlertTriangle, Heart } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
@@ -32,7 +32,16 @@ interface ShowDetail {
     cast: { id: number; name: string; character: string; profileUrl: string | null }[];
     trailerKey: string | null;
     similarShows: { id: number; title: string; year: number; posterUrl: string | null }[];
-    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null };
+    reviews: {
+        id: string;
+        content: string;
+        containsSpoilers: boolean;
+        createdAt: string;
+        user: { id: string; username: string; avatarUrl: string | null; role: string };
+        likeCount: number;
+        likedByMe: boolean;
+    }[];
+    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null; hasReview: boolean };
 }
 
 function getLanguageName(code: string | null): string | null {
@@ -72,6 +81,32 @@ export default function ShowDetailPage() {
     const [posterTab, setPosterTab] = useState<'pick' | 'upload'>('pick');
     const [tmdbPosters, setTmdbPosters] = useState<{ thumb: string | null; full: string | null }[]>([]);
 
+    // List modal
+    const [showListModal, setShowListModal] = useState(false);
+    const [userLists, setUserLists] = useState<{ id: string; title: string; _count?: { movies: number } }[]>([]);
+    const [listsLoading, setListsLoading] = useState(false);
+    const [addingToListId, setAddingToListId] = useState<string | null>(null);
+    const [listAddedId, setListAddedId] = useState<string | null>(null);
+
+    // Review form
+    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [reviewText, setReviewText] = useState('');
+    const [spoiler, setSpoiler] = useState(false);
+
+    // Review editing
+    const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+    const [editReviewText, setEditReviewText] = useState('');
+    const [editReviewSpoiler, setEditReviewSpoiler] = useState(false);
+    const [savingEditReview, setSavingEditReview] = useState(false);
+    const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null);
+    const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+
+    // Review likes
+    const [reviewLikes, setReviewLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+
+    // Revealed spoilers
+    const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
+
     const closePosterModal = () => {
         setShowPosterModal(false);
         setUploadFile(null);
@@ -97,6 +132,107 @@ export default function ShowDetailPage() {
     }, [id]);
 
     useEffect(() => { fetchShow(); }, [fetchShow]);
+
+    // Initialize reviewLikes map whenever show data loads
+    useEffect(() => {
+        if (!show) return;
+        const map: Record<string, { count: number; liked: boolean }> = {};
+        show.reviews.forEach(r => { map[r.id] = { count: r.likeCount, liked: r.likedByMe }; });
+        setReviewLikes(map);
+    }, [show]);
+
+    const handleLikeReview = async (reviewId: string) => {
+        if (!session) { router.push('/login'); return; }
+        const current = reviewLikes[reviewId] ?? { count: 0, liked: false };
+        setReviewLikes(prev => ({
+            ...prev,
+            [reviewId]: { count: current.liked ? current.count - 1 : current.count + 1, liked: !current.liked },
+        }));
+        try {
+            const method = current.liked ? 'DELETE' : 'POST';
+            const res = await fetch(`/api/show-reviews/${reviewId}/like`, { method });
+            const data = await res.json();
+            if (data.success) {
+                setReviewLikes(prev => ({ ...prev, [reviewId]: { count: data.data.likeCount, liked: data.data.likedByMe } }));
+            }
+        } catch {
+            setReviewLikes(prev => ({ ...prev, [reviewId]: current }));
+        }
+    };
+
+    const handleOpenListModal = async () => {
+        if (!session) { router.push('/login'); return; }
+        setShowListModal(true);
+        if (userLists.length === 0) {
+            setListsLoading(true);
+            const res = await fetch('/api/lists/mine');
+            const data = await res.json();
+            if (data.success) setUserLists(data.data);
+            setListsLoading(false);
+        }
+    };
+
+    const handleAddToList = async (listId: string) => {
+        if (!show) return;
+        setAddingToListId(listId);
+        await fetch(`/api/lists/${listId}/movies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tmdbId: Number(id),
+                title: show.title,
+                year: show.year,
+                posterUrl: show.userInteraction?.customPosterUrl || show.posterUrl,
+                mediaType: 'show',
+            }),
+        });
+        setAddingToListId(null);
+        setListAddedId(listId);
+        setTimeout(() => setListAddedId(null), 2000);
+    };
+
+    const handleReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!session) { router.push('/login'); return; }
+        if (reviewText.trim().length < 10) return;
+        setActionLoading('review');
+        try {
+            const res = await fetch(`/api/shows/${id}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: reviewText, containsSpoilers: spoiler }),
+            });
+            if (res.ok) {
+                setReviewText('');
+                setSpoiler(false);
+                setShowReviewForm(false);
+                await fetchShow();
+            }
+        } finally {
+            setActionLoading('');
+        }
+    };
+
+    const handleSaveEditReview = async () => {
+        if (!editingReviewId || editReviewText.trim().length < 10) return;
+        setSavingEditReview(true);
+        try {
+            const res = await fetch(`/api/show-reviews/${editingReviewId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: editReviewText.trim(), containsSpoilers: editReviewSpoiler }),
+            });
+            if (res.ok) { setEditingReviewId(null); await fetchShow(); }
+        } finally { setSavingEditReview(false); }
+    };
+
+    const handleDeleteReview = async (reviewId: string) => {
+        setDeletingReviewId(reviewId);
+        try {
+            const res = await fetch(`/api/show-reviews/${reviewId}`, { method: 'DELETE' });
+            if (res.ok) { setConfirmDeleteReviewId(null); await fetchShow(); }
+        } finally { setDeletingReviewId(null); }
+    };
 
     useEffect(() => {
         if (!showPosterModal || tmdbPosters.length > 0) return;
@@ -423,12 +559,62 @@ export default function ShowDetailPage() {
                                 </button>
                             )}
 
+                            {session && (
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={handleOpenListModal}
+                                    style={{ gap: 6 }}
+                                >
+                                    <ListPlus size={15} /> Add to List
+                                </button>
+                            )}
+
+                            {session && !show.userInteraction.hasReview && (
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowReviewForm(!showReviewForm)}
+                                    style={{ gap: 6 }}
+                                >
+                                    <Edit3 size={15} /> Write Review
+                                </button>
+                            )}
+
                             {show.trailerKey && (
                                 <button onClick={() => setShowTrailer(true)} className="btn btn-ghost btn-sm" style={{ gap: 6 }}>
                                     <Play size={14} fill="currentColor" /> Trailer
                                 </button>
                             )}
                         </div>
+
+                        {/* Review Form */}
+                        {showReviewForm && (
+                            <form onSubmit={handleReview} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+                                <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 'var(--space-md)' }}>Write Your Review</h3>
+                                <textarea
+                                    className="input"
+                                    placeholder="What did you think about this show? (min 10 characters)"
+                                    value={reviewText}
+                                    onChange={(e) => setReviewText(e.target.value)}
+                                    style={{ width: '100%', minHeight: 120, resize: 'vertical', marginBottom: 'var(--space-md)', boxSizing: 'border-box' }}
+                                />
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                        <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />
+                                        Contains spoilers
+                                    </label>
+                                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowReviewForm(false)}>Cancel</button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary btn-sm"
+                                            disabled={reviewText.trim().length < 10 || actionLoading === 'review'}
+                                        >
+                                            {actionLoading === 'review' ? 'Posting…' : 'Post Review'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
 
                         {/* Overview */}
                         {show.description && (
@@ -505,6 +691,125 @@ export default function ShowDetailPage() {
                     </section>
                 )}
 
+                {/* Reviews */}
+                {show.reviews.length > 0 && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Reviews</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                            {show.reviews.map((review) => {
+                                const isOwnReview = session?.user?.id === review.user.id;
+                                const isEditing = editingReviewId === review.id;
+                                const isConfirmingDelete = confirmDeleteReviewId === review.id;
+                                const likes = reviewLikes[review.id] ?? { count: review.likeCount, liked: review.likedByMe };
+                                const isSpoilerRevealed = revealedSpoilers.has(review.id);
+                                return (
+                                    <div key={review.id} className="review-card">
+                                        <div className="review-header" style={{ justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                                                <div className="review-author-avatar">
+                                                    {review.user.avatarUrl ? (
+                                                        <img src={review.user.avatarUrl} alt={review.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                                                            {review.user.username.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <Link href={`/users/${review.user.username}`} className="review-author-name">{review.user.username}</Link>
+                                                        {review.user.role === 'owner' && (
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 20, boxShadow: '0 1px 4px rgba(245,158,11,0.4)' }}>
+                                                                <Crown size={8} /> Owner
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="review-date">
+                                                        {new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                    </div>
+                                                </div>
+                                                {review.containsSpoilers && (
+                                                    <span className="review-spoiler-tag" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <AlertTriangle size={14} /> Spoiler
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {isOwnReview && !isEditing && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                    <button onClick={() => { setEditingReviewId(review.id); setEditReviewText(review.content); setEditReviewSpoiler(review.containsSpoilers); setConfirmDeleteReviewId(null); }} title="Edit review"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4, borderRadius: 4, display: 'flex', transition: 'color 0.12s' }}
+                                                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--brand)')}
+                                                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                                    ><Pencil size={15} /></button>
+                                                    {!isConfirmingDelete ? (
+                                                        <button onClick={() => setConfirmDeleteReviewId(review.id)} title="Delete review"
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4, borderRadius: 4, display: 'flex', transition: 'color 0.12s' }}
+                                                            onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                                                        ><Trash2 size={15} /></button>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span style={{ fontSize: 'var(--text-xs)', color: '#ef4444', fontWeight: 600 }}>Delete?</span>
+                                                            <button onClick={() => handleDeleteReview(review.id)} disabled={deletingReviewId === review.id}
+                                                                style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#fff', background: '#ef4444', border: 'none', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}>
+                                                                {deletingReviewId === review.id ? '…' : 'Yes'}
+                                                            </button>
+                                                            <button onClick={() => setConfirmDeleteReviewId(null)}
+                                                                style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', border: 'none', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}>
+                                                                No
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {isEditing ? (
+                                            <div style={{ marginTop: 'var(--space-sm)' }}>
+                                                <textarea className="input" value={editReviewText} onChange={e => setEditReviewText(e.target.value)}
+                                                    style={{ width: '100%', minHeight: 100, resize: 'vertical', marginBottom: 8, boxSizing: 'border-box' }} autoFocus />
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                                        <input type="checkbox" checked={editReviewSpoiler} onChange={e => setEditReviewSpoiler(e.target.checked)} />
+                                                        Contains spoilers
+                                                    </label>
+                                                    <div style={{ display: 'flex', gap: 6 }}>
+                                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingReviewId(null)}>Cancel</button>
+                                                        <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEditReview} disabled={editReviewText.trim().length < 10 || savingEditReview}>
+                                                            {savingEditReview ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : 'Save'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {review.containsSpoilers && !isSpoilerRevealed ? (
+                                                    <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginTop: 'var(--space-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>This review contains spoilers.</span>
+                                                        <button onClick={() => setRevealedSpoilers(prev => new Set([...prev, review.id]))}
+                                                            style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                            Show anyway
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <p className="review-content" style={{ marginTop: 'var(--space-sm)' }}>{review.content}</p>
+                                                )}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 'var(--space-sm)' }}>
+                                                    <button onClick={() => handleLikeReview(review.id)}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: session ? 'pointer' : 'default', color: likes.liked ? '#ef4444' : 'var(--text-tertiary)', fontSize: 'var(--text-xs)', fontWeight: 600, padding: 0, transition: 'color 0.12s' }}>
+                                                        <Heart size={14} fill={likes.liked ? 'currentColor' : 'none'} />
+                                                        {likes.count > 0 && likes.count}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
+
                 {/* Similar Shows */}
                 {show.similarShows.length > 0 && (
                     <section style={{ marginTop: 'var(--space-3xl)', marginBottom: 'var(--space-3xl)' }}>
@@ -529,6 +834,68 @@ export default function ShowDetailPage() {
                     </section>
                 )}
             </div>
+
+            {/* Add to List Modal */}
+            {showListModal && (
+                <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-lg)' }}
+                    onClick={() => setShowListModal(false)}
+                >
+                    <div
+                        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', width: '100%', maxWidth: 400 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Add to List</h3>
+                            <button onClick={() => setShowListModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+                        </div>
+                        {listsLoading ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-xl)' }}>
+                                <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
+                            </div>
+                        ) : userLists.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-secondary)' }}>
+                                <p style={{ marginBottom: 'var(--space-md)' }}>You have no lists yet.</p>
+                                <a href="/lists" style={{ color: 'var(--brand)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>Create a list →</a>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxHeight: 320, overflowY: 'auto' }}>
+                                {userLists.map((list) => (
+                                    <button
+                                        key={list.id}
+                                        onClick={() => handleAddToList(list.id)}
+                                        disabled={addingToListId === list.id}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '12px var(--space-md)',
+                                            background: listAddedId === list.id ? 'rgba(34,197,94,0.1)' : 'var(--bg-primary)',
+                                            border: `1px solid ${listAddedId === list.id ? 'rgba(34,197,94,0.4)' : 'var(--border-default)'}`,
+                                            borderRadius: 'var(--radius-md)',
+                                            cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                                        }}
+                                    >
+                                        <div>
+                                            <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 2 }}>{list.title}</p>
+                                            {list._count && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{list._count.movies} item{list._count.movies !== 1 ? 's' : ''}</p>}
+                                        </div>
+                                        {addingToListId === list.id
+                                            ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--brand)', flexShrink: 0 }} />
+                                            : listAddedId === list.id
+                                                ? <Check size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                                                : <ListPlus size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                                        }
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-default)' }}>
+                            <a href="/lists" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 'var(--text-sm)', color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
+                                <ListPlus size={15} /> Manage My Lists
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Poster Change Modal */}
             {showPosterModal && (

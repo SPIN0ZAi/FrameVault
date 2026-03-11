@@ -89,13 +89,13 @@ export async function GET(
 
         // Check user interaction
         const session = await auth();
-        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null } = {
-            watched: false, inWatchlist: false, rating: null, customPosterUrl: null,
+        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null; hasReview: boolean } = {
+            watched: false, inWatchlist: false, rating: null, customPosterUrl: null, hasReview: false,
         };
 
         if (session?.user) {
             const tmdbShowId = parseInt(id);
-            const [watched, watchlisted, ratingRecord, customPoster] = await Promise.all([
+            const [watched, watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
                 prisma.watchedShow.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }),
@@ -108,14 +108,41 @@ export async function GET(
                 prisma.showCustomPoster.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
                 }).catch(() => null),
+                prisma.showReview.findUnique({
+                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                }).catch(() => null),
             ]);
             userInteraction = {
                 watched: !!watched,
                 inWatchlist: !!watchlisted,
                 rating: ratingRecord?.value ?? null,
                 customPosterUrl: customPoster?.posterUrl ?? null,
+                hasReview: !!userReview,
             };
         }
+
+        // Fetch reviews for this show
+        const tmdbShowId = parseInt(id);
+        const reviews = await prisma.showReview.findMany({
+            where: { tmdbShowId },
+            include: {
+                user: { select: { id: true, username: true, avatarUrl: true, role: true } },
+                likes: session?.user ? { where: { userId: session.user.id } } : false,
+                _count: { select: { likes: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+        });
+
+        const formattedReviews = reviews.map(r => ({
+            id: r.id,
+            content: r.content,
+            containsSpoilers: r.containsSpoilers,
+            createdAt: r.createdAt,
+            user: r.user,
+            likeCount: r._count.likes,
+            likedByMe: session?.user ? (r.likes as { userId: string }[]).length > 0 : false,
+        }));
 
         return successResponse({
             id: tmdbShow.id.toString(),
@@ -158,6 +185,7 @@ export async function GET(
             trailerKey: trailer?.key ?? null,
             similarShows,
             userInteraction,
+            reviews: formattedReviews,
         });
     } catch (error) {
         console.error('GET /api/shows/[id] error:', error);

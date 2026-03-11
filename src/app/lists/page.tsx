@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { List, Plus, Lock, Globe, Film, Star, Loader2, X } from 'lucide-react';
+import { List, Plus, Lock, Globe, Film, Star, Loader2, X, Heart } from 'lucide-react';
 
 interface ListItem {
     id: string;
@@ -14,7 +14,7 @@ interface ListItem {
     createdAt: string;
     updatedAt: string;
     user: { id: string; username: string; avatarUrl: string | null };
-    _count: { movies: number };
+    _count: { movies: number; likes: number };
 }
 
 export default function ListsPage() {
@@ -69,7 +69,7 @@ export default function ListsPage() {
                             Lists
                         </h1>
                         <p style={{ color: 'var(--text-secondary)', marginTop: 6, fontSize: 'var(--text-sm)' }}>
-                            Curated film collections by the community
+                            Curated collections by the community
                         </p>
                     </div>
                     {session && (
@@ -252,9 +252,16 @@ function ListCard({ list }: { list: ListItem }) {
                         </div>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>@{list.user.username}</span>
                     </div>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Film size={12} /> {list._count.movies}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Film size={11} /> {list._count.movies}
+                        </span>
+                        {list._count.likes > 0 && (
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Heart size={11} /> {list._count.likes}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </Link>

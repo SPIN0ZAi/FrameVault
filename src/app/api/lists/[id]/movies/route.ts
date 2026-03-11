@@ -16,14 +16,15 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         if (!list) return notFoundError('List');
         if (list.userId !== session.user.id) return forbiddenError();
 
-        const { tmdbId, title, year, posterUrl, note } = await req.json();
+        const { tmdbId, title, year, posterUrl, note, mediaType } = await req.json();
         if (!tmdbId || !title) return serverError('tmdbId and title are required');
+        const type = mediaType === 'show' ? 'show' : 'movie';
 
         // Count existing movies to set position
         const count = await prisma.listMovie.count({ where: { listId: id } });
 
         const movie = await prisma.listMovie.upsert({
-            where: { listId_tmdbId: { listId: id, tmdbId: Number(tmdbId) } },
+            where: { listId_tmdbId_mediaType: { listId: id, tmdbId: Number(tmdbId), mediaType: type } },
             update: { note: note || null },
             create: {
                 listId: id,
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
                 year: year || null,
                 posterUrl: posterUrl || null,
                 note: note || null,
+                mediaType: type,
                 position: count,
             },
         });
