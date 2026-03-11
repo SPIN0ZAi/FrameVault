@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
     ArrowLeft, Edit2, Trash2, Film, Tv, Globe, Lock, X, Check, Loader2,
     AlertTriangle, Heart, Copy, GripVertical, Tag, UploadCloud,
-    ChevronDown, ChevronUp, Plus, Search,
+    ChevronDown, ChevronUp, Plus, Search, Star,
 } from 'lucide-react';
 
 interface ListItem {
@@ -34,6 +34,8 @@ interface ListDetail {
     description: string | null;
     bannerUrl: string | null;
     isPublic: boolean;
+    isFeatured: boolean;
+    isOfficial: boolean;
     createdAt: string;
     updatedAt: string;
     likeCount: number;
@@ -125,6 +127,12 @@ export default function ListDetailPage() {
     const [addSearching, setAddSearching] = useState(false);
     const [addingId, setAddingId] = useState<string | null>(null);
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+    // Auto backdrop
+    const [autoBackdropUrl, setAutoBackdropUrl] = useState<string | null>(null);
+
+    // Edit official/featured (admin)
+    const [editOfficial, setEditOfficial] = useState(false);
 
     // Poster picker
     const [posterPickerItem, setPosterPickerItem] = useState<ListItem | null>(null);
@@ -222,9 +230,30 @@ export default function ListDetailPage() {
             setEditBannerPreview(l.bannerUrl);
             setLikeCount(l.likeCount);
             setLikedByMe(l.likedByMe);
+            setEditOfficial(!!(l.isFeatured || l.isOfficial));
         }
         setLoading(false);
     }, [id]);
+
+    // Fetch TMDB backdrop for the first item when there is no custom banner
+    useEffect(() => {
+        if (!items.length) { setAutoBackdropUrl(null); return; }
+        if (list?.bannerUrl) { setAutoBackdropUrl(null); return; }
+        const first = items[0];
+        const endpoint = first.mediaType === 'show'
+            ? `https://api.themoviedb.org/3/tv/${first.tmdbId}?language=en-US`
+            : `https://api.themoviedb.org/3/movie/${first.tmdbId}?language=en-US`;
+        fetch(`/api/tmdb-proxy?url=${encodeURIComponent(endpoint)}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.backdrop_path) {
+                    setAutoBackdropUrl(`https://image.tmdb.org/t/p/w1280${d.backdrop_path}`);
+                } else {
+                    setAutoBackdropUrl(null);
+                }
+            })
+            .catch(() => setAutoBackdropUrl(null));
+    }, [items, list?.bannerUrl]);
 
     useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -241,12 +270,12 @@ export default function ListDetailPage() {
         const res = await fetch(`/api/lists/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: editTitle, description: editDesc, isPublic: editPublic, ...(bannerUrl !== undefined && { bannerUrl }) }),
+            body: JSON.stringify({ title: editTitle, description: editDesc, isPublic: editPublic, ...(bannerUrl !== undefined && { bannerUrl }), ...(session?.user?.role === 'admin' && { isFeatured: editOfficial, isOfficial: editOfficial }) }),
         });
         const data = await res.json();
         if (data.success) {
             const newBanner = bannerUrl !== undefined ? bannerUrl : (list?.bannerUrl ?? null);
-            setList((prev) => prev ? { ...prev, title: editTitle, description: editDesc || null, isPublic: editPublic, bannerUrl: newBanner } : prev);
+            setList((prev) => prev ? { ...prev, title: editTitle, description: editDesc || null, isPublic: editPublic, bannerUrl: newBanner, ...(session?.user?.role === 'admin' && { isFeatured: editOfficial, isOfficial: editOfficial }) } : prev);
             setEditBannerFile(null);
             setEditing(false);
         }
@@ -345,49 +374,44 @@ export default function ListDetailPage() {
     );
 
     const bannerSrc = editing ? (editBannerPreview ?? list.bannerUrl) : list.bannerUrl;
-    // Auto-banner: use first movie's poster (blurred + faded) when no custom banner
-    const autoBannerPoster = !bannerSrc && items.length > 0 ? items[0].posterUrl : null;
+    // Auto-banner: use TMDB backdrop of first item (fetched asynchronously)
+    const hasAutoBanner = !bannerSrc && !!autoBackdropUrl;
     const watchedPct = items.length > 0 ? Math.round((list.watchedCount / items.length) * 100) : 0;
     const grouped = groupItems(items);
     const hasGroups = Array.from(grouped.keys()).some((k) => k !== '');
 
     return (
-        <div className="page" style={{ paddingBottom: 'var(--space-3xl)', paddingTop: (bannerSrc || autoBannerPoster) ? 0 : undefined }}>
+        <div className="page" style={{ paddingBottom: 'var(--space-3xl)', paddingTop: (bannerSrc || hasAutoBanner) ? 0 : undefined }}>
 
             {/* ── Banner ── */}
-            {(bannerSrc || autoBannerPoster || editing) && (
+            {(bannerSrc || hasAutoBanner || editing) && (
                 <div style={{
                     position: 'relative', width: '100%',
-                    height: (bannerSrc || autoBannerPoster) ? 300 : 140,
+                    height: (bannerSrc || hasAutoBanner) ? 320 : 140,
                     overflow: 'hidden',
                     background: 'var(--bg-secondary)',
                     marginBottom: 0,
-                    borderBottom: !bannerSrc && !autoBannerPoster ? '2px dashed rgba(99,102,241,0.3)' : undefined,
+                    borderBottom: !bannerSrc && !hasAutoBanner ? '2px dashed rgba(99,102,241,0.3)' : undefined,
                 }}>
                     {/* Custom banner */}
                     {bannerSrc && <img src={bannerSrc} alt="List banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                    {/* Auto blurred banner: tile poster 3× side by side so it fills the wide area naturally */}
-                    {!bannerSrc && autoBannerPoster && (
-                        <div style={{
-                            position: 'absolute', inset: '-20px',
-                            display: 'flex', gap: 0,
-                        }}>
-                            {[0,1,2,3].map((i) => (
-                                <img key={i} src={autoBannerPoster} alt="" style={{
-                                    flex: '1 0 25%', height: '100%', objectFit: 'cover',
-                                    filter: 'blur(5px) brightness(0.5) saturate(1.3)',
-                                }} />
-                            ))}
-                        </div>
+                    {/* Auto-banner: TMDB backdrop of first item — landscape, no blur */}
+                    {!bannerSrc && hasAutoBanner && (
+                        <img src={autoBackdropUrl!} alt="" style={{
+                            position: 'absolute', inset: 0,
+                            width: '100%', height: '100%',
+                            objectFit: 'cover', display: 'block',
+                            opacity: 0.65,
+                        }} />
                     )}
                     {/* Editing empty placeholder */}
-                    {!bannerSrc && !autoBannerPoster && editing && (
+                    {!bannerSrc && !hasAutoBanner && editing && (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>No banner — click to upload</span>
                         </div>
                     )}
                     {/* Gradient fade */}
-                    {(bannerSrc || autoBannerPoster) && (
+                    {(bannerSrc || hasAutoBanner) && (
                         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 35%, rgba(13,14,18,0.7) 75%, var(--bg-primary) 100%)' }} />
                     )}
                     {editing && (
@@ -413,8 +437,8 @@ export default function ListDetailPage() {
                 </div>
             )}
 
-            <div className="container" style={{ marginTop: (bannerSrc || autoBannerPoster) ? '-48px' : 'var(--space-xl)', position: 'relative', zIndex: 1 }}>
-                <Link href="/lists" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: (bannerSrc || autoBannerPoster) ? 'rgba(255,255,255,0.85)' : 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', textDecoration: 'none' }}>
+            <div className="container" style={{ marginTop: (bannerSrc || hasAutoBanner) ? '-48px' : 'var(--space-xl)', position: 'relative', zIndex: 1 }}>
+                <Link href="/lists" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: (bannerSrc || hasAutoBanner) ? 'rgba(255,255,255,0.85)' : 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', textDecoration: 'none' }}>
                     <ArrowLeft size={15} /> Back to Lists
                 </Link>
 
@@ -429,6 +453,13 @@ export default function ListDetailPage() {
                                 <input type="checkbox" checked={editPublic} onChange={(e) => setEditPublic(e.target.checked)} />
                                 <Globe size={15} style={{ color: 'var(--text-tertiary)' }} /> Make public
                             </label>
+                            {session?.user?.role === 'admin' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                    <input type="checkbox" checked={editOfficial} onChange={(e) => setEditOfficial(e.target.checked)} />
+                                    <Star size={15} style={{ color: '#f59e0b', fill: editOfficial ? '#f59e0b' : 'none' }} />
+                                    Official &amp; Featured
+                                </label>
+                            )}
                             <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                                 <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={!editTitle.trim() || saving} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     {saving && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
