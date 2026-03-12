@@ -27,21 +27,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma client
-        run: npx prisma generate
+      - name: Build (OpenNext for Cloudflare)
+        # opennextjs-cloudflare build internally calls `npm run build`
+        # which runs `prisma generate && next build`, then bundles for Workers.
+        run: npx opennextjs-cloudflare build
 
-      - name: Build & Deploy to Cloudflare Workers
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # On PRs deploy a preview, on main deploy production
+          # opennextjs-cloudflare deploy handles wrangler internally
           command: >
             ${{ github.event_name == 'pull_request'
-              && format('deploy --env preview --name framevault-preview-pr-{0}', github.event.pull_request.number)
+              && format('pages deploy .open-next --project-name framevault --branch pr-{0}', github.event.pull_request.number)
               || 'deploy' }}
-          # Run the opennext build before wrangler deploy
-          preCommands: npx opennextjs-cloudflare build
         env:
           # All secrets must also be set in the Cloudflare dashboard
           # (Settings → Variables). The ones below are only used during the build.
