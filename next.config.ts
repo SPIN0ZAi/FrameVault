@@ -1,24 +1,6 @@
 import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
-  // Required for Prisma to bundle correctly in Cloudflare Workers
-  serverExternalPackages: ["@prisma/client", ".prisma/client"],
-  // sharp is a native binary — not available in Workers, Next.js will skip optimisation
-  images: {
-    unoptimized: true,
-  },
-  experimental: {
-    // Exclude @vercel/og (OG image generation — not used in this app) from the
-    // traced file set so OpenNext won't bundle it.
-    // Saves ~850 KiB gzipped, keeping the Worker under the 3 MiB free-plan limit.
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/next/dist/compiled/@vercel/og/**',
-      ],
-    },
-  },
-
   async headers() {
     return [
       {
@@ -52,6 +34,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-// Enables Cloudflare bindings in `next dev` (no-op in production builds)
-initOpenNextCloudflareForDev();
