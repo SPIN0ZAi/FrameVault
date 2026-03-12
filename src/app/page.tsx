@@ -407,8 +407,57 @@ export default async function HomePage() {
                         <ScrollRow>
                             {friendsActivity.map((activity: any) => (
                                 <Link href={`/movies/${activity.movie.tmdbId ?? activity.movie.id}`} key={activity.id} className="movie-card" style={{ flex: '0 0 200px', cursor: 'pointer' }}>
-                                    <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, background: 'rgba(26,29,33,0.85)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-                                        <MessageSquare size={13} fill="currentColor" stroke="none" />
+                                    <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+                                        <div style={{ position: 'relative', width: 32, height: 32 }}>
+                                            {activity.user.avatarUrl ? (
+                                                <img
+                                                    src={activity.user.avatarUrl}
+                                                    alt={activity.user.username}
+                                                    style={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        borderRadius: '50%',
+                                                        objectFit: 'cover',
+                                                        border: '2px solid rgba(26,29,33,0.92)',
+                                                        boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
+                                                        background: 'var(--bg-secondary)',
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: '50%',
+                                                    background: 'rgba(26,29,33,0.92)',
+                                                    border: '2px solid rgba(255,255,255,0.08)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 12,
+                                                    fontWeight: 800,
+                                                    color: '#fff',
+                                                    boxShadow: '0 2px 10px rgba(0,0,0,0.45)',
+                                                }}>
+                                                    {activity.user.username.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div style={{
+                                                position: 'absolute',
+                                                right: -2,
+                                                bottom: -2,
+                                                width: 16,
+                                                height: 16,
+                                                borderRadius: '50%',
+                                                background: 'rgba(26,29,33,0.96)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backdropFilter: 'blur(4px)',
+                                            }}>
+                                                <MessageSquare size={8} fill="currentColor" stroke="none" />
+                                            </div>
+                                        </div>
                                     </div>
                                     {activity.rating && (
                                         <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, background: '#00e054', color: '#fff', fontWeight: 800, fontSize: 13, padding: '3px 8px', borderBottomLeftRadius: 4 }}>
