@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
+  // Required for Prisma to bundle correctly in Cloudflare Workers
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  // sharp is a native binary — not available in Workers, Next.js will skip optimisation
+  images: {
+    unoptimized: true,
+  },
   async headers() {
     return [
       {
@@ -34,3 +41,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Enables Cloudflare bindings in `next dev` (no-op in production builds)
+initOpenNextCloudflareForDev();

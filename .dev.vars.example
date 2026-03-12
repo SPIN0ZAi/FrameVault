@@ -1,0 +1,32 @@
+# Local Cloudflare Workers dev vars (used by `npm run preview` via wrangler)
+# Copy this file to .dev.vars and fill in the real values.
+# .dev.vars is gitignored — never commit secrets.
+
+# Next.js environment to load (.env.development)
+NEXTJS_ENV=development
+
+# Database (Supabase PostgreSQL pooler URL)
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-here
+AUTH_SECRET=your-secret-here
+
+# TMDB
+TMDB_API_KEY=your-key-here
+TMDB_READ_ACCESS_TOKEN=your-token-here
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Resend (email — replaces nodemailer/Gmail)
+RESEND_API_KEY=re_...
+EMAIL_FROM=FrameVault <noreply@yourdomain.com>
+
+# Upstash Redis (rate limiting)
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=your-token-here
