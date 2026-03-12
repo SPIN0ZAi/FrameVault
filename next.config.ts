@@ -8,6 +8,19 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  webpack(config, { isServer }) {
+    if (isServer) {
+      // Exclude @vercel/og (OG image generation) — not used in this app.
+      // Removing it shaves ~2 MiB off the Cloudflare Worker bundle.
+      config.plugins = (config.plugins ?? []).concat(
+        new (require('webpack').IgnorePlugin)({
+          resourceRegExp: /\/compiled\/@vercel\/og/,
+          contextRegExp: /next[\\/]dist/,
+        })
+      );
+    }
+    return config;
+  },
   async headers() {
     return [
       {
