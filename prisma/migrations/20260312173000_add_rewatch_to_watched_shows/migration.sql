@@ -1,0 +1,3 @@
+ALTER TABLE "watched_shows"
+ADD COLUMN "rewatchCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "lastRewatchedAt" TIMESTAMP(3);

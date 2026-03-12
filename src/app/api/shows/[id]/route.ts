@@ -89,8 +89,22 @@ export async function GET(
 
         // Check user interaction
         const session = await auth();
-        let userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null; hasReview: boolean } = {
-            watched: false, inWatchlist: false, rating: null, customPosterUrl: null, hasReview: false,
+        let userInteraction: {
+            watched: boolean;
+            inWatchlist: boolean;
+            rating: number | null;
+            customPosterUrl: string | null;
+            hasReview: boolean;
+            rewatchCount: number;
+            lastRewatchedAt: string | null;
+        } = {
+            watched: false,
+            inWatchlist: false,
+            rating: null,
+            customPosterUrl: null,
+            hasReview: false,
+            rewatchCount: 0,
+            lastRewatchedAt: null,
         };
 
         if (session?.user) {
@@ -118,6 +132,8 @@ export async function GET(
                 rating: ratingRecord?.value ?? null,
                 customPosterUrl: customPoster?.posterUrl ?? null,
                 hasReview: !!userReview,
+                rewatchCount: watched?.rewatchCount ?? 0,
+                lastRewatchedAt: watched?.lastRewatchedAt?.toISOString() ?? null,
             };
         }
 

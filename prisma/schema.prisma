@@ -335,6 +335,8 @@ model WatchedShow {
   year       Int?
   posterUrl  String?
   watchedAt  DateTime @default(now())
+  rewatchCount    Int      @default(0)
+  lastRewatchedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

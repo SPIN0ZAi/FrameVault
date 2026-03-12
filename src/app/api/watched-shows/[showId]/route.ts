@@ -22,9 +22,22 @@ export async function POST(
             title?: string; year?: number | null; posterUrl?: string | null;
         };
 
+        const existing = await prisma.watchedShow.findUnique({
+            where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+            select: { rewatchCount: true, lastRewatchedAt: true },
+        });
+
         const watched = await prisma.watchedShow.upsert({
             where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-            create: { userId: session.user.id, tmdbShowId, title, year, posterUrl },
+            create: {
+                userId: session.user.id,
+                tmdbShowId,
+                title,
+                year,
+                posterUrl,
+                rewatchCount: 0,
+                lastRewatchedAt: null,
+            },
             update: { watchedAt: new Date(), title, year, posterUrl },
         });
 
@@ -33,7 +46,11 @@ export async function POST(
             where: { userId: session.user.id, tmdbShowId },
         });
 
-        return successResponse(watched);
+        return successResponse({
+            ...watched,
+            rewatchCount: existing?.rewatchCount ?? watched.rewatchCount,
+            lastRewatchedAt: (existing?.lastRewatchedAt ?? watched.lastRewatchedAt)?.toISOString() ?? null,
+        });
     } catch (error) {
         console.error('POST watched-shows error:', error);
         return serverError();
@@ -81,7 +98,11 @@ export async function GET(
             where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
         });
 
-        return successResponse({ watched: !!record });
+        return successResponse({
+            watched: !!record,
+            rewatchCount: record?.rewatchCount ?? 0,
+            lastRewatchedAt: record?.lastRewatchedAt?.toISOString() ?? null,
+        });
     } catch (error) {
         console.error('GET watched-shows error:', error);
         return serverError();

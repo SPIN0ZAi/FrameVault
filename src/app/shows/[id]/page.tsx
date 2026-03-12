@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus, ListPlus, Edit3, Loader2, Pencil, Trash2, Crown, AlertTriangle, Heart } from 'lucide-react';
+import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus, ListPlus, Edit3, Loader2, Pencil, Trash2, Crown, AlertTriangle, Heart, RefreshCw } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
@@ -41,7 +41,15 @@ interface ShowDetail {
         likeCount: number;
         likedByMe: boolean;
     }[];
-    userInteraction: { watched: boolean; inWatchlist: boolean; rating: number | null; customPosterUrl: string | null; hasReview: boolean };
+    userInteraction: {
+        watched: boolean;
+        inWatchlist: boolean;
+        rating: number | null;
+        customPosterUrl: string | null;
+        hasReview: boolean;
+        rewatchCount: number;
+        lastRewatchedAt: string | null;
+    };
 }
 
 function getLanguageName(code: string | null): string | null {
@@ -276,8 +284,32 @@ export default function ShowDetailPage() {
                     ...prev.userInteraction,
                     watched: !isWatched,
                     inWatchlist: isWatched ? prev.userInteraction.inWatchlist : false,
+                    rewatchCount: isWatched ? 0 : prev.userInteraction.rewatchCount,
+                    lastRewatchedAt: isWatched ? null : prev.userInteraction.lastRewatchedAt,
                 },
             } : prev);
+        } finally { setActionLoading(''); }
+    };
+
+    const handleRewatch = async () => {
+        if (!session) { router.push('/login'); return; }
+        if (!show) return;
+        setActionLoading('rewatch');
+        try {
+            const res = await fetch(`/api/shows/${id}/rewatch`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setShow(prev => prev ? {
+                    ...prev,
+                    userInteraction: {
+                        ...prev.userInteraction,
+                        watched: true,
+                        inWatchlist: false,
+                        rewatchCount: data.data.rewatchCount,
+                        lastRewatchedAt: data.data.lastRewatchedAt,
+                    },
+                } : prev);
+            }
         } finally { setActionLoading(''); }
     };
 
@@ -410,6 +442,29 @@ export default function ShowDetailPage() {
                                 >
                                     <ImagePlus size={18} /> Change Poster
                                 </button>
+                            </div>
+                        )}
+
+                        {(show.userInteraction.rewatchCount ?? 0) > 0 && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 10,
+                                left: 10,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                background: 'rgba(0,0,0,0.82)',
+                                border: '1.5px solid var(--brand)',
+                                borderRadius: 999,
+                                padding: '4px 10px 4px 7px',
+                                backdropFilter: 'blur(6px)',
+                                boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                                pointerEvents: 'none',
+                            }}>
+                                <RefreshCw size={11} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', letterSpacing: '0.02em', lineHeight: 1 }}>
+                                    ×{show.userInteraction.rewatchCount}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -546,6 +601,23 @@ export default function ShowDetailPage() {
                             >
                                 {show.userInteraction.watched ? <><Check size={15} strokeWidth={3} /> Watched</> : <><Eye size={15} /> Mark Watched</>}
                             </button>
+
+                            {session && show.userInteraction.watched && (
+                                <button
+                                    onClick={handleRewatch}
+                                    disabled={actionLoading === 'rewatch'}
+                                    className="btn btn-ghost btn-sm"
+                                    style={{ gap: 6, minWidth: 130 }}
+                                    title={show.userInteraction.rewatchCount > 0 ? `Rewatched ×${show.userInteraction.rewatchCount}` : 'Mark as rewatched'}
+                                >
+                                    {actionLoading === 'rewatch'
+                                        ? <Loader2 size={15} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                        : <RefreshCw size={15} />}
+                                    {show.userInteraction.rewatchCount > 0
+                                        ? <>Rewatch <span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>×{show.userInteraction.rewatchCount}</span></>
+                                        : <>Rewatch</>}
+                                </button>
+                            )}
 
                             {!show.userInteraction.watched && (
                                 <button
