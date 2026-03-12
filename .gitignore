@@ -36,10 +36,8 @@ yarn-error.log*
 # vercel
 .vercel
 
-# cloudflare / opennext build output
+# local build output / local env files
 .open-next
-
-# local cloudflare env vars (contains secrets)
 .dev.vars
 
 # typescript
