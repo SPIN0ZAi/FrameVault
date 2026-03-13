@@ -39,6 +39,15 @@ export async function GET(
                 .map(r => r.tmdbShowId);
             const allMatchingShows = await prisma.watchedShow.findMany({
                 where: { userId: user.id, tmdbShowId: { in: qualifyingIds } },
+                select: {
+                    id: true,
+                    userId: true,
+                    tmdbShowId: true,
+                    title: true,
+                    year: true,
+                    posterUrl: true,
+                    watchedAt: true,
+                },
             });
             const withRatings = allMatchingShows.map(s => ({
                 ...s,
@@ -54,7 +63,18 @@ export async function GET(
 
         // Rating sort: fetch all, join + sort in memory, then paginate
         if (sort === 'rating_desc') {
-            const allShows = await prisma.watchedShow.findMany({ where: { userId: user.id } });
+            const allShows = await prisma.watchedShow.findMany({
+                where: { userId: user.id },
+                select: {
+                    id: true,
+                    userId: true,
+                    tmdbShowId: true,
+                    title: true,
+                    year: true,
+                    posterUrl: true,
+                    watchedAt: true,
+                },
+            });
             const withRatings = allShows.map(s => ({
                 ...s,
                 rating: ratingMap.get(s.tmdbShowId) ?? null,
@@ -75,6 +95,15 @@ export async function GET(
         const [shows, totalCount] = await Promise.all([
             prisma.watchedShow.findMany({
                 where: { userId: user.id },
+                select: {
+                    id: true,
+                    userId: true,
+                    tmdbShowId: true,
+                    title: true,
+                    year: true,
+                    posterUrl: true,
+                    watchedAt: true,
+                },
                 orderBy,
                 skip: (page - 1) * limit,
                 take: limit,

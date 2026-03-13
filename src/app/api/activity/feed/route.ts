@@ -54,7 +54,13 @@ export async function GET(_req: NextRequest) {
             // ── TV show watched events ──────────────────────────────────────────
             prisma.watchedShow.findMany({
                 where: { userId: { in: followingIds }, watchedAt: { gte: since } },
-                include: {
+                select: {
+                    id: true,
+                    tmdbShowId: true,
+                    title: true,
+                    year: true,
+                    posterUrl: true,
+                    watchedAt: true,
                     user: { select: { id: true, username: true, avatarUrl: true } },
                 },
                 orderBy: { watchedAt: 'desc' },
