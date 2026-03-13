@@ -133,11 +133,16 @@ export default function ShowDetailPage() {
         try {
             const res = await fetch(`/api/shows/${id}`);
             const data = await res.json();
-            if (data.success) setShow(data.data);
+            if (data.success) {
+                setShow(data.data);
+                if (data.data?.id && String(data.data.id) !== String(id)) {
+                    router.replace(`/shows/${data.data.id}`);
+                }
+            }
             else { setLoading(false); return; }
         } catch { }
         finally { setLoading(false); }
-    }, [id]);
+    }, [id, router]);
 
     useEffect(() => { fetchShow(); }, [fetchShow]);
 

@@ -45,6 +45,14 @@ interface TMDBSimilarShows {
     }[];
 }
 
+interface TMDBShowSearch {
+    results: {
+        id: number;
+        name: string;
+        first_air_date: string | null;
+    }[];
+}
+
 // GET /api/shows/[id]
 export async function GET(
     request: NextRequest,
@@ -52,19 +60,56 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
+        let resolvedTmdbId = id;
 
         let tmdbShow: TMDBShowFull;
         try {
-            tmdbShow = await getShowDetails(id) as TMDBShowFull;
+            tmdbShow = await getShowDetails(resolvedTmdbId) as TMDBShowFull;
         } catch {
-            return notFoundError('Show not found on TMDB');
+            const legacyTmdbId = parseInt(id);
+            if (!isNaN(legacyTmdbId)) {
+                const localShow = await prisma.watchedShow.findFirst({
+                    where: { tmdbShowId: legacyTmdbId },
+                    select: { title: true, year: true },
+                });
+
+                if (localShow?.title) {
+                    const search = await fetchFromTMDB<TMDBShowSearch>('/search/tv', {
+                        query: localShow.title,
+                        include_adult: 'false',
+                        language: 'en-US',
+                        page: '1',
+                    }).catch(() => null);
+
+                    const normalizedLocalTitle = localShow.title.trim().toLowerCase();
+                    const bestMatch =
+                        search?.results.find((r) => {
+                            const titleMatches = r.name.trim().toLowerCase() === normalizedLocalTitle;
+                            const yearMatches =
+                                !localShow.year ||
+                                (r.first_air_date ? parseInt(r.first_air_date.substring(0, 4)) === localShow.year : false);
+                            return titleMatches && yearMatches;
+                        }) ?? search?.results[0];
+
+                    if (bestMatch) {
+                        resolvedTmdbId = bestMatch.id.toString();
+                        tmdbShow = await getShowDetails(resolvedTmdbId) as TMDBShowFull;
+                    } else {
+                        return notFoundError('Show not found on TMDB');
+                    }
+                } else {
+                    return notFoundError('Show not found on TMDB');
+                }
+            } else {
+                return notFoundError('Show not found on TMDB');
+            }
         }
 
         // Fetch credits, videos, recommendations in parallel
         const [credits, videos, similar] = await Promise.all([
-            fetchFromTMDB<TMDBCredits>(`/tv/${id}/credits`).catch(() => ({ cast: [], crew: [] })),
-            fetchFromTMDB<TMDBVideos>(`/tv/${id}/videos`).catch(() => ({ results: [] })),
-            fetchFromTMDB<TMDBSimilarShows>(`/tv/${id}/recommendations`).catch(() => ({ results: [] })),
+            fetchFromTMDB<TMDBCredits>(`/tv/${resolvedTmdbId}/credits`).catch(() => ({ cast: [], crew: [] })),
+            fetchFromTMDB<TMDBVideos>(`/tv/${resolvedTmdbId}/videos`).catch(() => ({ results: [] })),
+            fetchFromTMDB<TMDBSimilarShows>(`/tv/${resolvedTmdbId}/recommendations`).catch(() => ({ results: [] })),
         ]);
 
         const trailer =
@@ -108,7 +153,7 @@ export async function GET(
         };
 
         if (session?.user) {
-            const tmdbShowId = parseInt(id);
+            const tmdbShowId = tmdbShow.id;
             const [watched, watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
                 prisma.watchedShow.findUnique({
                     where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
@@ -138,7 +183,7 @@ export async function GET(
         }
 
         // Fetch reviews for this show
-        const tmdbShowId = parseInt(id);
+        const tmdbShowId = tmdbShow.id;
         const reviews = await prisma.showReview.findMany({
             where: { tmdbShowId },
             include: {
