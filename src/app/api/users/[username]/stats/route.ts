@@ -95,7 +95,7 @@ export async function GET(
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             const entry = dateMap.get(key) ?? { count: 0, items: [] };
             entry.count++;
-            entry.items.push({ title: ws.title, href: `/tv/${ws.tmdbShowId}`, type: 'show' });
+            entry.items.push({ title: ws.title, href: `/shows/${ws.tmdbShowId}`, type: 'show' });
             dateMap.set(key, entry);
         }
         const heatmap = Array.from(dateMap.entries())
