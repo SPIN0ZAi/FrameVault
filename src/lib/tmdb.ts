@@ -48,20 +48,27 @@ interface TMDBResponse<T> {
 }
 
 export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
-    const urlParams = new URLSearchParams({
-        ...params,
-    });
+    const key = process.env.TMDB_API_KEY;
+    if (!key) throw new Error('TMDB_API_KEY missing');
+
+    const urlParams = new URLSearchParams({ ...params });
+    const headers: Record<string, string> = { accept: 'application/json' };
+
+    const isV4Token = key.startsWith('eyJ') || key.split('.').length > 2; // JWT-style TMDB v4 token
+    if (isV4Token) {
+        headers.Authorization = `Bearer ${key}`;
+    } else {
+        urlParams.set('api_key', key);
+    }
 
     const response = await fetch(`${TMDB_BASE_URL}${endpoint}?${urlParams.toString()}`, {
-        headers: {
-            Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-            accept: 'application/json',
-        },
+        headers,
         next: { revalidate: 3600 }, // Cache TMDB responses for 1 hour by default
     });
 
     if (!response.ok) {
-        throw new Error(`TMDB API Error: ${response.statusText}`);
+        const body = await response.text().catch(() => '');
+        throw new Error(`TMDB API Error ${response.status}: ${response.statusText}${body ? ` — ${body}` : ''}`);
     }
 
     return response.json();

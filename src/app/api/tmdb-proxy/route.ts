@@ -11,10 +11,14 @@ export async function GET(req: NextRequest) {
 
     const key = process.env.TMDB_API_KEY;
     if (!key) return NextResponse.json({ error: 'TMDB key not configured' }, { status: 500 });
+    const isV4Token = key.startsWith('eyJ') || key.split('.').length > 2;
+    const headers: Record<string, string> = { accept: 'application/json' };
+    if (isV4Token) headers.Authorization = `Bearer ${key}`;
 
     try {
-        const res = await fetch(raw, {
-            headers: { Authorization: `Bearer ${key}`, accept: 'application/json' },
+        const proxiedUrl = isV4Token ? raw : `${raw}${raw.includes('?') ? '&' : '?'}api_key=${key}`;
+        const res = await fetch(proxiedUrl, {
+            headers,
             signal: AbortSignal.timeout(8000),
         });
         const data = await res.json();
