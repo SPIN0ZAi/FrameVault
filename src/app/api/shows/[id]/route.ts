@@ -154,56 +154,73 @@ export async function GET(
 
         if (session?.user) {
             const tmdbShowId = tmdbShow.id;
-            const [watched, watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
-                prisma.watchedShow.findUnique({
-                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }),
-                prisma.showWatchlistItem.findUnique({
-                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }),
-                prisma.showRating.findUnique({
-                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }),
-                prisma.showCustomPoster.findUnique({
-                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }).catch(() => null),
-                prisma.showReview.findUnique({
-                    where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                }).catch(() => null),
-            ]);
-            userInteraction = {
-                watched: !!watched,
-                inWatchlist: !!watchlisted,
-                rating: ratingRecord?.value ?? null,
-                customPosterUrl: customPoster?.posterUrl ?? null,
-                hasReview: !!userReview,
-                rewatchCount: watched?.rewatchCount ?? 0,
-                lastRewatchedAt: watched?.lastRewatchedAt?.toISOString() ?? null,
-            };
+            try {
+                const [watched, watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
+                    prisma.watchedShow.findUnique({
+                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    }),
+                    prisma.showWatchlistItem.findUnique({
+                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    }),
+                    prisma.showRating.findUnique({
+                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    }),
+                    prisma.showCustomPoster.findUnique({
+                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    }).catch(() => null),
+                    prisma.showReview.findUnique({
+                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    }).catch(() => null),
+                ]);
+                userInteraction = {
+                    watched: !!watched,
+                    inWatchlist: !!watchlisted,
+                    rating: ratingRecord?.value ?? null,
+                    customPosterUrl: customPoster?.posterUrl ?? null,
+                    hasReview: !!userReview,
+                    rewatchCount: watched?.rewatchCount ?? 0,
+                    lastRewatchedAt: watched?.lastRewatchedAt?.toISOString() ?? null,
+                };
+            } catch (error) {
+                console.warn('Show user interaction unavailable:', error);
+            }
         }
 
         // Fetch reviews for this show
         const tmdbShowId = tmdbShow.id;
-        const reviews = await prisma.showReview.findMany({
-            where: { tmdbShowId },
-            include: {
-                user: { select: { id: true, username: true, avatarUrl: true, role: true } },
-                likes: session?.user ? { where: { userId: session.user.id } } : false,
-                _count: { select: { likes: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-        });
+        let formattedReviews: {
+            id: string;
+            content: string;
+            containsSpoilers: boolean;
+            createdAt: Date;
+            user: { id: string; username: string; avatarUrl: string | null; role: string };
+            likeCount: number;
+            likedByMe: boolean;
+        }[] = [];
+        try {
+            const reviews = await prisma.showReview.findMany({
+                where: { tmdbShowId },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true, role: true } },
+                    likes: session?.user ? { where: { userId: session.user.id } } : false,
+                    _count: { select: { likes: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+            });
 
-        const formattedReviews = reviews.map(r => ({
-            id: r.id,
-            content: r.content,
-            containsSpoilers: r.containsSpoilers,
-            createdAt: r.createdAt,
-            user: r.user,
-            likeCount: r._count.likes,
-            likedByMe: session?.user ? (r.likes as { userId: string }[]).length > 0 : false,
-        }));
+            formattedReviews = reviews.map(r => ({
+                id: r.id,
+                content: r.content,
+                containsSpoilers: r.containsSpoilers,
+                createdAt: r.createdAt,
+                user: r.user,
+                likeCount: r._count.likes,
+                likedByMe: session?.user ? (r.likes as { userId: string }[]).length > 0 : false,
+            }));
+        } catch (error) {
+            console.warn('Show reviews unavailable:', error);
+        }
 
         return successResponse({
             id: tmdbShow.id.toString(),
