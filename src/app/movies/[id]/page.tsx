@@ -575,12 +575,29 @@ export default function MovieDetailPage() {
                                         )}
                                     </div>
                                     {movie.director && (
-                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-xs)' }}>
-                                            Directed by{' '}
-                                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                                                {movie.director.name}
-                                            </span>
-                                        </p>
+                                        <div style={{ marginTop: 'var(--space-sm)' }}>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                                                Director
+                                            </p>
+                                            <Link
+                                                href={`/actors/${movie.director.id}?view=directed`}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}
+                                                title={`View all movies/series directed by ${movie.director.name}`}
+                                            >
+                                                <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                                    {movie.director.profileUrl ? (
+                                                        <img src={movie.director.profileUrl} alt={movie.director.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--text-tertiary)' }}>
+                                                            {movie.director.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                    {movie.director.name}
+                                                </span>
+                                            </Link>
+                                        </div>
                                     )}
                         </div>
 

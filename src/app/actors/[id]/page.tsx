@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Film, MapPin, Calendar, ArrowLeft } from 'lucide-react';
 import MovieHoverCard from '@/components/ui/MovieHoverCard';
@@ -25,6 +25,16 @@ interface Actor {
     photoUrl: string | null;
     department: string;
     movies: ActorMovie[];
+    directedWorks?: DirectedWork[];
+}
+
+interface DirectedWork {
+    id: number;
+    mediaType: 'movie' | 'tv';
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    job: string | null;
 }
 
 function formatDate(str: string | null) {
@@ -44,15 +54,17 @@ function calcAge(birthday: string | null, deathday: string | null) {
 
 export default function ActorPage() {
     const { id } = useParams<{ id: string }>();
+    const searchParams = useSearchParams();
     const [actor, setActor] = useState<Actor | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showFullBio, setShowFullBio] = useState(false);
+    const view = searchParams.get('view') === 'directed' ? 'directed' : 'acting';
 
     useEffect(() => {
         if (!id) return;
         setLoading(true);
-        fetch(`/api/actors/${id}`)
+        fetch(`/api/actors/${id}?view=${view}`)
             .then(r => r.json())
             .then(d => {
                 if (d.success) setActor(d.data);
@@ -60,7 +72,7 @@ export default function ActorPage() {
             })
             .catch(() => setError(true))
             .finally(() => setLoading(false));
-    }, [id]);
+    }, [id, view]);
 
     if (loading) return (
         <div className="page">
@@ -154,7 +166,10 @@ export default function ActorPage() {
                             )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '6px 12px' }}>
                                 <Film size={13} />
-                                <span><strong style={{ color: 'var(--text-primary)' }}>{actor.movies.length}</strong> films</span>
+                                <span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{view === 'directed' ? (actor.directedWorks?.length ?? 0) : actor.movies.length}</strong>{' '}
+                                    {view === 'directed' ? 'directed works' : 'films'}
+                                </span>
                             </div>
                         </div>
 
@@ -179,27 +194,52 @@ export default function ActorPage() {
 
                 {/* ── Filmography ── */}
                 <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
-                    Filmography <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--text-tertiary)' }}>({actor.movies.length})</span>
+                    {view === 'directed' ? 'Directed Movies & Series' : 'Filmography'}{' '}
+                    <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--text-tertiary)' }}>
+                        ({view === 'directed' ? (actor.directedWorks?.length ?? 0) : actor.movies.length})
+                    </span>
                 </h2>
 
-                <div className="grid grid-movies">
-                    {actor.movies.map(movie => (
-                        <MovieHoverCard
-                            key={movie.id}
-                            id={movie.id.toString()}
-                            href={`/movies/${movie.id}`}
-                            title={movie.title}
-                            year={movie.year ?? 0}
-                            posterUrl={movie.posterUrl}
-                            averageRating={movie.averageRating}
-                            badge={movie.character ? (
-                                <div style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)' }}>
-                                    as {movie.character}
+                {view === 'directed' ? (
+                    <div className="grid grid-movies">
+                        {(actor.directedWorks ?? []).map(work => (
+                            <Link key={`${work.mediaType}-${work.id}`} href={work.mediaType === 'movie' ? `/movies/${work.id}` : `/shows/${work.id}`} className="movie-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                {work.posterUrl ? (
+                                    <img src={work.posterUrl} alt={work.title} loading="lazy" />
+                                ) : (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', fontWeight: 700 }}>
+                                        {work.mediaType === 'movie' ? '🎬' : '📺'}
+                                    </div>
+                                )}
+                                <div className="movie-card-overlay">
+                                    <div className="movie-card-title">{work.title}</div>
+                                    <div className="movie-card-year">
+                                        {work.year ?? '—'} · {work.mediaType === 'movie' ? 'Movie' : 'Series'}
+                                    </div>
                                 </div>
-                            ) : undefined}
-                        />
-                    ))}
-                </div>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-movies">
+                        {actor.movies.map(movie => (
+                            <MovieHoverCard
+                                key={movie.id}
+                                id={movie.id.toString()}
+                                href={`/movies/${movie.id}`}
+                                title={movie.title}
+                                year={movie.year ?? 0}
+                                posterUrl={movie.posterUrl}
+                                averageRating={movie.averageRating}
+                                badge={movie.character ? (
+                                    <div style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)' }}>
+                                        as {movie.character}
+                                    </div>
+                                ) : undefined}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

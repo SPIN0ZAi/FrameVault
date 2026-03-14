@@ -290,6 +290,20 @@ export interface TMDBMovieCredit {
     adult?: boolean;
 }
 
+export interface TMDBPersonCombinedCredit {
+    id: number;
+    media_type: 'movie' | 'tv';
+    title?: string;
+    name?: string;
+    job?: string;
+    department?: string;
+    poster_path: string | null;
+    release_date?: string;
+    first_air_date?: string;
+    vote_count?: number;
+    adult?: boolean;
+}
+
 export async function getPersonDetails(id: string | number): Promise<TMDBPersonDetails> {
     return fetchFromTMDB<TMDBPersonDetails>(`/person/${id}`);
 }
@@ -297,6 +311,23 @@ export async function getPersonDetails(id: string | number): Promise<TMDBPersonD
 export async function getPersonMovieCredits(id: string | number): Promise<{ cast: TMDBMovieCredit[] }> {
     const data = await fetchFromTMDB<{ cast: TMDBMovieCredit[] }>(`/person/${id}/movie_credits`);
     data.cast = data.cast.filter(m => !isAdultContent({ title: m.title, overview: '', adult: m.adult }));
+    return data;
+}
+
+export async function getPersonCombinedCredits(id: string | number): Promise<{ cast: TMDBPersonCombinedCredit[]; crew: TMDBPersonCombinedCredit[] }> {
+    const data = await fetchFromTMDB<{ cast: TMDBPersonCombinedCredit[]; crew: TMDBPersonCombinedCredit[] }>(`/person/${id}/combined_credits`);
+    data.cast = data.cast.filter(c => {
+        if (c.media_type === 'movie') {
+            return !isAdultContent({ title: c.title ?? '', overview: '', adult: c.adult });
+        }
+        return !c.adult;
+    });
+    data.crew = data.crew.filter(c => {
+        if (c.media_type === 'movie') {
+            return !isAdultContent({ title: c.title ?? '', overview: '', adult: c.adult });
+        }
+        return !c.adult;
+    });
     return data;
 }
 
