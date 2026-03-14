@@ -60,6 +60,8 @@ interface WatchedShow {
     year: number | null;
     posterUrl: string | null;
     watchedAt: string;
+    rewatchCount: number;
+    lastRewatchedAt?: string | null;
     rating?: number | null;
 }
 
@@ -1542,20 +1544,28 @@ export default function UserProfilePage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-sm)' }}>
                                     {watchedShows.map(ws => (
-                                        <Link key={ws.id} href={`/shows/${ws.tmdbShowId}`} className="movie-card">
-                                            {ws.posterUrl ? (
-                                                <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
-                                            ) : (
-                                                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                                                    <Tv size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
-                                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                        <div key={ws.id} style={{ position: 'relative' }}>
+                                            <Link href={`/shows/${ws.tmdbShowId}`} className="movie-card">
+                                                {ws.posterUrl ? (
+                                                    <img src={ws.posterUrl} alt={ws.title} loading="lazy" />
+                                                ) : (
+                                                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
+                                                        <Tv size={32} style={{ opacity: 0.4, marginBottom: 8 }} />
+                                                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ws.title}</span>
+                                                    </div>
+                                                )}
+                                                <div className="movie-card-overlay">
+                                                    <div className="movie-card-title">{ws.title}</div>
+                                                    {ws.year && <div className="movie-card-year">{ws.year}</div>}
+                                                </div>
+                                            </Link>
+                                            {ws.rewatchCount > 0 && (
+                                                <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.82)', border: '1.5px solid var(--brand)', borderRadius: 999, padding: '2px 7px 2px 5px', backdropFilter: 'blur(4px)', boxShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', lineHeight: 1 }}>×{ws.rewatchCount}</span>
                                                 </div>
                                             )}
-                                            <div className="movie-card-overlay">
-                                                <div className="movie-card-title">{ws.title}</div>
-                                                {ws.year && <div className="movie-card-year">{ws.year}</div>}
-                                            </div>
-                                        </Link>
+                                        </div>
                                     ))}
                                 </div>
                             </section>
@@ -1719,6 +1729,12 @@ export default function UserProfilePage() {
                                                             {ws.year && <div className="movie-card-year">{ws.year}</div>}
                                                         </div>
                                                     </Link>
+                                                    {ws.rewatchCount > 0 && (
+                                                        <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.82)', border: '1.5px solid var(--brand)', borderRadius: 999, padding: '2px 7px 2px 5px', backdropFilter: 'blur(4px)', boxShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
+                                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', lineHeight: 1 }}>×{ws.rewatchCount}</span>
+                                                        </div>
+                                                    )}
                                                     {ws.rating != null && (() => {
                                                         const s = Math.round((ws.rating / 10) * 5 * 2) / 2;
                                                         return (

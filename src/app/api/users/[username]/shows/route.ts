@@ -47,6 +47,8 @@ export async function GET(
                     year: true,
                     posterUrl: true,
                     watchedAt: true,
+                    rewatchCount: true,
+                    lastRewatchedAt: true,
                 },
             });
             const withRatings = allMatchingShows.map(s => ({
@@ -73,6 +75,8 @@ export async function GET(
                     year: true,
                     posterUrl: true,
                     watchedAt: true,
+                    rewatchCount: true,
+                    lastRewatchedAt: true,
                 },
             });
             const withRatings = allShows.map(s => ({
@@ -103,6 +107,8 @@ export async function GET(
                     year: true,
                     posterUrl: true,
                     watchedAt: true,
+                    rewatchCount: true,
+                    lastRewatchedAt: true,
                 },
                 orderBy,
                 skip: (page - 1) * limit,
