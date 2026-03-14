@@ -155,31 +155,60 @@ export async function GET(
         if (session?.user) {
             const tmdbShowId = tmdbShow.id;
             try {
-                const [watched, watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
-                    prisma.watchedShow.findUnique({
-                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                    }),
-                    prisma.showWatchlistItem.findUnique({
-                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                    }),
-                    prisma.showRating.findUnique({
-                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                    }),
-                    prisma.showCustomPoster.findUnique({
-                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                const fallbackYear = tmdbShow.first_air_date ? parseInt(tmdbShow.first_air_date.substring(0, 4)) : null;
+                const watched = await prisma.watchedShow.findFirst({
+                    where: {
+                        userId: session.user.id,
+                        OR: [
+                            { tmdbShowId },
+                            {
+                                title: { equals: tmdbShow.name, mode: 'insensitive' },
+                                ...(fallbackYear ? { year: fallbackYear } : {}),
+                            },
+                        ],
+                    },
+                    select: {
+                        id: true,
+                        tmdbShowId: true,
+                        watchedAt: true,
+                    },
+                }).catch(() => null);
+
+                const candidateTmdbIds = Array.from(new Set([
+                    tmdbShowId,
+                    parseInt(id),
+                    parseInt(resolvedTmdbId),
+                    watched?.tmdbShowId,
+                ].filter((v): v is number => typeof v === 'number' && !isNaN(v))));
+
+                const [watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
+                    prisma.showWatchlistItem.findFirst({
+                        where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
                     }).catch(() => null),
-                    prisma.showReview.findUnique({
-                        where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                    prisma.showRating.findFirst({
+                        where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
+                    }).catch(() => null),
+                    prisma.showCustomPoster.findFirst({
+                        where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
+                    }).catch(() => null),
+                    prisma.showReview.findFirst({
+                        where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
                     }).catch(() => null),
                 ]);
+
+                const rewatchMeta = await prisma.watchedShow.findFirst({
+                    where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
+                    select: { rewatchCount: true, lastRewatchedAt: true },
+                }).catch(() => ({ rewatchCount: 0, lastRewatchedAt: null }));
+
                 userInteraction = {
                     watched: !!watched,
                     inWatchlist: !!watchlisted,
                     rating: ratingRecord?.value ?? null,
                     customPosterUrl: customPoster?.posterUrl ?? null,
                     hasReview: !!userReview,
-                    rewatchCount: watched?.rewatchCount ?? 0,
-                    lastRewatchedAt: watched?.lastRewatchedAt?.toISOString() ?? null,
+                    rewatchCount: rewatchMeta?.rewatchCount ?? 0,
+                    lastRewatchedAt: rewatchMeta?.lastRewatchedAt?.toISOString() ?? null,
                 };
             } catch (error) {
                 console.warn('Show user interaction unavailable:', error);

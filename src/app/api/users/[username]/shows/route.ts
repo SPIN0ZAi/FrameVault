@@ -2,6 +2,56 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, notFoundError, serverError } from '@/lib/api-response';
 
+type BaseShow = {
+    id: string;
+    userId: string;
+    tmdbShowId: number;
+    title: string;
+    year: number | null;
+    posterUrl: string | null;
+    watchedAt: Date;
+};
+
+async function fetchShowsWithSafeRewatch(where: Record<string, unknown>, orderBy?: unknown, skip?: number, take?: number) {
+    try {
+        const rows = await prisma.watchedShow.findMany({
+            where,
+            select: {
+                id: true,
+                userId: true,
+                tmdbShowId: true,
+                title: true,
+                year: true,
+                posterUrl: true,
+                watchedAt: true,
+                rewatchCount: true,
+                lastRewatchedAt: true,
+            },
+            ...(orderBy ? { orderBy } : {}),
+            ...(typeof skip === 'number' ? { skip } : {}),
+            ...(typeof take === 'number' ? { take } : {}),
+        });
+        return rows;
+    } catch {
+        const baseRows = await prisma.watchedShow.findMany({
+            where,
+            select: {
+                id: true,
+                userId: true,
+                tmdbShowId: true,
+                title: true,
+                year: true,
+                posterUrl: true,
+                watchedAt: true,
+            },
+            ...(orderBy ? { orderBy } : {}),
+            ...(typeof skip === 'number' ? { skip } : {}),
+            ...(typeof take === 'number' ? { take } : {}),
+        });
+        return baseRows.map((s: BaseShow) => ({ ...s, rewatchCount: 0, lastRewatchedAt: null }));
+    }
+}
+
 // GET /api/users/[username]/shows
 // Params: page, limit, sort (date_desc|date_asc|title_asc|title_desc|rating_desc), minRating
 export async function GET(
@@ -37,20 +87,7 @@ export async function GET(
             const qualifyingIds = allRatings
                 .filter(r => r.value >= minRating)
                 .map(r => r.tmdbShowId);
-            const allMatchingShows = await prisma.watchedShow.findMany({
-                where: { userId: user.id, tmdbShowId: { in: qualifyingIds } },
-                select: {
-                    id: true,
-                    userId: true,
-                    tmdbShowId: true,
-                    title: true,
-                    year: true,
-                    posterUrl: true,
-                    watchedAt: true,
-                    rewatchCount: true,
-                    lastRewatchedAt: true,
-                },
-            });
+            const allMatchingShows = await fetchShowsWithSafeRewatch({ userId: user.id, tmdbShowId: { in: qualifyingIds } });
             const withRatings = allMatchingShows.map(s => ({
                 ...s,
                 rating: ratingMap.get(s.tmdbShowId) ?? null,
@@ -65,20 +102,7 @@ export async function GET(
 
         // Rating sort: fetch all, join + sort in memory, then paginate
         if (sort === 'rating_desc') {
-            const allShows = await prisma.watchedShow.findMany({
-                where: { userId: user.id },
-                select: {
-                    id: true,
-                    userId: true,
-                    tmdbShowId: true,
-                    title: true,
-                    year: true,
-                    posterUrl: true,
-                    watchedAt: true,
-                    rewatchCount: true,
-                    lastRewatchedAt: true,
-                },
-            });
+            const allShows = await fetchShowsWithSafeRewatch({ userId: user.id });
             const withRatings = allShows.map(s => ({
                 ...s,
                 rating: ratingMap.get(s.tmdbShowId) ?? null,
@@ -97,23 +121,7 @@ export async function GET(
             { watchedAt: 'desc' as const };
 
         const [shows, totalCount] = await Promise.all([
-            prisma.watchedShow.findMany({
-                where: { userId: user.id },
-                select: {
-                    id: true,
-                    userId: true,
-                    tmdbShowId: true,
-                    title: true,
-                    year: true,
-                    posterUrl: true,
-                    watchedAt: true,
-                    rewatchCount: true,
-                    lastRewatchedAt: true,
-                },
-                orderBy,
-                skip: (page - 1) * limit,
-                take: limit,
-            }),
+            fetchShowsWithSafeRewatch({ userId: user.id }, orderBy, (page - 1) * limit, limit),
             prisma.watchedShow.count({ where: { userId: user.id } }),
         ]);
 

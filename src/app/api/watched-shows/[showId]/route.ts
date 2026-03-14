@@ -22,24 +22,39 @@ export async function POST(
             title?: string; year?: number | null; posterUrl?: string | null;
         };
 
-        const existing = await prisma.watchedShow.findUnique({
-            where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-            select: { rewatchCount: true, lastRewatchedAt: true },
-        });
+        let watched: { rewatchCount?: number; lastRewatchedAt?: Date | null } & Record<string, unknown>;
+        try {
+            watched = await prisma.watchedShow.upsert({
+                where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                create: {
+                    userId: session.user.id,
+                    tmdbShowId,
+                    title,
+                    year,
+                    posterUrl,
+                    rewatchCount: 0,
+                    lastRewatchedAt: null,
+                },
+                update: { watchedAt: new Date(), title, year, posterUrl },
+            });
+        } catch {
+            watched = await prisma.watchedShow.upsert({
+                where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+                create: {
+                    userId: session.user.id,
+                    tmdbShowId,
+                    title,
+                    year,
+                    posterUrl,
+                },
+                update: { watchedAt: new Date(), title, year, posterUrl },
+            });
+        }
 
-        const watched = await prisma.watchedShow.upsert({
-            where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-            create: {
-                userId: session.user.id,
-                tmdbShowId,
-                title,
-                year,
-                posterUrl,
-                rewatchCount: 0,
-                lastRewatchedAt: null,
-            },
-            update: { watchedAt: new Date(), title, year, posterUrl },
-        });
+        const rewatchMeta = await prisma.watchedShow.findFirst({
+            where: { userId: session.user.id, tmdbShowId },
+            select: { rewatchCount: true, lastRewatchedAt: true },
+        }).catch(() => ({ rewatchCount: 0, lastRewatchedAt: null }));
 
         // Remove from show watchlist when marking as watched
         await prisma.showWatchlistItem.deleteMany({
@@ -48,8 +63,9 @@ export async function POST(
 
         return successResponse({
             ...watched,
-            rewatchCount: existing?.rewatchCount ?? watched.rewatchCount,
-            lastRewatchedAt: (existing?.lastRewatchedAt ?? watched.lastRewatchedAt)?.toISOString() ?? null,
+            watched: true,
+            rewatchCount: rewatchMeta?.rewatchCount ?? 0,
+            lastRewatchedAt: rewatchMeta?.lastRewatchedAt?.toISOString() ?? null,
         });
     } catch (error) {
         console.error('POST watched-shows error:', error);
@@ -94,14 +110,20 @@ export async function GET(
         const tmdbShowId = parseInt(showId);
         if (isNaN(tmdbShowId)) return successResponse({ watched: false });
 
-        const record = await prisma.watchedShow.findUnique({
-            where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
+        const record = await prisma.watchedShow.findFirst({
+            where: { userId: session.user.id, tmdbShowId },
+            select: { id: true },
         });
+
+        const rewatchMeta = await prisma.watchedShow.findFirst({
+            where: { userId: session.user.id, tmdbShowId },
+            select: { rewatchCount: true, lastRewatchedAt: true },
+        }).catch(() => ({ rewatchCount: 0, lastRewatchedAt: null }));
 
         return successResponse({
             watched: !!record,
-            rewatchCount: record?.rewatchCount ?? 0,
-            lastRewatchedAt: record?.lastRewatchedAt?.toISOString() ?? null,
+            rewatchCount: rewatchMeta?.rewatchCount ?? 0,
+            lastRewatchedAt: rewatchMeta?.lastRewatchedAt?.toISOString() ?? null,
         });
     } catch (error) {
         console.error('GET watched-shows error:', error);
