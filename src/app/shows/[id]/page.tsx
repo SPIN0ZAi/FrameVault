@@ -545,230 +545,124 @@ export default function ShowDetailPage() {
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ flex: 1, minWidth: 300, display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                        <div>
+                            <h1 style={{ fontSize: 'var(--text-4xl)', fontWeight: 800, letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>{show.title}</h1>
+                            {show.tagline && <p style={{ fontSize: 'var(--text-md)', color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{show.tagline}"</p>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginTop: 'var(--space-sm)', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>
+                                <span>{airYears}</span>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span>{show.numberOfSeasons} seasons</span>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span>{show.numberOfEpisodes} episodes</span>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span>{getLanguageName(show.language)}</span>
+                                {show.status && (
+                                    <>
+                                        <span style={{ opacity: 0.5 }}>•</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor[show.status] ?? 'var(--text-tertiary)' }} />
+                                            {show.status}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
                         {/* Genres */}
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--space-sm)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
                             {show.genres.map(g => (
-                                <span key={g.id} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 'var(--text-xs)', fontWeight: 600, background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
-                                    {g.name}
-                                </span>
+                                <Link key={g.id} href={`/shows?genre=${g.id}`} className="chip chip-sm">{g.name}</Link>
                             ))}
                         </div>
 
-                        <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 900, lineHeight: 1.15, marginBottom: 'var(--space-xs)' }}>{show.title}</h1>
-                        {show.tagline && (
-                            <p style={{ fontSize: 'var(--text-sm)', fontStyle: 'italic', color: 'var(--text-tertiary)', marginBottom: 'var(--space-sm)' }}>"{show.tagline}"</p>
-                        )}
-
-                        {/* Meta row */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', alignItems: 'center', marginBottom: 'var(--space-lg)', fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <Calendar size={13} /> {airYears}
-                            </span>
-                            {show.numberOfSeasons && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Layers size={13} /> {show.numberOfSeasons} season{show.numberOfSeasons !== 1 ? 's' : ''}
-                                </span>
-                            )}
-                            {show.numberOfEpisodes && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Tv size={13} /> {show.numberOfEpisodes} episodes
-                                </span>
-                            )}
-                            {show.episodeRuntime && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Clock size={13} /> ~{show.episodeRuntime}m / ep
-                                </span>
-                            )}
-                            {show.language && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <Globe size={13} /> {getLanguageName(show.language)}
-                                </span>
-                            )}
-                            {show.networks.length > 0 && (
-                                <span>{show.networks.map(n => n.name).join(', ')}</span>
-                            )}
-                            {show.status && (
-                                <span style={{ fontWeight: 700, color: statusColor[show.status] ?? 'var(--text-tertiary)' }}>
-                                    {show.status}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* User Rating */}
-                        <div style={{ marginBottom: 'var(--space-lg)' }}>
-                            <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>
-                                {session ? 'Your Rating' : 'Rating'}
-                            </p>
-                            <div className="rating-picker">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
-                                    <button
-                                        key={star}
-                                        className={`rating-star ${star <= (hoverRating || (show.userInteraction.rating ?? 0)) ? 'filled' : ''}`}
-                                        onMouseEnter={() => session && setHoverRating(star)}
-                                        onMouseLeave={() => setHoverRating(0)}
-                                        onClick={() => handleRate(star)}
-                                        disabled={actionLoading === 'rating'}
-                                        aria-label={`Rate ${star} out of 10`}
-                                        style={{ cursor: session ? 'pointer' : 'default' }}
-                                    >
-                                        <Star size={22} fill="currentColor" />
-                                    </button>
-                                ))}
-                                <span className="rating-value">
-                                    {hoverRating || show.userInteraction.rating || '—'} / 10
-                                </span>
+                        {/* Rating */}
+                        <div>
+                            <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Your Rating</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div onMouseLeave={() => setHoverRating(0)} style={{ display: 'flex', gap: 2 }}>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                                        <Star
+                                            key={i}
+                                            size={24}
+                                            onMouseEnter={() => setHoverRating(i)}
+                                            onClick={() => handleRate(i)}
+                                            style={{
+                                                cursor: 'pointer',
+                                                color: 'var(--star-filled)',
+                                                fill: (hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0) >= i ? 'currentColor' : 'none',
+                                                stroke: 'currentColor',
+                                                opacity: (hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0) >= i - 0.5 ? 1 : 0.25,
+                                                transition: 'all 100ms ease',
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                {(show.userInteraction.rating || hoverRating > 0) && (
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--star-filled)' }}>
+                                        {hoverRating > 0 ? hoverRating : show.userInteraction.rating}/10
+                                    </span>
+                                )}
                             </div>
-                            {!session && (
-                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                                    <Link href="/login" style={{ color: 'var(--brand)', fontWeight: 600 }}>Sign in</Link> to rate this show
-                                </p>
-                            )}
                         </div>
 
                         {/* TMDB Rating */}
-                        {show.voteAverage > 0 && (
-                            <div style={{ marginBottom: 'var(--space-lg)' }}>
-                                <StarDisplay value={show.voteAverage} />
-                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 3 }}>
-                                    {show.voteCount.toLocaleString()} TMDB ratings
-                                </p>
-                            </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <StarDisplay value={show.voteAverage} />
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                {show.voteCount.toLocaleString()} TMDB ratings
+                            </span>
+                        </div>
 
-                        {/* Watch prompt after rating */}
-                        {showWatchPrompt && (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                gap: 'var(--space-md)', flexWrap: 'wrap',
-                                padding: '10px 16px',
-                                background: 'rgba(0,209,193,0.08)',
-                                border: '1px solid rgba(0,209,193,0.25)',
-                                borderRadius: 'var(--radius-md)',
-                                marginBottom: 'var(--space-md)',
-                            }}>
-                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <Eye size={15} style={{ color: 'var(--brand)' }} />
-                                    Mark <strong>{show.title}</strong> as watched?
-                                </span>
-                                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                    <button
-                                        onClick={async () => { setShowWatchPrompt(false); await handleWatchToggle(); }}
-                                        disabled={actionLoading === 'watch'}
-                                        className="btn btn-primary btn-sm"
-                                    >
-                                        Yes, mark watched
-                                    </button>
-                                    <button onClick={() => setShowWatchPrompt(false)} className="btn btn-ghost btn-sm">
-                                        No thanks
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
+                        {/* Actions */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
                             <button
+                                className={`btn btn-primary ${show.userInteraction.watched ? 'active' : ''}`}
                                 onClick={handleWatchToggle}
                                 disabled={actionLoading === 'watch'}
-                                className={show.userInteraction.watched ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
-                                style={{ gap: 6, minWidth: 130 }}
                             >
-                                {show.userInteraction.watched ? <><Check size={15} strokeWidth={3} /> Watched</> : <><Eye size={15} /> Mark Watched</>}
+                                {actionLoading === 'watch' ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
+                                Watched
                             </button>
-
-                            {session && show.userInteraction.watched && (
-                                <button
-                                    onClick={handleRewatch}
-                                    disabled={actionLoading === 'rewatch'}
-                                    className="btn btn-ghost btn-sm"
-                                    style={{ gap: 6, minWidth: 130 }}
-                                    title={show.userInteraction.rewatchCount > 0 ? `Rewatched ×${show.userInteraction.rewatchCount}` : 'Mark as rewatched'}
-                                >
-                                    {actionLoading === 'rewatch'
-                                        ? <Loader2 size={15} style={{ animation: 'spin 0.8s linear infinite' }} />
-                                        : <RefreshCw size={15} />}
-                                    {show.userInteraction.rewatchCount > 0
-                                        ? <>Rewatch <span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px' }}>×{show.userInteraction.rewatchCount}</span></>
-                                        : <>Rewatch</>}
+                            {show.userInteraction.watched && (
+                                <button className="btn" onClick={handleRewatch} disabled={actionLoading === 'rewatch'}>
+                                    {actionLoading === 'rewatch' ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
+                                    Rewatch
                                 </button>
                             )}
-
-                            {!show.userInteraction.watched && (
-                                <button
-                                    onClick={handleWatchlistToggle}
-                                    disabled={actionLoading === 'watchlist'}
-                                    className={show.userInteraction.inWatchlist ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
-                                    style={{ gap: 6, minWidth: 140 }}
-                                >
-                                    <BookmarkPlus size={15} />
-                                    {show.userInteraction.inWatchlist ? 'Saved' : 'Add to Watchlist'}
-                                </button>
-                            )}
-
-                            {session && (
-                                <button
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={handleOpenListModal}
-                                    style={{ gap: 6 }}
-                                >
-                                    <ListPlus size={15} /> Add to List
-                                </button>
-                            )}
-
-                            {session && !show.userInteraction.hasReview && (
-                                <button
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => setShowReviewForm(!showReviewForm)}
-                                    style={{ gap: 6 }}
-                                >
-                                    <Edit3 size={15} /> Write Review
-                                </button>
-                            )}
-
+                            <button
+                                className={`btn ${show.userInteraction.inWatchlist ? 'active' : ''}`}
+                                onClick={handleWatchlistToggle}
+                                disabled={actionLoading === 'watchlist'}
+                            >
+                                {actionLoading === 'watchlist' ? <Loader2 size={16} className="spin" /> : <BookmarkPlus size={16} />}
+                                Add to List
+                            </button>
+                            <button className="btn" onClick={() => setShowReviewForm(true)}>
+                                <Edit3 size={16} /> Write Review
+                            </button>
                             {show.trailerKey && (
-                                <button onClick={() => setShowTrailer(true)} className="btn btn-ghost btn-sm" style={{ gap: 6 }}>
-                                    <Play size={14} fill="currentColor" /> Trailer
+                                <button className="btn" onClick={() => setShowTrailer(true)}>
+                                    <Play size={16} /> Trailer
                                 </button>
                             )}
                         </div>
 
-                        {/* Review Form */}
-                        {showReviewForm && (
-                            <form onSubmit={handleReview} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
-                                <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 'var(--space-md)' }}>Write Your Review</h3>
-                                <textarea
-                                    className="input"
-                                    placeholder="What did you think about this show? (min 10 characters)"
-                                    value={reviewText}
-                                    onChange={(e) => setReviewText(e.target.value)}
-                                    style={{ width: '100%', minHeight: 120, resize: 'vertical', marginBottom: 'var(--space-md)', boxSizing: 'border-box' }}
-                                />
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                        <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />
-                                        Contains spoilers
-                                    </label>
-                                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowReviewForm(false)}>Cancel</button>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary btn-sm"
-                                            disabled={reviewText.trim().length < 10 || actionLoading === 'review'}
-                                        >
-                                            {actionLoading === 'review' ? 'Posting…' : 'Post Review'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                        {/* Friends Activity */}
+                        {friendsActivity && (friendsActivity.watched.length > 0 || friendsActivity.watchlisted.length > 0) && (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 'var(--space-sm)' }}>
+                                    Activity from Friends
+                                </h3>
+                                <FriendsActivityRow watched={friendsActivity.watched} watchlisted={friendsActivity.watchlisted} />
+                            </div>
                         )}
 
-                        {/* Overview */}
-                        {show.description && (
-                            <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.75, color: 'var(--text-secondary)', maxWidth: 640 }}>
-                                {show.description}
-                            </p>
-                        )}
+                        {/* Description */}
+                        <div>
+                            <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Synopsis</h3>
+                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{show.description}</p>
+                        </div>
 
                         {/* Created by */}
                         {show.createdBy.length > 0 && (
