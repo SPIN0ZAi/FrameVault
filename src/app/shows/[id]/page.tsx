@@ -52,6 +52,58 @@ interface ShowDetail {
     };
 }
 
+function FriendsActivityRow({
+    watched,
+    watchlisted,
+}: {
+    watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
+    watchlisted: { user: { id: string; username: string; avatarUrl: string | null } }[];
+}) {
+    const all: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null; watchlistOnly: boolean }[] = [
+        ...watched.map(w => ({ ...w, watchlistOnly: false })),
+        ...watchlisted.map(w => ({ user: w.user, rating: null, watchlistOnly: true })),
+    ];
+    if (all.length === 0) return null;
+    return (
+        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 6, scrollbarWidth: 'thin' as const }}>
+            {all.map(item => {
+                const stars = item.rating !== null ? Math.round((item.rating / 10) * 5 * 2) / 2 : 0;
+                return (
+                    <Link key={item.user.id} href={`/users/${item.user.username}`}
+                        style={{ flexShrink: 0, textAlign: 'center', textDecoration: 'none', color: 'inherit', width: 60 }}>
+                        <div style={{ position: 'relative', width: 54, height: 54, margin: '0 auto 5px' }}>
+                            <div style={{ width: 54, height: 54, borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border-default)', background: 'var(--bg-secondary)' }}>
+                                {item.user.avatarUrl
+                                    ? <img src={item.user.avatarUrl} alt={item.user.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--text-tertiary)' }}>{item.user.username.charAt(0).toUpperCase()}</div>
+                                }
+                            </div>
+                            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, borderRadius: '50%', background: 'var(--bg-primary)', border: '1.5px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {item.watchlistOnly
+                                    ? <BookmarkPlus size={9} style={{ color: 'var(--brand)' }} />
+                                    : <Eye size={9} style={{ color: 'var(--brand)' }} />
+                                }
+                            </div>
+                        </div>
+                        <p style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.user.username}
+                        </p>
+                        <div style={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <Star key={i} size={9}
+                                    fill={!item.watchlistOnly && stars >= i ? 'currentColor' : 'none'}
+                                    stroke="currentColor"
+                                    style={{ color: 'var(--star-filled)', opacity: !item.watchlistOnly && stars >= i - 0.5 ? 1 : 0.2 }}
+                                />
+                            ))}
+                        </div>
+                    </Link>
+                );
+            })}
+        </div>
+    );
+}
+
 function getLanguageName(code: string | null): string | null {
     if (!code) return null;
     try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase(); }
@@ -115,6 +167,11 @@ export default function ShowDetailPage() {
     // Revealed spoilers
     const [revealedSpoilers, setRevealedSpoilers] = useState<Set<string>>(new Set());
 
+    const [friendsActivity, setFriendsActivity] = useState<{
+        watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
+        watchlisted: { user: { id: string; username: string; avatarUrl: string | null } }[];
+    } | null>(null);
+
     const closePosterModal = () => {
         setShowPosterModal(false);
         setUploadFile(null);
@@ -145,6 +202,14 @@ export default function ShowDetailPage() {
     }, [id, router]);
 
     useEffect(() => { fetchShow(); }, [fetchShow]);
+
+    useEffect(() => {
+        if (!session) return;
+        fetch(`/api/shows/${id}/friends-activity`)
+            .then(r => r.json())
+            .then(d => { if (d.success) setFriendsActivity(d.data); })
+            .catch(() => {});
+    }, [id, session]);
 
     // Initialize reviewLikes map whenever show data loads
     useEffect(() => {
@@ -722,6 +787,21 @@ export default function ShowDetailPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Cast */}
+                {session && friendsActivity && (friendsActivity.watched.length > 0 || friendsActivity.watchlisted.length > 0) && (
+                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            <h2 style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>ACTIVITY FROM FRIENDS</h2>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                {friendsActivity.watched.length > 0 && `${friendsActivity.watched.length} WATCHED`}
+                                {friendsActivity.watched.length > 0 && friendsActivity.watchlisted.length > 0 && ' \u2022 '}
+                                {friendsActivity.watchlisted.length > 0 && `${friendsActivity.watchlisted.length} WANT${friendsActivity.watchlisted.length === 1 ? 'S' : ''} TO WATCH`}
+                            </span>
+                        </div>
+                        <FriendsActivityRow watched={friendsActivity.watched} watchlisted={friendsActivity.watchlisted} />
+                    </section>
+                )}
 
                 {/* Cast */}
                 {show.cast.length > 0 && (
