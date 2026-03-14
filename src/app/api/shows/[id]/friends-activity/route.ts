@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
+import { getShowDetails } from '@/lib/tmdb';
 
 // GET /api/shows/[id]/friends-activity — people you follow who watched/watchlisted this show
 export async function GET(
@@ -24,19 +25,49 @@ export async function GET(
         const followingIds = follows.map(f => f.followingId);
         if (followingIds.length === 0) return successResponse({ watched: [], watchlisted: [] });
 
-        // Parallel: watched entries, ratings, watchlist entries for followed users
-        const [watchedEntries, ratings, watchlistEntries] = await Promise.all([
-            prisma.watchedShow.findMany({
-                where: { tmdbShowId, userId: { in: followingIds } },
-                include: { user: { select: { id: true, username: true, avatarUrl: true } } },
-                orderBy: { watchedAt: 'desc' },
-            }),
+        // Try to be resilient to legacy / mismatched IDs by also matching on title/year
+        let titleFallback: string | null = null;
+        let yearFallback: number | null = null;
+        try {
+            const show = await getShowDetails(tmdbShowId);
+            titleFallback = show.name || null;
+            yearFallback = show.first_air_date ? parseInt(show.first_air_date.substring(0, 4)) : null;
+        } catch {
+            // If TMDB lookup fails, we simply fall back to ID-only queries below
+        }
+
+        const watchedEntries = await prisma.watchedShow.findMany({
+            where: {
+                userId: { in: followingIds },
+                OR: [
+                    { tmdbShowId },
+                    ...(titleFallback
+                        ? [{
+                              title: { equals: titleFallback, mode: 'insensitive' as const },
+                              ...(yearFallback !== null ? { year: yearFallback } : {}),
+                          }]
+                        : []),
+                ],
+            },
+            include: { user: { select: { id: true, username: true, avatarUrl: true } } },
+            orderBy: { watchedAt: 'desc' },
+        });
+
+        const candidateTmdbIds = Array.from(
+            new Set([
+                tmdbShowId,
+                ...watchedEntries.map(w => w.tmdbShowId).filter(id => typeof id === 'number' && !Number.isNaN(id)),
+            ]),
+        );
+
+        // Parallel: ratings and watchlist entries for any of the candidate IDs
+        const [ratings, watchlistEntries] = await Promise.all([
             prisma.showRating.findMany({
-                where: { tmdbShowId, userId: { in: followingIds } },
+                where: { tmdbShowId: { in: candidateTmdbIds }, userId: { in: followingIds } },
                 select: { userId: true, value: true },
             }),
             prisma.showWatchlistItem.findMany({
-                where: { tmdbShowId, userId: { in: followingIds } },
+                where: { tmdbShowId: { in: candidateTmdbIds }, userId: { in: followingIds } },
                 include: { user: { select: { id: true, username: true, avatarUrl: true } } },
                 orderBy: { addedAt: 'desc' },
             }),

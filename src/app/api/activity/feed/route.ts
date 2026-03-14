@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
-import { getTMDBImageUrl } from '@/lib/tmdb';
+import { getTMDBImageUrl, getShowDetails } from '@/lib/tmdb';
 
 // GET /api/activity/feed — recent activity from users you follow
 export async function GET(_req: NextRequest) {
@@ -86,6 +86,51 @@ export async function GET(_req: NextRequest) {
               })
             : [];
         const showInfoMap = new Map(showInfoRows.map(s => [`${s.userId}-${s.tmdbShowId}`, s]));
+
+        // Backfill missing show metadata for historical ratings (pre-watched table)
+        const missingShowRatings = showRatings.filter(r => !showInfoMap.has(`${r.userId}-${r.tmdbShowId}`));
+        if (missingShowRatings.length > 0) {
+            try {
+                const uniqueTmdbIds = Array.from(new Set(missingShowRatings.map(r => r.tmdbShowId)));
+                const tmdbMeta = new Map<number, { title: string; year: number | null; posterUrl: string | null }>();
+
+                await Promise.all(uniqueTmdbIds.map(async tmdbId => {
+                    try {
+                        const show = await getShowDetails(tmdbId);
+                        const title = show.name || 'Unknown Show';
+                        const year = show.first_air_date ? parseInt(show.first_air_date.substring(0, 4)) : null;
+                        const posterUrl = getTMDBImageUrl(show.poster_path, 'w342');
+                        tmdbMeta.set(tmdbId, { title, year, posterUrl });
+                    } catch (tmdbError) {
+                        console.warn('Activity feed TMDB show lookup failed:', tmdbError);
+                        tmdbMeta.set(tmdbId, { title: 'Unknown Show', year: null, posterUrl: null });
+                    }
+                }));
+
+                await Promise.all(missingShowRatings.map(async r => {
+                    const meta = tmdbMeta.get(r.tmdbShowId) ?? { title: 'Unknown Show', year: null, posterUrl: null };
+                    const key = `${r.userId}-${r.tmdbShowId}`;
+                    showInfoMap.set(key, { ...meta, userId: r.userId, tmdbShowId: r.tmdbShowId });
+
+                    await prisma.watchedShow.upsert({
+                        where: { userId_tmdbShowId: { userId: r.userId, tmdbShowId: r.tmdbShowId } },
+                        create: {
+                            userId: r.userId,
+                            tmdbShowId: r.tmdbShowId,
+                            title: meta.title,
+                            year: meta.year,
+                            posterUrl: meta.posterUrl,
+                            watchedAt: r.createdAt ?? new Date(),
+                            rewatchCount: 0,
+                            lastRewatchedAt: null,
+                        },
+                        update: { title: meta.title, year: meta.year, posterUrl: meta.posterUrl },
+                    });
+                }));
+            } catch (backfillError) {
+                console.warn('Activity feed show metadata backfill failed:', backfillError);
+            }
+        }
 
         // Helper: resolve the event user's custom poster, or fall back to default
         const resolveposter = (movie: { posterUrl: string | null; customPosters: { userId: string; posterUrl: string }[] }, userId: string) =>
