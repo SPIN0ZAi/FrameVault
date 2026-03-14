@@ -648,16 +648,6 @@ export default function ShowDetailPage() {
                             )}
                         </div>
 
-                        {/* Friends Activity */}
-                        {friendsActivity && (friendsActivity.watched.length > 0 || friendsActivity.watchlisted.length > 0) && (
-                            <div style={{ marginTop: 'var(--space-md)' }}>
-                                <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 'var(--space-sm)' }}>
-                                    Activity from Friends
-                                </h3>
-                                <FriendsActivityRow watched={friendsActivity.watched} watchlisted={friendsActivity.watchlisted} />
-                            </div>
-                        )}
-
                         {/* Description */}
                         <div>
                             <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Synopsis</h3>
