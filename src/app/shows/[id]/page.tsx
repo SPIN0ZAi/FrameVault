@@ -289,16 +289,7 @@ export default function ShowDetailPage() {
                 await fetchShow();
                 return;
             }
-            setShow(prev => prev ? {
-                ...prev,
-                userInteraction: {
-                    ...prev.userInteraction,
-                    watched: !isWatched,
-                    inWatchlist: isWatched ? prev.userInteraction.inWatchlist : false,
-                    rewatchCount: isWatched ? 0 : prev.userInteraction.rewatchCount,
-                    lastRewatchedAt: isWatched ? null : prev.userInteraction.lastRewatchedAt,
-                },
-            } : prev);
+            await fetchShow();
         } finally { setActionLoading(''); }
     };
 

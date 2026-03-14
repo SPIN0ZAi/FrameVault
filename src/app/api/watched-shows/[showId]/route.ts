@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, notFoundError, serverError } from '@/lib/api-response';
@@ -28,35 +29,59 @@ export async function POST(
         }).catch(() => null);
 
         let watched: Record<string, unknown>;
-        if (existing?.id) {
-            watched = await prisma.watchedShow.update({
-                where: { id: existing.id },
-                data: { watchedAt: new Date(), title, year, posterUrl },
-            });
-        } else {
-            try {
-                watched = await prisma.watchedShow.create({
-                    data: {
-                        userId: session.user.id,
-                        tmdbShowId,
-                        title,
-                        year,
-                        posterUrl,
-                        rewatchCount: 0,
-                        lastRewatchedAt: null,
-                    },
+        try {
+            if (existing?.id) {
+                watched = await prisma.watchedShow.update({
+                    where: { id: existing.id },
+                    data: { watchedAt: new Date(), title, year, posterUrl },
                 });
-            } catch {
-                watched = await prisma.watchedShow.create({
-                    data: {
-                        userId: session.user.id,
-                        tmdbShowId,
-                        title,
-                        year,
-                        posterUrl,
-                    },
-                });
+            } else {
+                try {
+                    watched = await prisma.watchedShow.create({
+                        data: {
+                            userId: session.user.id,
+                            tmdbShowId,
+                            title,
+                            year,
+                            posterUrl,
+                            rewatchCount: 0,
+                            lastRewatchedAt: null,
+                        },
+                    });
+                } catch {
+                    watched = await prisma.watchedShow.create({
+                        data: {
+                            userId: session.user.id,
+                            tmdbShowId,
+                            title,
+                            year,
+                            posterUrl,
+                        },
+                    });
+                }
             }
+        } catch {
+            // Raw SQL fallback for production schema drift
+            const updated = await prisma.$executeRaw`
+                UPDATE watched_shows
+                SET "watchedAt" = NOW(), "title" = ${title}, "year" = ${year}, "posterUrl" = ${posterUrl}
+                WHERE "userId" = ${session.user.id} AND "tmdbShowId" = ${tmdbShowId}
+            `;
+
+            if (!updated) {
+                await prisma.$executeRaw`
+                    INSERT INTO watched_shows ("id", "userId", "tmdbShowId", "title", "year", "posterUrl", "watchedAt")
+                    VALUES (${randomUUID()}, ${session.user.id}, ${tmdbShowId}, ${title}, ${year}, ${posterUrl}, NOW())
+                `;
+            }
+
+            const fallbackRow = await prisma.$queryRaw<{ id: string; watchedAt: Date }[]>`
+                SELECT "id", "watchedAt"
+                FROM watched_shows
+                WHERE "userId" = ${session.user.id} AND "tmdbShowId" = ${tmdbShowId}
+                LIMIT 1
+            `;
+            watched = fallbackRow[0] ?? { id: randomUUID(), watchedAt: new Date() };
         }
 
         const rewatchMeta = await prisma.watchedShow.findFirst({
