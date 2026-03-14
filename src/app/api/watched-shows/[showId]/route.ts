@@ -22,33 +22,41 @@ export async function POST(
             title?: string; year?: number | null; posterUrl?: string | null;
         };
 
-        let watched: { rewatchCount?: number; lastRewatchedAt?: Date | null } & Record<string, unknown>;
-        try {
-            watched = await prisma.watchedShow.upsert({
-                where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                create: {
-                    userId: session.user.id,
-                    tmdbShowId,
-                    title,
-                    year,
-                    posterUrl,
-                    rewatchCount: 0,
-                    lastRewatchedAt: null,
-                },
-                update: { watchedAt: new Date(), title, year, posterUrl },
+        const existing = await prisma.watchedShow.findFirst({
+            where: { userId: session.user.id, tmdbShowId },
+            select: { id: true },
+        }).catch(() => null);
+
+        let watched: Record<string, unknown>;
+        if (existing?.id) {
+            watched = await prisma.watchedShow.update({
+                where: { id: existing.id },
+                data: { watchedAt: new Date(), title, year, posterUrl },
             });
-        } catch {
-            watched = await prisma.watchedShow.upsert({
-                where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
-                create: {
-                    userId: session.user.id,
-                    tmdbShowId,
-                    title,
-                    year,
-                    posterUrl,
-                },
-                update: { watchedAt: new Date(), title, year, posterUrl },
-            });
+        } else {
+            try {
+                watched = await prisma.watchedShow.create({
+                    data: {
+                        userId: session.user.id,
+                        tmdbShowId,
+                        title,
+                        year,
+                        posterUrl,
+                        rewatchCount: 0,
+                        lastRewatchedAt: null,
+                    },
+                });
+            } catch {
+                watched = await prisma.watchedShow.create({
+                    data: {
+                        userId: session.user.id,
+                        tmdbShowId,
+                        title,
+                        year,
+                        posterUrl,
+                    },
+                });
+            }
         }
 
         const rewatchMeta = await prisma.watchedShow.findFirst({

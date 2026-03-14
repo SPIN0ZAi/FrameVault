@@ -276,13 +276,19 @@ export default function ShowDetailPage() {
         try {
             const isWatched = show.userInteraction.watched;
             const method = isWatched ? 'DELETE' : 'POST';
-            await fetch(`/api/watched-shows/${id}`, {
+            const targetId = show.id || id;
+            const res = await fetch(`/api/watched-shows/${targetId}`, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: method === 'POST'
                     ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl })
                     : undefined,
             });
+            const data = await res.json().catch(() => null);
+            if (!(res.ok && data?.success)) {
+                await fetchShow();
+                return;
+            }
             setShow(prev => prev ? {
                 ...prev,
                 userInteraction: {
@@ -301,7 +307,8 @@ export default function ShowDetailPage() {
         if (!show) return;
         setActionLoading('rewatch');
         try {
-            const res = await fetch(`/api/shows/${id}/rewatch`, { method: 'POST' });
+            const targetId = show.id || id;
+            const res = await fetch(`/api/shows/${targetId}/rewatch`, { method: 'POST' });
             const data = await res.json();
             if (data.success) {
                 setShow(prev => prev ? {
@@ -325,13 +332,19 @@ export default function ShowDetailPage() {
         try {
             const inWatchlist = show.userInteraction.inWatchlist;
             const method = inWatchlist ? 'DELETE' : 'POST';
-            await fetch(`/api/show-watchlist/${id}`, {
+            const targetId = show.id || id;
+            const res = await fetch(`/api/show-watchlist/${targetId}`, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: method === 'POST'
                     ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl })
                     : undefined,
             });
+            const data = await res.json().catch(() => null);
+            if (!(res.ok && data?.success)) {
+                await fetchShow();
+                return;
+            }
             setShow(prev => prev ? {
                 ...prev,
                 userInteraction: { ...prev.userInteraction, inWatchlist: !inWatchlist },
@@ -345,10 +358,11 @@ export default function ShowDetailPage() {
         setActionLoading('rating');
         try {
             const isSame = show.userInteraction.rating === value;
+            const targetId = show.id || id;
             if (isSame) {
-                await fetch(`/api/shows/${id}/rating`, { method: 'DELETE' });
+                await fetch(`/api/shows/${targetId}/rating`, { method: 'DELETE' });
             } else {
-                await fetch(`/api/shows/${id}/rating`, {
+                await fetch(`/api/shows/${targetId}/rating`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ value }),
