@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { successResponse, unauthorizedError, serverError } from '@/lib/api-response';
-import { getShowDetails } from '@/lib/tmdb';
 
 // GET /api/shows/[id]/friends-activity — people you follow who watched/watchlisted this show
 export async function GET(
@@ -37,7 +36,11 @@ export async function GET(
         const [watchedEntries, ratings, watchlistEntries] = await Promise.all([
             prisma.watchedShow.findMany({
                 where: { tmdbShowId, userId: { in: followingIds } },
-                include: { user: { select: { id: true, username: true, avatarUrl: true } } },
+                select: {
+                    userId: true,
+                    watchedAt: true,
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                },
                 orderBy: { watchedAt: 'desc' },
             }),
             prisma.showRating.findMany({
@@ -46,7 +49,11 @@ export async function GET(
             }),
             prisma.showWatchlistItem.findMany({
                 where: { tmdbShowId, userId: { in: followingIds } },
-                include: { user: { select: { id: true, username: true, avatarUrl: true } } },
+                select: {
+                    userId: true,
+                    addedAt: true,
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                },
                 orderBy: { addedAt: 'desc' },
             }),
         ]);
