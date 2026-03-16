@@ -5,6 +5,7 @@ import { ratingSchema } from '@/lib/validators';
 import { successResponse, validationError, unauthorizedError, serverError } from '@/lib/api-response';
 import { syncTMDBMovie } from '@/lib/sync-movie';
 import { checkAndAwardAchievements } from '@/lib/achievements';
+import { ensureHalfRatingColumns } from '@/lib/ratings';
 
 // POST /api/movies/[id]/rating — upsert rating
 export async function POST(
@@ -21,6 +22,8 @@ export async function POST(
         if (!result.success) {
             return validationError(result.error.issues[0].message);
         }
+
+        await ensureHalfRatingColumns();
 
         const localMovieId = await syncTMDBMovie(tmdbId);
 

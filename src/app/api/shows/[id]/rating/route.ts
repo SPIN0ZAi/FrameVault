@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { ratingSchema } from '@/lib/validators';
 import { successResponse, validationError, unauthorizedError, serverError } from '@/lib/api-response';
 import { getShowDetails, getTMDBImageUrl } from '@/lib/tmdb';
+import { ensureHalfRatingColumns } from '@/lib/ratings';
 
 // POST /api/shows/[id]/rating — upsert rating
 export async function POST(
@@ -21,6 +22,8 @@ export async function POST(
         const body = await request.json();
         const result = ratingSchema.safeParse(body);
         if (!result.success) return validationError(result.error.issues[0].message);
+
+        await ensureHalfRatingColumns();
 
         const rating = await prisma.showRating.upsert({
             where: { userId_tmdbShowId: { userId: session.user.id, tmdbShowId } },
