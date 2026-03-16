@@ -58,6 +58,47 @@ export async function GET(req: NextRequest) {
             })).filter(r => r.user));
         }
 
+        if (category === 'shows_alltime') {
+            const rows = await prisma.watchedShow.groupBy({
+                by: ['userId'],
+                _count: { userId: true },
+                orderBy: { _count: { userId: 'desc' } },
+                take: LIMIT,
+            });
+            const users = await prisma.user.findMany({
+                where: { id: { in: rows.map(r => r.userId) } },
+                select: userSelect,
+            });
+            const userMap = new Map(users.map(u => [u.id, u]));
+            return successResponse(rows.map(r => ({
+                user: userMap.get(r.userId)!,
+                value: r._count.userId,
+                label: 'shows watched',
+            })).filter(r => r.user));
+        }
+
+        if (category === 'shows_month') {
+            const start = new Date();
+            start.setDate(1); start.setHours(0, 0, 0, 0);
+            const rows = await prisma.watchedShow.groupBy({
+                by: ['userId'],
+                where: { watchedAt: { gte: start } },
+                _count: { userId: true },
+                orderBy: { _count: { userId: 'desc' } },
+                take: LIMIT,
+            });
+            const users = await prisma.user.findMany({
+                where: { id: { in: rows.map(r => r.userId) } },
+                select: userSelect,
+            });
+            const userMap = new Map(users.map(u => [u.id, u]));
+            return successResponse(rows.map(r => ({
+                user: userMap.get(r.userId)!,
+                value: r._count.userId,
+                label: 'shows this month',
+            })).filter(r => r.user));
+        }
+
         if (category === 'reviews') {
             const rows = await prisma.review.groupBy({
                 by: ['userId'],

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Film, MessageSquare, Star, Users, Trophy, TrendingUp } from 'lucide-react';
+import { Film, Tv, MessageSquare, Star, Users, Trophy, TrendingUp } from 'lucide-react';
 
 interface LeaderboardEntry {
     user: {
@@ -18,6 +18,8 @@ interface LeaderboardEntry {
 const CATEGORIES = [
     { key: 'films_alltime', label: 'Most Films', icon: <Film size={15} />, color: '#00D1C1', format: (v: number) => v.toLocaleString() },
     { key: 'films_month', label: 'This Month', icon: <TrendingUp size={15} />, color: '#f59e0b', format: (v: number) => v.toLocaleString() },
+    { key: 'shows_alltime', label: 'Most TV Shows', icon: <Tv size={15} />, color: '#22c55e', format: (v: number) => v.toLocaleString() },
+    { key: 'shows_month', label: 'TV This Month', icon: <Tv size={15} />, color: '#14b8a6', format: (v: number) => v.toLocaleString() },
     { key: 'reviews', label: 'Reviews', icon: <MessageSquare size={15} />, color: '#8b5cf6', format: (v: number) => v.toLocaleString() },
     { key: 'avg_rating', label: 'Avg Rating', icon: <Star size={15} />, color: '#f43f5e', format: (v: number) => `${v.toFixed(1)} ★` },
     { key: 'followers', label: 'Most Followed', icon: <Users size={15} />, color: '#3b82f6', format: (v: number) => v.toLocaleString() },
