@@ -757,7 +757,11 @@ export default function ShowDetailPage() {
                                     href={`/actors/${person.id}`}
                                     style={{ flexShrink: 0, width: 90, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}
                                 >
-                                    <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                    <div
+                                        style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)', transition: 'border-color 0.15s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-default)')}
+                                    >
                                         {person.profileUrl ? (
                                             <img src={person.profileUrl} alt={person.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
