@@ -693,7 +693,11 @@ export default function ShowDetailPage() {
                         <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Cast</h2>
                         <div style={{ display: 'flex', gap: 'var(--space-md)', overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'thin' }}>
                             {show.cast.map(person => (
-                                <div key={person.id} style={{ flexShrink: 0, width: 90, textAlign: 'center' }}>
+                                <Link
+                                    key={person.id}
+                                    href={`/actors/${person.id}`}
+                                    style={{ flexShrink: 0, width: 90, textAlign: 'center', textDecoration: 'none', color: 'inherit' }}
+                                >
                                     <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', margin: '0 auto 8px', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
                                         {person.profileUrl ? (
                                             <img src={person.profileUrl} alt={person.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -705,7 +709,7 @@ export default function ShowDetailPage() {
                                     </div>
                                     <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>{person.name}</p>
                                     <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{person.character}</p>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </section>
