@@ -22,7 +22,8 @@ function fmtDate(d: Date | string): string {
     return new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-// Convert FrameVault 1–10 rating → Letterboxd 0.5–5.0 (half-star) rating
+// Convert FrameVault 1–10 (including .5 steps) → Letterboxd 0.5–5.0 rating.
+// We round to nearest whole point first so 8.5 -> 9 -> 4.5★ on Letterboxd.
 function toLbRating(value: number): string {
     const lb = Math.round(value) / 2;
     return lb % 1 === 0 ? lb.toFixed(0) : lb.toFixed(1);
@@ -196,7 +197,7 @@ function makeReadme(username: string, exportDate: string): string {
         '',
         'RATING SCALE',
         '------------',
-        'In FrameVault ratings are stored 1–10.',
+        'In FrameVault ratings are stored 1–10 (including .5 steps).',
         'Letterboxd-format files (diary / ratings / reviews) use the',
         'standard Letterboxd scale: 0.5 (½★) – 5.0 (★★★★★).',
         'letterboxd-import.csv keeps the 1–10 scale (Rating10 column).',

@@ -29,7 +29,8 @@ export async function GET(
         const counts = new Array(10).fill(0);
         let sum = 0;
         for (const r of ratings) {
-            const idx = Math.min(Math.max(r.value, 1), 10) - 1;
+            const rounded = Math.round(r.value);
+            const idx = Math.min(Math.max(rounded, 1), 10) - 1;
             counts[idx]++;
             sum += r.value;
         }

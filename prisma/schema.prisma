@@ -175,7 +175,7 @@ model Rating {
   id        String   @id @default(cuid())
   userId    String
   movieId   String
-  value     Int
+  value     Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -365,7 +365,7 @@ model ShowRating {
   id         String   @id @default(cuid())
   userId     String
   tmdbShowId Int
-  value      Int
+  value      Float
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

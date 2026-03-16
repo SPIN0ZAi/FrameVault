@@ -41,9 +41,9 @@ export const createMovieSchema = z.object({
 export const ratingSchema = z.object({
     value: z
         .number()
-        .int()
         .min(1, 'Rating must be at least 1')
-        .max(10, 'Rating must be at most 10'),
+    .max(10, 'Rating must be at most 10')
+    .refine((v) => Math.round(v * 2) === v * 2, 'Rating must be in 0.5 steps'),
 });
 
 // ─── REVIEWS ───────────────────────────────────────

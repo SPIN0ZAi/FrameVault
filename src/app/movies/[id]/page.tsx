@@ -66,6 +66,14 @@ function getLanguageName(code: string | null): string | null {
     }
 }
 
+function getHalfStepValue(clientX: number, rect: DOMRect, wholeStar: number): number {
+    return clientX - rect.left < rect.width / 2 ? wholeStar - 0.5 : wholeStar;
+}
+
+function formatTenthRating(value: number): string {
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 // ─── Rating Histogram Card ────────────────────────────────────────────────────
 function RatingHistogramCard({ counts, average, total }: {
     counts: number[];
@@ -738,22 +746,39 @@ export default function MovieDetailPage() {
                             <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 'var(--space-sm)' }}>
                                 Your Rating
                             </h3>
-                            <div className="rating-picker">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                                    <button
-                                        key={star}
-                                        className={`rating-star ${star <= (hoverRating || userRating) ? 'filled' : ''}`}
-                                        onMouseEnter={() => setHoverRating(star)}
-                                        onMouseLeave={() => setHoverRating(0)}
-                                        onClick={() => handleRate(star)}
-                                        disabled={actionLoading === 'rating'}
-                                        aria-label={`Rate ${star} out of 10`}
-                                    >
-                                        <Star size={24} fill="currentColor" />
-                                    </button>
-                                ))}
+                            <div className="rating-picker" onMouseLeave={() => setHoverRating(0)}>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                                    const current = hoverRating || userRating;
+                                    return (
+                                        <button
+                                            key={star}
+                                            className="rating-star"
+                                            onMouseMove={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setHoverRating(getHalfStepValue(e.clientX, rect, star));
+                                            }}
+                                            onClick={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                handleRate(getHalfStepValue(e.clientX, rect, star));
+                                            }}
+                                            disabled={actionLoading === 'rating'}
+                                            aria-label={`Rate ${star - 0.5} to ${star} out of 10`}
+                                        >
+                                            <Star
+                                                size={24}
+                                                fill={current >= star ? 'currentColor' : 'none'}
+                                                stroke="currentColor"
+                                                style={{
+                                                    color: 'var(--star-filled)',
+                                                    opacity: current >= star - 0.5 ? 1 : 0.25,
+                                                    transition: 'all 100ms ease',
+                                                }}
+                                            />
+                                        </button>
+                                    );
+                                })}
                                 <span className="rating-value">
-                                    {hoverRating || userRating || '—'} / 10
+                                    {hoverRating > 0 ? formatTenthRating(hoverRating) : userRating > 0 ? formatTenthRating(userRating) : '—'} / 10
                                 </span>
                             </div>
                         </div>

@@ -111,6 +111,14 @@ function getLanguageName(code: string | null): string | null {
     catch { return code.toUpperCase(); }
 }
 
+function getHalfStepValue(clientX: number, rect: DOMRect, wholeStar: number): number {
+    return clientX - rect.left < rect.width / 2 ? wholeStar - 0.5 : wholeStar;
+}
+
+function formatTenthRating(value: number): string {
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 function StarDisplay({ value }: { value: number }) {
     const stars = Math.round((value / 10) * 5 * 2) / 2;
     return (
@@ -582,26 +590,35 @@ export default function ShowDetailPage() {
                             <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Your Rating</h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div onMouseLeave={() => setHoverRating(0)} style={{ display: 'flex', gap: 2 }}>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-                                        <Star
-                                            key={i}
-                                            size={24}
-                                            onMouseEnter={() => setHoverRating(i)}
-                                            onClick={() => handleRate(i)}
-                                            style={{
-                                                cursor: 'pointer',
-                                                color: 'var(--star-filled)',
-                                                fill: (hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0) >= i ? 'currentColor' : 'none',
-                                                stroke: 'currentColor',
-                                                opacity: (hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0) >= i - 0.5 ? 1 : 0.25,
-                                                transition: 'all 100ms ease',
-                                            }}
-                                        />
-                                    ))}
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => {
+                                        const current = hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0;
+                                        return (
+                                            <Star
+                                                key={i}
+                                                size={24}
+                                                onMouseMove={(e) => {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    setHoverRating(getHalfStepValue(e.clientX, rect, i));
+                                                }}
+                                                onClick={(e) => {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    handleRate(getHalfStepValue(e.clientX, rect, i));
+                                                }}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    color: 'var(--star-filled)',
+                                                    fill: current >= i ? 'currentColor' : 'none',
+                                                    stroke: 'currentColor',
+                                                    opacity: current >= i - 0.5 ? 1 : 0.25,
+                                                    transition: 'all 100ms ease',
+                                                }}
+                                            />
+                                        );
+                                    })}
                                 </div>
                                 {(show.userInteraction.rating || hoverRating > 0) && (
                                     <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--star-filled)' }}>
-                                        {hoverRating > 0 ? hoverRating : show.userInteraction.rating}/10
+                                        {formatTenthRating(hoverRating > 0 ? hoverRating : (show.userInteraction.rating ?? 0))}/10
                                     </span>
                                 )}
                             </div>

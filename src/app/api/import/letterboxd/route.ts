@@ -11,7 +11,7 @@ const importSchema = z.object({
     year: z.number().int().min(1888).max(new Date().getFullYear() + 2),
     watched: z.boolean().optional(),
     watchedDate: z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
-    rating: z.number().int().min(1).max(10).optional(),
+    rating: z.number().min(1).max(10).refine((v) => Math.round(v * 2) === v * 2, 'Rating must be in 0.5 steps').optional(),
     review: z.string().max(10000, 'Review too long').optional(),
     watchlist: z.boolean().optional(),
 });
