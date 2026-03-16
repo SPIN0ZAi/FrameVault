@@ -57,6 +57,20 @@ function formatRuntime(minutes: number | null): string | null {
     return `${m}m`;
 }
 
+function StarFill({ level, size = 24 }: { level: 0 | 0.5 | 1; size?: number }) {
+    const fillPercent = level === 1 ? 100 : level === 0.5 ? 50 : 0;
+    return (
+        <span style={{ position: 'relative', width: size, height: size, display: 'inline-block' }}>
+            <Star size={size} fill="none" stroke="currentColor" style={{ color: 'var(--star-filled)', opacity: 0.28, position: 'absolute', inset: 0 }} />
+            {fillPercent > 0 && (
+                <span style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${fillPercent}%` }}>
+                    <Star size={size} fill="currentColor" stroke="currentColor" style={{ color: 'var(--star-filled)', position: 'absolute', inset: 0 }} />
+                </span>
+            )}
+        </span>
+    );
+}
+
 function getLanguageName(code: string | null): string | null {
     if (!code) return null;
     try {
@@ -749,6 +763,7 @@ export default function MovieDetailPage() {
                             <div className="rating-picker" onMouseLeave={() => setHoverRating(0)}>
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
                                     const current = hoverRating || userRating;
+                                    const level: 0 | 0.5 | 1 = current >= star ? 1 : current >= star - 0.5 ? 0.5 : 0;
                                     return (
                                         <button
                                             key={star}
@@ -764,16 +779,9 @@ export default function MovieDetailPage() {
                                             disabled={actionLoading === 'rating'}
                                             aria-label={`Rate ${star - 0.5} to ${star} out of 10`}
                                         >
-                                            <Star
-                                                size={24}
-                                                fill={current >= star ? 'currentColor' : 'none'}
-                                                stroke="currentColor"
-                                                style={{
-                                                    color: 'var(--star-filled)',
-                                                    opacity: current >= star - 0.5 ? 1 : 0.25,
-                                                    transition: 'all 100ms ease',
-                                                }}
-                                            />
+                                            <span style={{ transition: 'all 100ms ease' }}>
+                                                <StarFill level={level} size={24} />
+                                            </span>
                                         </button>
                                     );
                                 })}

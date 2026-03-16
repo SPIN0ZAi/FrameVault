@@ -119,6 +119,20 @@ function formatTenthRating(value: number): string {
     return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
+function StarFill({ level, size = 24 }: { level: 0 | 0.5 | 1; size?: number }) {
+    const fillPercent = level === 1 ? 100 : level === 0.5 ? 50 : 0;
+    return (
+        <span style={{ position: 'relative', width: size, height: size, display: 'inline-block' }}>
+            <Star size={size} fill="none" stroke="currentColor" style={{ color: 'var(--star-filled)', opacity: 0.28, position: 'absolute', inset: 0 }} />
+            {fillPercent > 0 && (
+                <span style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${fillPercent}%` }}>
+                    <Star size={size} fill="currentColor" stroke="currentColor" style={{ color: 'var(--star-filled)', position: 'absolute', inset: 0 }} />
+                </span>
+            )}
+        </span>
+    );
+}
+
 function StarDisplay({ value }: { value: number }) {
     const stars = Math.round((value / 10) * 5 * 2) / 2;
     return (
@@ -592,10 +606,10 @@ export default function ShowDetailPage() {
                                 <div onMouseLeave={() => setHoverRating(0)} style={{ display: 'flex', gap: 2 }}>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => {
                                         const current = hoverRating > 0 ? hoverRating : show.userInteraction.rating ?? 0;
+                                        const level: 0 | 0.5 | 1 = current >= i ? 1 : current >= i - 0.5 ? 0.5 : 0;
                                         return (
-                                            <Star
+                                            <span
                                                 key={i}
-                                                size={24}
                                                 onMouseMove={(e) => {
                                                     const rect = e.currentTarget.getBoundingClientRect();
                                                     setHoverRating(getHalfStepValue(e.clientX, rect, i));
@@ -606,13 +620,13 @@ export default function ShowDetailPage() {
                                                 }}
                                                 style={{
                                                     cursor: 'pointer',
-                                                    color: 'var(--star-filled)',
-                                                    fill: current >= i ? 'currentColor' : 'none',
-                                                    stroke: 'currentColor',
-                                                    opacity: current >= i - 0.5 ? 1 : 0.25,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
                                                     transition: 'all 100ms ease',
                                                 }}
-                                            />
+                                            >
+                                                <StarFill level={level} size={24} />
+                                            </span>
                                         );
                                     })}
                                 </div>
