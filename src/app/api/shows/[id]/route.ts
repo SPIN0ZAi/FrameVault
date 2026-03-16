@@ -118,6 +118,11 @@ export async function GET(
             videos.results.find(v => v.site === 'YouTube' && v.type === 'Teaser') ??
             null;
 
+        const director =
+            credits.crew.find(c => c.job === 'Director') ??
+            credits.crew.find(c => c.job === 'Series Director') ??
+            null;
+
         const cast = credits.cast.slice(0, 10).map(c => ({
             id: c.id,
             name: c.name,
@@ -270,6 +275,13 @@ export async function GET(
             })),
             status: tmdbShow.status ?? null,
             tagline: tmdbShow.tagline ?? null,
+            director: director
+                ? {
+                      id: director.id,
+                      name: director.name,
+                      profileUrl: getTMDBImageUrl(director.profile_path, 'w185'),
+                  }
+                : null,
             createdBy: (tmdbShow.created_by ?? []).map(c => ({
                 id: c.id,
                 name: c.name,

@@ -23,6 +23,7 @@ interface ShowDetail {
     networks: { id: number; name: string; logoUrl: string | null }[];
     status: string | null;
     tagline: string | null;
+    director: { id: number; name: string; profileUrl: string | null } | null;
     createdBy: { id: number; name: string; profileUrl: string | null }[];
     episodeRuntime: number | null;
     voteAverage: number;
@@ -653,6 +654,33 @@ export default function ShowDetailPage() {
                             <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Synopsis</h3>
                             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{show.description}</p>
                         </div>
+
+                        {/* Director */}
+                        {show.director && (
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                                    Director
+                                </p>
+                                <Link
+                                    href={`/actors/${show.director.id}?view=directed`}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}
+                                    title={`View all movies/series directed by ${show.director.name}`}
+                                >
+                                    <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-secondary)', border: '2px solid var(--border-default)' }}>
+                                        {show.director.profileUrl ? (
+                                            <img src={show.director.profileUrl} alt={show.director.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--text-tertiary)' }}>
+                                                {show.director.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        {show.director.name}
+                                    </span>
+                                </Link>
+                            </div>
+                        )}
 
                         {/* Created by */}
                         {show.createdBy.length > 0 && (
