@@ -1,77 +1,116 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ScrollRowProps {
     children: React.ReactNode;
     style?: React.CSSProperties;
 }
 
-const DRAG_THRESHOLD = 6; // px before we treat it as a scroll drag
-
 export default function ScrollRow({ children, style }: ScrollRowProps) {
     const ref = useRef<HTMLDivElement>(null);
-    const drag = useRef({ pointerId: -1, x: 0, left: 0, moved: false });
-    const [grabbing, setGrabbing] = useState(false);
+    const [canLeft, setCanLeft] = useState(false);
+    const [canRight, setCanRight] = useState(false);
 
-    const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Only left-button / touch; ignore if already tracking
-        if (e.button !== 0 && e.pointerType === 'mouse') return;
-        drag.current = { pointerId: e.pointerId, x: e.clientX, left: ref.current?.scrollLeft ?? 0, moved: false };
-    };
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
 
-    const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (drag.current.pointerId !== e.pointerId || !ref.current) return;
-        const dx = e.clientX - drag.current.x;
-        if (!drag.current.moved && Math.abs(dx) > DRAG_THRESHOLD) {
-            // Only capture + switch cursor once we know it's a real drag
-            drag.current.moved = true;
-            ref.current.setPointerCapture(e.pointerId);
-            setGrabbing(true);
-        }
-        if (drag.current.moved) {
-            ref.current.scrollLeft = drag.current.left - dx;
-        }
-    };
+        const update = () => {
+            const max = el.scrollWidth - el.clientWidth;
+            setCanLeft(el.scrollLeft > 2);
+            setCanRight(max - el.scrollLeft > 2);
+        };
 
-    const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (drag.current.pointerId !== e.pointerId) return;
-        drag.current.pointerId = -1;
-        setGrabbing(false);
-    };
+        update();
+        el.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
 
-    // Block child link / button clicks only when the pointer actually scrolled
-    const onClickCapture = (e: React.MouseEvent) => {
-        if (drag.current.moved) {
-            e.preventDefault();
-            e.stopPropagation();
-            drag.current.moved = false;
-        }
+        return () => {
+            el.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+        };
+    }, [children]);
+
+    const scrollByPage = (direction: 'left' | 'right') => {
+        const el = ref.current;
+        if (!el) return;
+        const amount = Math.max(240, Math.round(el.clientWidth * 0.8));
+        el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
     };
 
     return (
-        <div
-            ref={ref}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onClickCapture={onClickCapture}
-            style={{
-                display: 'flex',
-                gap: 'var(--space-md)',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-                margin: '0 calc(var(--space-lg) * -1)',
-                padding: '0 var(--space-lg) var(--space-lg)',
-                // Only show grabbing during an active scroll; otherwise let children define their own cursor
-                cursor: grabbing ? 'grabbing' : 'default',
-                userSelect: 'none',
-                ...style,
-            }}
-        >
-            {children}
+        <div style={{ position: 'relative' }}>
+            {canLeft && (
+                <button
+                    onClick={() => scrollByPage('left')}
+                    aria-label="Scroll left"
+                    style={{
+                        position: 'absolute',
+                        left: 4,
+                        top: '40%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 20,
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        border: '1px solid var(--border-default)',
+                        background: 'color-mix(in srgb, var(--bg-primary) 85%, transparent)',
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        backdropFilter: 'blur(4px)',
+                    }}
+                >
+                    <ChevronLeft size={18} />
+                </button>
+            )}
+
+            <div
+                ref={ref}
+                style={{
+                    display: 'flex',
+                    gap: 'var(--space-md)',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    margin: '0 calc(var(--space-lg) * -1)',
+                    padding: '0 var(--space-lg) var(--space-lg)',
+                    ...style,
+                }}
+            >
+                {children}
+            </div>
+
+            {canRight && (
+                <button
+                    onClick={() => scrollByPage('right')}
+                    aria-label="Scroll right"
+                    style={{
+                        position: 'absolute',
+                        right: 4,
+                        top: '40%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 20,
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        border: '1px solid var(--border-default)',
+                        background: 'color-mix(in srgb, var(--bg-primary) 85%, transparent)',
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        backdropFilter: 'blur(4px)',
+                    }}
+                >
+                    <ChevronRight size={18} />
+                </button>
+            )}
         </div>
     );
 }
