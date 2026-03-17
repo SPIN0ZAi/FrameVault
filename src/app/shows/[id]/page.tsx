@@ -649,12 +649,18 @@ export default function ShowDetailPage() {
                         {/* Actions */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
                             <button
-                                className={`btn btn-primary ${show.userInteraction.watched ? 'active' : ''}`}
+                                className={`btn ${show.userInteraction.watched ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={handleWatchToggle}
                                 disabled={actionLoading === 'watch'}
                             >
-                                {actionLoading === 'watch' ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
-                                Watched
+                                {actionLoading === 'watch' ? (
+                                    <Loader2 size={16} className="spin" />
+                                ) : show.userInteraction.watched ? (
+                                    <Check size={16} />
+                                ) : (
+                                    <Eye size={16} />
+                                )}
+                                {show.userInteraction.watched ? 'Watched' : 'Mark as Watched'}
                             </button>
                             {show.userInteraction.watched && (
                                 <button className="btn" onClick={handleRewatch} disabled={actionLoading === 'rewatch'}>
@@ -663,12 +669,12 @@ export default function ShowDetailPage() {
                                 </button>
                             )}
                             <button
-                                className={`btn ${show.userInteraction.inWatchlist ? 'active' : ''}`}
+                                className={`btn ${show.userInteraction.inWatchlist ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={handleWatchlistToggle}
                                 disabled={actionLoading === 'watchlist'}
                             >
                                 {actionLoading === 'watchlist' ? <Loader2 size={16} className="spin" /> : <BookmarkPlus size={16} />}
-                                Add to List
+                                {show.userInteraction.inWatchlist ? 'In Watchlist' : 'Watchlist'}
                             </button>
                             <button className="btn" onClick={() => setShowReviewForm(true)}>
                                 <Edit3 size={16} /> Write Review
