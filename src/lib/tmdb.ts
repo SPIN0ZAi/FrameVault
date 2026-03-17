@@ -279,6 +279,15 @@ export interface TMDBPersonDetails {
     popularity: number;
 }
 
+export interface TMDBPersonSearchResult {
+    id: number;
+    name: string;
+    profile_path: string | null;
+    known_for_department: string;
+    popularity: number;
+    adult?: boolean;
+}
+
 export interface TMDBMovieCredit {
     id: number;
     title: string;
@@ -306,6 +315,16 @@ export interface TMDBPersonCombinedCredit {
 
 export async function getPersonDetails(id: string | number): Promise<TMDBPersonDetails> {
     return fetchFromTMDB<TMDBPersonDetails>(`/person/${id}`);
+}
+
+export async function searchPeople(query: string, page = 1): Promise<TMDBResponse<TMDBPersonSearchResult>> {
+    const data = await fetchFromTMDB<TMDBResponse<TMDBPersonSearchResult>>('/search/person', {
+        query,
+        page: page.toString(),
+        include_adult: 'false',
+    });
+    data.results = data.results.filter((p) => !p.adult);
+    return data;
 }
 
 export async function getPersonMovieCredits(id: string | number): Promise<{ cast: TMDBMovieCredit[] }> {

@@ -6,6 +6,24 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Clapperboard, BookMarked, LayoutDashboard, Trophy, Sparkles } from 'lucide-react';
 
+type SearchSuggestionType = 'movie' | 'show' | 'actor' | 'list';
+
+interface SearchSuggestion {
+    id: string;
+    type: SearchSuggestionType;
+    label: string;
+    sublabel?: string;
+    href: string;
+    imageUrl?: string | null;
+}
+
+const SUGGESTION_ICON: Record<SearchSuggestionType, string> = {
+    movie: '🎬',
+    show: '📺',
+    actor: '🧑‍🎤',
+    list: '🗂️',
+};
+
 export default function Header() {
     const { data: session } = useSession();
     const router = useRouter();
@@ -13,24 +31,89 @@ export default function Header() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLDivElement>(null);
+    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [activeSuggestion, setActiveSuggestion] = useState(-1);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setDropdownOpen(false);
             }
+            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+                setSearchOpen(false);
+                setActiveSuggestion(-1);
+            }
         }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        const q = searchQuery.trim();
+        if (q.length < 2) {
+            setSuggestions([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+
+        const timeout = setTimeout(async () => {
+            try {
+                setSearchLoading(true);
+                const res = await fetch(`/api/search/autocomplete?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+                const data = await res.json();
+                if (data?.success) {
+                    setSuggestions(Array.isArray(data.data?.items) ? data.data.items : []);
+                    setSearchOpen(true);
+                    setActiveSuggestion(-1);
+                }
+            } catch {
+                setSuggestions([]);
+            } finally {
+                setSearchLoading(false);
+            }
+        }, 180);
+
+        return () => {
+            clearTimeout(timeout);
+            controller.abort();
+        };
+    }, [searchQuery]);
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (searchQuery.trim()) {
-            const dest = pathname.startsWith('/shows') ? '/shows' : '/movies';
-            router.push(`${dest}?search=${encodeURIComponent(searchQuery.trim())}`);
+        const q = searchQuery.trim();
+        if (!q) return;
+
+        if (activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+            router.push(suggestions[activeSuggestion].href);
             setSearchQuery('');
+            setSuggestions([]);
+            setSearchOpen(false);
+            setActiveSuggestion(-1);
+            return;
         }
+
+        if (q) {
+            const dest = pathname.startsWith('/shows') ? '/shows' : '/movies';
+            router.push(`${dest}?search=${encodeURIComponent(q)}`);
+            setSearchQuery('');
+            setSuggestions([]);
+            setSearchOpen(false);
+            setActiveSuggestion(-1);
+        }
+    };
+
+    const handleSelectSuggestion = (href: string) => {
+        router.push(href);
+        setSearchQuery('');
+        setSuggestions([]);
+        setSearchOpen(false);
+        setActiveSuggestion(-1);
     };
 
     return (
@@ -84,20 +167,117 @@ export default function Header() {
                 {/* Actions */}
                 <div className="header-actions">
                     {/* Search */}
-                    <form onSubmit={handleSearch} className="header-search">
-                        <span className="header-search-icon">
-                            <Search size={16} />
-                        </span>
-                        <input
-                            type="text"
-                            className="header-search-input"
-                            placeholder={pathname.startsWith('/shows') ? 'Search TV shows…' : 'Search films…'}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            aria-label="Search movies"
-                            id="header-search"
-                        />
-                    </form>
+                    <div ref={searchRef} style={{ position: 'relative' }}>
+                        <form onSubmit={handleSearch} className="header-search">
+                            <span className="header-search-icon">
+                                <Search size={16} />
+                            </span>
+                            <input
+                                type="text"
+                                className="header-search-input"
+                                placeholder={pathname.startsWith('/shows') ? 'Search shows, actors, lists…' : 'Search films, actors, lists…'}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => {
+                                    if (suggestions.length > 0) setSearchOpen(true);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (!searchOpen || suggestions.length === 0) return;
+                                    if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setActiveSuggestion((prev) => Math.min(prev + 1, suggestions.length - 1));
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setActiveSuggestion((prev) => Math.max(prev - 1, -1));
+                                    } else if (e.key === 'Escape') {
+                                        setSearchOpen(false);
+                                        setActiveSuggestion(-1);
+                                    }
+                                }}
+                                aria-label="Smart search"
+                                id="header-search"
+                                autoComplete="off"
+                            />
+                        </form>
+
+                        {searchOpen && searchQuery.trim().length >= 2 && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 8px)',
+                                    left: 0,
+                                    right: 0,
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-default)',
+                                    borderRadius: 12,
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+                                    zIndex: 150,
+                                    maxHeight: 420,
+                                    overflowY: 'auto',
+                                }}
+                            >
+                                {searchLoading && (
+                                    <div style={{ padding: '10px 12px', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>
+                                        Finding best matches…
+                                    </div>
+                                )}
+
+                                {!searchLoading && suggestions.length === 0 && (
+                                    <div style={{ padding: '10px 12px', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>
+                                        No suggestions found.
+                                    </div>
+                                )}
+
+                                {!searchLoading && suggestions.map((item, index) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleSelectSuggestion(item.href);
+                                        }}
+                                        onMouseEnter={() => setActiveSuggestion(index)}
+                                        style={{
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            padding: '9px 10px',
+                                            border: 'none',
+                                            borderBottom: index === suggestions.length - 1 ? 'none' : '1px solid var(--border-subtle)',
+                                            background: activeSuggestion === index ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                            color: 'inherit',
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {item.imageUrl ? (
+                                            <img
+                                                src={item.imageUrl}
+                                                alt={item.label}
+                                                style={{ width: 28, height: 42, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg-tertiary)' }}
+                                            />
+                                        ) : (
+                                            <div style={{ width: 28, height: 42, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-tertiary)', fontSize: 13, flexShrink: 0 }}>
+                                                {SUGGESTION_ICON[item.type]}
+                                            </div>
+                                        )}
+
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {item.label}
+                                            </div>
+                                            {item.sublabel && (
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {item.sublabel}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {session ? (
                         <div ref={dropdownRef} style={{ position: 'relative' }}>
