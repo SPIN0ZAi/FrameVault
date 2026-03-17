@@ -1131,7 +1131,13 @@ export default function UserProfilePage() {
     const [reviewsLoaded, setReviewsLoaded] = useState(false);
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [watchlistLoaded, setWatchlistLoaded] = useState(false);
+    const [watchlistPage, setWatchlistPage] = useState(1);
+    const [watchlistTotalPages, setWatchlistTotalPages] = useState(1);
+    const [watchlistTotalCount, setWatchlistTotalCount] = useState(0);
     const [watchlistSubTab, setWatchlistSubTab] = useState<'movies' | 'shows'>('movies');
+    const [showWatchlistPage, setShowWatchlistPage] = useState(1);
+    const [showWatchlistTotalPages, setShowWatchlistTotalPages] = useState(1);
+    const [showWatchlistTotalCount, setShowWatchlistTotalCount] = useState(0);
     const [showSpinWheel, setShowSpinWheel] = useState(false);
     const [showSpinWheelShows, setShowSpinWheelShows] = useState(false);
     const [network, setNetwork] = useState<{ followers: NetworkUser[]; following: NetworkUser[] } | null>(null);
@@ -1259,15 +1265,33 @@ export default function UserProfilePage() {
                 .then(r => r.json())
                 .then(d => { if (d.success) setReviews(d.data); setReviewsLoaded(true); });
         }
-        if (activeTab === 'Watchlist' && !watchlistLoaded) {
-            fetch(`/api/users/${username}/watchlist?limit=200`)
-                .then(r => r.json())
-                .then(d => { if (d.success) setWatchlist(d.data); setWatchlistLoaded(true); });
-        }
-        if (activeTab === 'Watchlist' && !showWatchlistLoaded) {
-            fetch(`/api/users/${username}/show-watchlist?limit=200`)
-                .then(r => r.json())
-                .then(d => { if (d.success) setShowWatchlist(d.data); setShowWatchlistLoaded(true); });
+        if (activeTab === 'Watchlist') {
+            if (watchlistSubTab === 'movies') {
+                setWatchlistLoaded(false);
+                fetch(`/api/users/${username}/watchlist?limit=50&page=${watchlistPage}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            setWatchlist(d.data);
+                            setWatchlistTotalPages(d.meta?.totalPages ?? 1);
+                            setWatchlistTotalCount(d.meta?.totalCount ?? 0);
+                        }
+                        setWatchlistLoaded(true);
+                    });
+            }
+            if (watchlistSubTab === 'shows') {
+                setShowWatchlistLoaded(false);
+                fetch(`/api/users/${username}/show-watchlist?limit=50&page=${showWatchlistPage}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            setShowWatchlist(d.data);
+                            setShowWatchlistTotalPages(d.meta?.totalPages ?? 1);
+                            setShowWatchlistTotalCount(d.meta?.totalCount ?? 0);
+                        }
+                        setShowWatchlistLoaded(true);
+                    });
+            }
         }
         if (activeTab === 'Network' && !networkLoaded) {
             fetch(`/api/users/${username}/network`)
@@ -1304,7 +1328,7 @@ export default function UserProfilePage() {
                 .then(r => r.json())
                 .then(d => { if (d.success) setStatsData(d.data); setStatsLoaded(true); });
         }
-    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showsRatingFilter, showWatchlistLoaded, reviewsLoaded, watchlistLoaded, networkLoaded, achievementsLoaded, pollLoaded, statsLoaded]);
+    }, [activeTab, username, filmsPage, filmsSort, filmsRatingFilter, showsPage, showsSort, showsRatingFilter, reviewsLoaded, networkLoaded, achievementsLoaded, pollLoaded, statsLoaded, watchlistSubTab, watchlistPage, showWatchlistPage]);
 
     const handleFollowToggle = async () => {
         if (!user || !session) return;
@@ -1850,12 +1874,16 @@ export default function UserProfilePage() {
                         {/* Sub-tab switcher */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xl)', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-xl)' }}>
                             {(['movies', 'shows'] as const).map(sub => (
-                                <button key={sub} onClick={() => setWatchlistSubTab(sub)}
+                                <button key={sub} onClick={() => {
+                                    setWatchlistSubTab(sub);
+                                    if (sub === 'movies') setWatchlistPage(1);
+                                    if (sub === 'shows') setShowWatchlistPage(1);
+                                }}
                                     style={{ padding: '0.5rem 0', fontWeight: 700, fontSize: 'var(--text-sm)', color: watchlistSubTab === sub ? 'var(--text-primary)' : 'var(--text-tertiary)', borderBottom: watchlistSubTab === sub ? `2px solid ${accent}` : '2px solid transparent', marginBottom: '-1px', background: 'none', cursor: 'pointer' }}
                                 >
                                     {sub === 'movies' ? 'Films' : 'TV Shows'}
                                     <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
-                                        {sub === 'movies' ? watchlist.length : showWatchlist.length}
+                                        {sub === 'movies' ? watchlistTotalCount : showWatchlistTotalCount}
                                     </span>
                                 </button>
                             ))}
@@ -1887,12 +1915,22 @@ export default function UserProfilePage() {
                                 <EmptyTab icon={<BookmarkPlus size={48} />} text="Watchlist is empty" cta={isOwnProfile ? { label: 'Browse Films', href: '/movies' } : undefined} />
                             ) : (
                                 <>
-                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{watchlist.length} film{watchlist.length !== 1 ? 's' : ''} saved</p>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>
+                                        {watchlistTotalCount} film{watchlistTotalCount !== 1 ? 's' : ''} saved
+                                        {watchlistTotalPages > 1 ? ` · Page ${watchlistPage} of ${watchlistTotalPages}` : ''}
+                                    </p>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                         {watchlist.map(item => (
                                             <MoviePosterCard key={item.id} href={`/movies/${item.movie.tmdbId ?? item.movie.id}`} posterUrl={item.movie.customPosters?.[0]?.posterUrl ?? item.movie.posterUrl} title={item.movie.title} year={item.movie.year} />
                                         ))}
                                     </div>
+                                    {watchlistTotalPages > 1 && (
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
+                                            <button className="btn btn-ghost btn-sm" disabled={watchlistPage <= 1} onClick={() => setWatchlistPage(p => p - 1)}>← Prev</button>
+                                            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{watchlistPage} / {watchlistTotalPages}</span>
+                                            <button className="btn btn-ghost btn-sm" disabled={watchlistPage >= watchlistTotalPages} onClick={() => setWatchlistPage(p => p + 1)}>Next →</button>
+                                        </div>
+                                    )}
                                 </>
                             )
                         )}
@@ -1907,7 +1945,10 @@ export default function UserProfilePage() {
                                 <EmptyTab icon={<BookmarkPlus size={48} />} text="No shows saved yet" cta={isOwnProfile ? { label: 'Browse Shows', href: '/shows' } : undefined} />
                             ) : (
                                 <>
-                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>{showWatchlist.length} show{showWatchlist.length !== 1 ? 's' : ''} saved</p>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>
+                                        {showWatchlistTotalCount} show{showWatchlistTotalCount !== 1 ? 's' : ''} saved
+                                        {showWatchlistTotalPages > 1 ? ` · Page ${showWatchlistPage} of ${showWatchlistTotalPages}` : ''}
+                                    </p>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(138px, 1fr))', gap: 'var(--space-sm)' }}>
                                         {showWatchlist.map(sw => (
                                             <Link key={sw.id} href={`/shows/${sw.tmdbShowId}`} className="movie-card">
@@ -1926,6 +1967,13 @@ export default function UserProfilePage() {
                                             </Link>
                                         ))}
                                     </div>
+                                    {showWatchlistTotalPages > 1 && (
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
+                                            <button className="btn btn-ghost btn-sm" disabled={showWatchlistPage <= 1} onClick={() => setShowWatchlistPage(p => p - 1)}>← Prev</button>
+                                            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{showWatchlistPage} / {showWatchlistTotalPages}</span>
+                                            <button className="btn btn-ghost btn-sm" disabled={showWatchlistPage >= showWatchlistTotalPages} onClick={() => setShowWatchlistPage(p => p + 1)}>Next →</button>
+                                        </div>
+                                    )}
                                 </>
                             )
                         )}

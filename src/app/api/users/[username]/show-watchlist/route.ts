@@ -10,7 +10,8 @@ export async function GET(
     try {
         const { username } = await params;
         const { searchParams } = new URL(request.url);
-        const limit = Math.min(200, parseInt(searchParams.get('limit') || '100'));
+        const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+        const limit = Math.min(100, parseInt(searchParams.get('limit') || '50'));
 
         const user = await prisma.user.findUnique({
             where: { username },
@@ -18,12 +19,14 @@ export async function GET(
         });
         if (!user) return notFoundError('User');
 
-        const [items, customPosters] = await Promise.all([
+        const [items, totalCount, customPosters] = await Promise.all([
             prisma.showWatchlistItem.findMany({
                 where: { userId: user.id },
                 orderBy: { addedAt: 'desc' },
+                skip: (page - 1) * limit,
                 take: limit,
             }),
+            prisma.showWatchlistItem.count({ where: { userId: user.id } }),
             prisma.showCustomPoster.findMany({ where: { userId: user.id } }).catch(() => []),
         ]);
 
@@ -33,7 +36,12 @@ export async function GET(
             posterUrl: customPosterMap.get(item.tmdbShowId) ?? item.posterUrl,
         }));
 
-        return successResponse(data);
+        return successResponse(data, {
+            page,
+            limit,
+            totalCount,
+            totalPages: Math.ceil(totalCount / limit),
+        });
     } catch (error) {
         console.error('GET user show-watchlist error:', error);
         return serverError();
