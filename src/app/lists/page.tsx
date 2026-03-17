@@ -167,6 +167,30 @@ export default function ListsPage() {
                                 </div>
                             </div>
                         </Link>
+                        <Link href="/lists/top-250-series" style={{ textDecoration: 'none' }}>
+                            <div className="card" style={{
+                                cursor: 'pointer', height: '100%', padding: 0, overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column',
+                                borderLeft: '3px solid #f59e0b', transition: 'border-color 0.2s, transform 0.15s',
+                            }}
+                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f5c842'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            >
+                                <div style={{ height: 88, background: 'linear-gradient(135deg, #141a2a 0%, #1e2d4d 50%, #1a1d21 100%)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                                    <Star size={52} fill="rgba(245,158,11,0.12)" color="rgba(245,158,11,0.12)" style={{ position: 'absolute' }} />
+                                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(13,14,18,0.85) 100%)' }} />
+                                </div>
+                                <div style={{ padding: '12px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                        <Star size={11} fill="#f59e0b" color="#f59e0b" />
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Global · Official</span>
+                                    </div>
+                                    <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', marginBottom: 6, lineHeight: 1.3 }}>Top 250 Series of All Time</h3>
+                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>The 250 highest-rated series on TMDB. Updated weekly.</p>
+                                    <p style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}>250 series →</p>
+                                </div>
+                            </div>
+                        </Link>
                         {/* Official lists (isOfficial=true) */}
                         {officialLists.map((list) => <ListCard key={list.id} list={list} badge="official" />)}
                         {/* Featured lists (isFeatured=true) */}

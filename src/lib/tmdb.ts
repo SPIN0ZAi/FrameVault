@@ -499,3 +499,12 @@ export async function getTrendingShows(): Promise<TMDBResponse<TMDBShow>> {
     data.results = data.results.filter(s => !s.adult);
     return data;
 }
+
+export async function getTopRatedShows(page = 1): Promise<TMDBResponse<TMDBShow>> {
+    const data = await fetchFromTMDB<TMDBResponse<TMDBShow>>('/tv/top_rated', {
+        page: page.toString(),
+        include_adult: 'false',
+    });
+    data.results = data.results.filter(s => !s.adult);
+    return data;
+}
