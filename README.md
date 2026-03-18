@@ -84,11 +84,13 @@
 <details open>
 <summary><b>🎬 Discovery & Browsing</b></summary>
 
+- **Smart Global Search Autocomplete** — debounced live suggestions with fuzzy matching; results include movies, TV shows, actors, and community lists; mix of TMDB & local data
 - **Hero Carousel** — rotating backdrop showcase of trending films with live TMDB ratings
 - **Personalized "Picked For You"** — genre-weighted recommendations built from your highest-rated movies; automatically improves as you rate more films
 - **Trending This Week** — live TMDB trending feed, refreshed on every request
 - **And the Oscar Goes to…** — randomly sampled from TMDB's all-time top-rated films
 - **Popular Right Now** — client-side live carousel that rotates every 30 seconds with a manual refresh button
+- **Top 250 Films & Top 250 Series** — official ranked lists of highest-rated movies & TV shows on TMDB; accessible from the Lists page
 - **Browse & Filter** — discover by genre, decade, and sort order; all filters sync to the URL so the browser back button always restores your exact page/position
 - **Actor Pages** — click any cast member to view their full biography, birth info, and filmography grid
 
@@ -101,9 +103,10 @@
 - **Top 5 Series** — pin your all-time favourite TV shows separately on your profile
 - **Custom Posters (Letterboxd-style)** — upload your own poster or pick from TMDB alternatives for both movies and TV shows; propagates everywhere: profile, watchlist, activity feed, and favorites
 - **Drag-to-reposition Banner & Avatar** — drag your banner and avatar images to crop exactly how you want; position is saved per-user
-- **Films Tab** — paginated watched history with sort options (Latest · Oldest · Top Rated · A–Z) and rating filters; sort by rating is global across your full history, not just the current page
+- **Films Tab** — paginated watched history (50 per page) with sort options (Latest · Oldest · Top Rated · A–Z) and rating filters; sort by rating is global across your full history, not just the current page
+- **TV Shows Tab** — paginated watched shows history (50 per page)
+- **Watchlist Tab** — paginated movies & TV shows saved to watch later (50 per page, separate movies/shows sub-tabs)
 - **Reviews Tab** — all written reviews with inline star rating, poster, and edit/delete controls
-- **Watchlist Tab** — movies saved to watch later
 - **Lists Tab** — curated public or private film lists you've created
 - **Network Tab** — followers and following with quick follow/unfollow
 - **Ratings Histogram** — visual bar chart of your full rating distribution
@@ -114,22 +117,26 @@
 <details open>
 <summary><b>📺 TV Shows</b></summary>
 
-- Full TV show watchlist — track shows you want to watch
-- Mark shows as watched with ratings
+- Full TV show discovery with filters (genre, decade, sort)
+- Mark shows as watched with half-step ratings
 - Custom posters for TV shows — same upload flow as movies
 - Top 5 Series — pin your favourite shows on your profile
 - Show ratings displayed on profile stats
+- **Show detail pages** — synopsis, cast, creators, networks, seasons, ratings histogram, reviews, friends' activity
+- **TV-only leaderboard categories** — top watchers of series (all-time & monthly)
+- **Director/Creator pages** — clickable directors and creators with full biography and show filmography
 
 </details>
 
 <details open>
 <summary><b>⭐ Rating & Watching</b></summary>
 
-- Rate movies 1–10 (displayed as ½–5 stars)
+- Rate movies & TV shows with **half-step precision** (0.5 increments; 1–10 internal, displayed as ½–5 stars)
 - "Mark as watched?" prompt appears after rating an unwatched film
-- Auto-removes a movie from your watchlist when marked as watched
+- Auto-removes a movie/show from your watchlist when marked as watched
 - Per-movie rating histogram visible on every film detail page
-- Friends' ratings overlay on movie detail pages
+- Friends' ratings overlay on movie & show detail pages
+- **Letterboxd-compatible export rounding** — half ratings round up on export (e.g., 8.5 → 9 → 4.5★)
 
 </details>
 
@@ -137,9 +144,9 @@
 <summary><b>🎭 Social</b></summary>
 
 - **Follow users** — personalised activity feed and home page tailored to who you follow
-- **Activity Feed** — chronological stream of watches, ratings, and reviews from people you follow
+- **Activity Feed** — chronological stream of watches, ratings, and reviews from people you follow; includes both movies and TV shows
 - **Members Page** — discover members sorted by popular · newest · most films; search by username
-- **Friends Activity** on each movie page — see which friends watched it and their ratings
+- **Friends Activity** on each movie & show page — see which friends watched it and their ratings; hovercards with user profiles
 
 </details>
 
