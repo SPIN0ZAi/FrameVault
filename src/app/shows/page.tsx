@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Tv, Search, SlidersHorizontal, X, Eye, BookmarkPlus, Check } from 'lucide-react';
+import ShowHoverCard from '@/components/ui/ShowHoverCard';
+
 
 interface Show {
     id: string;
@@ -64,109 +66,7 @@ function Chip({ label, active, onClick, color }: {
 }
 
 // Per-card action buttons (mark watched / add to watchlist)
-function ShowCard({ show }: { show: Show }) {
-    const { data: session } = useSession();
-    const [watched, setWatched] = useState(false);
-    const [inWatchlist, setInWatchlist] = useState(false);
-    const [hovered, setHovered] = useState(false);
-    const checkedRef = useRef(false);
 
-    useEffect(() => {
-        if (!session || checkedRef.current) return;
-        checkedRef.current = true;
-        Promise.all([
-            fetch(`/api/watched-shows/${show.id}`).then(r => r.json()),
-            fetch(`/api/show-watchlist/${show.id}`).then(r => r.json()),
-        ]).then(([w, wl]) => {
-            setWatched(w.data?.watched ?? false);
-            setInWatchlist(wl.data?.inWatchlist ?? false);
-        }).catch(() => {});
-    }, [session, show.id]);
-
-    const toggleWatched = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (!session) return;
-        const method = watched ? 'DELETE' : 'POST';
-        await fetch(`/api/watched-shows/${show.id}`, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: method === 'POST' ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl }) : undefined,
-        });
-        setWatched(w => !w);
-        if (!watched) setInWatchlist(false);
-    };
-
-    const toggleWatchlist = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (!session) return;
-        const method = inWatchlist ? 'DELETE' : 'POST';
-        await fetch(`/api/show-watchlist/${show.id}`, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: method === 'POST' ? JSON.stringify({ title: show.title, year: show.year, posterUrl: show.posterUrl }) : undefined,
-        });
-        setInWatchlist(wl => !wl);
-    };
-
-    return (
-        <div style={{ position: 'relative' }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            <Link href={`/shows/${show.id}`} className="movie-card" style={{ display: 'block' }}>
-                {show.posterUrl ? (
-                    <img src={show.posterUrl} alt={show.title} loading="lazy" />
-                ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: 'var(--space-md)', textAlign: 'center' }}>
-                        <Tv size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>{show.title}</span>
-                    </div>
-                )}
-                {show.averageRating && (
-                    <div className="movie-card-rating">★ {show.averageRating}</div>
-                )}
-                <div className="movie-card-overlay">
-                    <div className="movie-card-title">{show.title}</div>
-                    <div className="movie-card-year">{show.year}</div>
-                </div>
-            </Link>
-
-            {/* Action buttons — shown on hover or when already marked */}
-            {session && (hovered || watched || inWatchlist) && (
-                <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 10 }}>
-                    <button
-                        onClick={toggleWatched}
-                        title={watched ? 'Unmark watched' : 'Mark as watched'}
-                        style={{
-                            width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: watched ? 'var(--brand)' : 'rgba(0,0,0,0.7)',
-                            color: watched ? '#000' : '#fff',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                        }}
-                    >
-                        {watched ? <Check size={14} strokeWidth={3} /> : <Eye size={14} />}
-                    </button>
-                    {!watched && (
-                        <button
-                            onClick={toggleWatchlist}
-                            title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-                            style={{
-                                width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                                background: inWatchlist ? '#f59e0b' : 'rgba(0,0,0,0.7)',
-                                color: inWatchlist ? '#000' : '#fff',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                            }}
-                        >
-                            <BookmarkPlus size={14} />
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
 
 function ShowsInner() {
     const urlParams = useSearchParams();
@@ -307,7 +207,19 @@ function ShowsInner() {
                     </div>
                 ) : (
                     <div className="grid grid-movies">
-                        {shows.map(show => <ShowCard key={show.id} show={show} />)}
+                        {shows.map(show => (
+                            <div key={show.id} style={{ position: 'relative' }}>
+                                <ShowHoverCard 
+                                    id={show.id} 
+                                    href={`/shows/${show.id}`} 
+                                    title={show.title} 
+                                    year={show.year} 
+                                    posterUrl={show.posterUrl} 
+                                    averageRating={show.averageRating}
+                                />
+                            </div>
+                        ))}
+
                     </div>
                 )}
 

@@ -1,41 +1,24 @@
-# Continue Watching / Resume Context UX Improvements
+# Quick Rate for Shows (Hover Poster → ⭐ Popup)
 
 ## Plan Overview
-**Goal**: When users navigate away from and return to movie/show detail pages, restore:
-1. Scroll position 
-2. Active section visibility (via scroll)
+1. ✅ Create `src/components/ui/ShowHoverCard.tsx` (adapt MovieHoverCard + quick rating)
+2. ✅ Create `src/app/api/shows/[id]/preview/route.ts` (TMDB show preview data)
+3. ✅ Update `src/app/shows/page.tsx` (replace ShowCard → ShowHoverCard)
 
-**Files**: `src/app/movies/[id]/page.tsx` & `src/app/shows/[id]/page.tsx`
+## ✅ COMPLETE
 
-## Steps ⬜️
+Quick Rate implemented:
+- Hover any show poster → preview panel appears (220ms delay)
+- Logged-in users see "Quick Rate" with interactive 1-10 half-stars ⭐
+- Click/hover stars → instant optimistic update + API call to `/api/shows/[id]/rating`
+- Feedback toast ("8.5/10", "Rating removed")
+- Works alongside existing watched/watchlist buttons
+- Preview API cached, matches MovieHoverCard style
 
-### 1. ✅ Create this TODO.md
+Files changed:
+- ✅ `src/components/ui/ShowHoverCard.tsx` (new)
+- ✅ `src/app/api/shows/[id]/preview/route.ts` (new) 
+- ✅ `src/app/shows/page.tsx` (ShowCard → ShowHoverCard)
+- ✅ TODO.md (tracked)
 
-### 2. ✅ Implement scroll restoration in movies/[id]/page.tsx
-- Add `useRef` for scroll container
-- Save scroll position to localStorage (per-user key: `movie-scroll-${userId}-${movieId}`)
-- Restore scroll position on mount
-- Debounced save (throttled to ~100ms)
-
-### 3. ✅ Implement scroll restoration in shows/[id]/page.tsx  
-- Same pattern as movies
-- Key: `show-scroll-${userId}-${showId}`
-
-### 4. Test UX flow
-```
-1. User scrolls to "Cast" section on movie page
-2. Navigate away (back/home/other page)
-3. Return to same movie page  
-4. Should auto-scroll to Cast section
-5. Test across sessions/browser restart
-```
-
-### 5. Clean up
-- Update TODO.md ✅
-- attempt_completion
-
-## Notes
-- Uses `session?.user?.id` for per-user storage
-- Fallback for anon users
-- No backend changes needed
-- Pure client-side UX improvement
+Test: Navigate to `/shows`, hover posters, rate shows. Friction removed! 🚀
