@@ -191,7 +191,9 @@ export default function ShowHoverCard({
                         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                         overflow: 'hidden',
                         zIndex: 200,
-                        pointerEvents: 'none',
+
+                        pointerEvents: 'auto',
+
                         animation: 'fadeIn 0.15s ease',
                     }}
                 >
