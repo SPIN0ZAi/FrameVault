@@ -983,6 +983,8 @@ export default function MovieDetailPage() {
                     </div>
                 </div>
 
+                <div className="container">
+
                 {/* Activity from Friends */}
                 {session && friendsActivity && (friendsActivity.watched.length > 0 || friendsActivity.watchlisted.length > 0) && (
                     <section style={{ marginTop: 'var(--space-3xl)' }}>
@@ -1216,6 +1218,7 @@ export default function MovieDetailPage() {
                         </div>
                     </section>
                 )}
+            </div>
             </div>
 
             {/* Poster Side Drawer */}
