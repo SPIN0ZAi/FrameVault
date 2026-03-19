@@ -152,6 +152,56 @@ export default function ShowDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
     const router = useRouter();
+    const mainRef = useRef<HTMLDivElement>(null);
+
+    // Scroll restoration
+    useEffect(() => {
+        if (!mainRef.current) return;
+
+        const userId = session?.user?.id || 'anon';
+        const scrollKey = `show-scroll-${userId}-${id}`;
+        const savedScroll = localStorage.getItem(scrollKey);
+        
+        if (savedScroll) {
+            mainRef.current.scrollTop = parseInt(savedScroll, 10);
+        }
+    }, [id, session?.user?.id]);
+
+    // Save scroll position
+    const saveScrollPosition = useCallback(() => {
+        if (!mainRef.current) return;
+        const userId = session?.user?.id || 'anon';
+        const scrollKey = `show-scroll-${userId}-${id}`;
+        localStorage.setItem(scrollKey, mainRef.current.scrollTop.toString());
+    }, [id, session?.user?.id]);
+
+    useEffect(() => {
+        if (!mainRef.current) return;
+        
+        let ticking = false;
+        const updateScroll = () => {
+            saveScrollPosition();
+            ticking = false;
+        };
+
+        const handleScroll = () => {
+            if (!ticking) {
+                requestAnimationFrame(updateScroll);
+                ticking = true;
+            }
+        };
+
+        mainRef.current.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Save on page unload
+        const handleUnload = () => saveScrollPosition();
+        window.addEventListener('beforeunload', handleUnload);
+
+        return () => {
+            mainRef.current?.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [saveScrollPosition]);
     const backdropBrightness = useBackdropBrightness();
     const [show, setShow] = useState<ShowDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -507,7 +557,7 @@ export default function ShowDetailPage() {
                 </div>
             )}
 
-            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+            <div className="container" ref={mainRef} style={{ position: 'relative', zIndex: 1 }}>
                 {/* Hero */}
                 <div style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', paddingTop: 'var(--space-3xl)' }}>
                     {/* Poster */}

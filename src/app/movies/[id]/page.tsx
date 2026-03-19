@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
+
 import Link from 'next/link';
 import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown, RefreshCw } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
@@ -199,6 +200,56 @@ export default function MovieDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
     const router = useRouter();
+    const mainRef = useRef<HTMLDivElement>(null);
+
+    // Scroll restoration
+    useEffect(() => {
+        if (!mainRef.current) return;
+
+        const userId = session?.user?.id || 'anon';
+        const scrollKey = `movie-scroll-${userId}-${id}`;
+        const savedScroll = localStorage.getItem(scrollKey);
+        
+        if (savedScroll) {
+            mainRef.current.scrollTop = parseInt(savedScroll, 10);
+        }
+    }, [id, session?.user?.id]);
+
+    // Save scroll position
+    const saveScrollPosition = useCallback(() => {
+        if (!mainRef.current) return;
+        const userId = session?.user?.id || 'anon';
+        const scrollKey = `movie-scroll-${userId}-${id}`;
+        localStorage.setItem(scrollKey, mainRef.current.scrollTop.toString());
+    }, [id, session?.user?.id]);
+
+    useEffect(() => {
+        if (!mainRef.current) return;
+        
+        let ticking = false;
+        const updateScroll = () => {
+            saveScrollPosition();
+            ticking = false;
+        };
+
+        const handleScroll = () => {
+            if (!ticking) {
+                requestAnimationFrame(updateScroll);
+                ticking = true;
+            }
+        };
+
+        mainRef.current.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Save on page unload
+        const handleUnload = () => saveScrollPosition();
+        window.addEventListener('beforeunload', handleUnload);
+
+        return () => {
+            mainRef.current?.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [saveScrollPosition]);
     const backdropBrightness = useBackdropBrightness();
     const [movie, setMovie] = useState<MovieDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -465,7 +516,7 @@ export default function MovieDetailPage() {
     if (loading) {
         return (
             <div className="page">
-                <div className="container">
+                <div className="container" ref={mainRef}>
                     <div className="movie-detail">
                         <div className="skeleton" style={{ aspectRatio: '2/3' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
@@ -506,7 +557,7 @@ export default function MovieDetailPage() {
             )}
 
             <div className="page" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="container">
+                <div className="container" ref={mainRef}>
                     <div className="movie-detail">
                     {/* Poster */}
                     <div
