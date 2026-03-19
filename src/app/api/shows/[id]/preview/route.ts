@@ -5,8 +5,9 @@ import { getShowDetails } from '@/lib/tmdb';
 
 const cache = new Map<string, { data: any; expires: number }>();
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-    const tmdbShowId = parseInt(params.id);
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const tmdbShowId = parseInt(id);
     if (isNaN(tmdbShowId)) {
         return serverError('Invalid show ID');
     }
