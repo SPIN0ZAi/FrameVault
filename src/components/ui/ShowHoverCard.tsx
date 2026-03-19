@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Tv } from 'lucide-react';
+import { Star, Tv } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
 interface ShowHoverCardProps {
@@ -30,6 +30,24 @@ const ratingCache = new Map<string, UserRating>();
 
 function formatTenthRating(value: number): string {
     return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function getHalfStepValue(clientX: number, rect: DOMRect, wholeStar: number): number {
+    return clientX - rect.left < rect.width / 2 ? wholeStar - 0.5 : wholeStar;
+}
+
+function StarFill({ level, size = 13 }: { level: 0 | 0.5 | 1; size?: number }) {
+    const fillPercent = level === 1 ? 100 : level === 0.5 ? 50 : 0;
+    return (
+        <span style={{ position: 'relative', width: size, height: size, display: 'inline-block' }}>
+            <Star size={size} fill="none" stroke="currentColor" style={{ color: 'var(--star-filled)', opacity: 0.28, position: 'absolute', inset: 0 }} />
+            {fillPercent > 0 && (
+                <span style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${fillPercent}%` }}>
+                    <Star size={size} fill="currentColor" stroke="currentColor" style={{ color: 'var(--star-filled)', position: 'absolute', inset: 0 }} />
+                </span>
+            )}
+        </span>
+    );
 }
 
 export default function ShowHoverCard({
@@ -167,24 +185,29 @@ export default function ShowHoverCard({
                     onMouseLeave={() => setHoverRating(0)}
                 >
                     <div className="movie-card-quick-rate-stars">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                            const value = star * 2;
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                            const current = hoverRating > 0 ? hoverRating : (userRating ?? 0);
+                            const level: 0 | 0.5 | 1 = current >= star ? 1 : current >= star - 0.5 ? 0.5 : 0;
                             return (
                                 <button
                                     key={star}
                                     type="button"
-                                    className={`movie-card-quick-rate-btn ${(hoverRating || userRating || 0) >= value ? 'is-on' : ''}`}
+                                    className="movie-card-quick-rate-btn"
                                     disabled={isRatingLoading}
-                                    onMouseEnter={() => setHoverRating(value)}
+                                    onMouseMove={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoverRating(getHalfStepValue(e.clientX, rect, star));
+                                    }}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        handleRate(value);
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        handleRate(getHalfStepValue(e.clientX, rect, star));
                                     }}
-                                    aria-label={`Rate ${value} out of 10`}
-                                    title={`${value}/10`}
+                                    aria-label={`Rate ${star - 0.5} to ${star} out of 10`}
+                                    title={`${star - 0.5}–${star}/10`}
                                 >
-                                    ★
+                                    <StarFill level={level} />
                                 </button>
                             );
                         })}
