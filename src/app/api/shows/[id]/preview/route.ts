@@ -31,10 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const data = {
             backdropUrl: show.backdrop_path ? `https://image.tmdb.org/t/p/w780${show.backdrop_path}` : null,
             description: show.overview,
-            cast: show.credits?.cast?.slice(0, 3).map((c: any) => ({
-                name: c.name,
-                character: c.character,
-            })) || [],
+            cast: [],
         };
 
         cache.set(cacheKey, { data, expires: now + 5 * 60 * 1000 });
