@@ -200,56 +200,106 @@ export default function MovieDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { data: session } = useSession();
     const router = useRouter();
-    const mainRef = useRef<HTMLDivElement>(null);
+    const overviewRef = useRef<HTMLElement>(null);
+    const castRef = useRef<HTMLElement>(null);
+    const reviewsRef = useRef<HTMLElement>(null);
+    const similarRef = useRef<HTMLElement>(null);
 
-    // Scroll restoration
-    useEffect(() => {
-        if (!mainRef.current) return;
+    type DetailTab = 'overview' | 'cast' | 'reviews' | 'similar';
+    const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+    const hasRestoredContextRef = useRef(false);
 
+    const getContextKey = useCallback(() => {
         const userId = session?.user?.id || 'anon';
-        const scrollKey = `movie-scroll-${userId}-${id}`;
-        const savedScroll = localStorage.getItem(scrollKey);
-        
-        if (savedScroll) {
-            mainRef.current.scrollTop = parseInt(savedScroll, 10);
+        return `movie-detail-context-${userId}-${id}`;
+    }, [id, session?.user?.id]);
+
+    const saveContext = useCallback((patch: Partial<{ tab: DetailTab; scrollY: number }> = {}) => {
+        try {
+            const key = getContextKey();
+            const raw = sessionStorage.getItem(key);
+            const prev = raw ? JSON.parse(raw) as { tab?: DetailTab; scrollY?: number } : {};
+            const next = {
+                tab: patch.tab ?? prev.tab ?? activeTab,
+                scrollY: patch.scrollY ?? prev.scrollY ?? window.scrollY,
+            };
+            sessionStorage.setItem(key, JSON.stringify(next));
+        } catch {
+            // Ignore storage errors (private mode, quota, etc.)
         }
-    }, [id, session?.user?.id]);
+    }, [activeTab, getContextKey]);
 
-    // Save scroll position
-    const saveScrollPosition = useCallback(() => {
-        if (!mainRef.current) return;
-        const userId = session?.user?.id || 'anon';
-        const scrollKey = `movie-scroll-${userId}-${id}`;
-        localStorage.setItem(scrollKey, mainRef.current.scrollTop.toString());
+    const getTabElement = useCallback((tab: DetailTab) => {
+        if (tab === 'overview') return overviewRef.current;
+        if (tab === 'cast') return castRef.current;
+        if (tab === 'reviews') return reviewsRef.current;
+        return similarRef.current;
+    }, []);
+
+    const scrollToTab = useCallback((tab: DetailTab, smooth = true) => {
+        const el = getTabElement(tab);
+        if (!el) return;
+        const targetY = Math.max(0, window.scrollY + el.getBoundingClientRect().top - 90);
+        window.scrollTo({ top: targetY, behavior: smooth ? 'smooth' : 'auto' });
+    }, [getTabElement]);
+
+    useEffect(() => {
+        hasRestoredContextRef.current = false;
     }, [id, session?.user?.id]);
 
     useEffect(() => {
-        if (!mainRef.current) return;
-        
-        let ticking = false;
-        const updateScroll = () => {
-            saveScrollPosition();
-            ticking = false;
-        };
+        if (hasRestoredContextRef.current || !overviewRef.current) return;
+        hasRestoredContextRef.current = true;
 
+        try {
+            const raw = sessionStorage.getItem(getContextKey());
+            if (!raw) return;
+            const saved = JSON.parse(raw) as { tab?: DetailTab; scrollY?: number };
+            const savedTab = saved.tab ?? 'overview';
+            setActiveTab(savedTab);
+
+            requestAnimationFrame(() => {
+                if (typeof saved.scrollY === 'number' && saved.scrollY > 0) {
+                    window.scrollTo({ top: saved.scrollY, behavior: 'auto' });
+                } else if (savedTab !== 'overview') {
+                    scrollToTab(savedTab, false);
+                }
+            });
+        } catch {
+            // Ignore malformed stored data
+        }
+    }, [getContextKey, scrollToTab]);
+
+    useEffect(() => {
         const handleScroll = () => {
-            if (!ticking) {
-                requestAnimationFrame(updateScroll);
-                ticking = true;
+            const markerY = window.scrollY + 180;
+            const tabs: { tab: DetailTab; el: HTMLElement | null }[] = [
+                { tab: 'overview', el: overviewRef.current },
+                { tab: 'cast', el: castRef.current },
+                { tab: 'reviews', el: reviewsRef.current },
+                { tab: 'similar', el: similarRef.current },
+            ];
+
+            let nextTab: DetailTab = 'overview';
+            for (const item of tabs) {
+                if (!item.el) continue;
+                const top = window.scrollY + item.el.getBoundingClientRect().top;
+                if (top <= markerY) nextTab = item.tab;
             }
+
+            if (nextTab !== activeTab) setActiveTab(nextTab);
+            saveContext({ tab: nextTab, scrollY: window.scrollY });
         };
 
-        mainRef.current.addEventListener('scroll', handleScroll, { passive: true });
-        
-        // Save on page unload
-        const handleUnload = () => saveScrollPosition();
-        window.addEventListener('beforeunload', handleUnload);
-
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('beforeunload', handleScroll);
         return () => {
-            mainRef.current?.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('beforeunload', handleUnload);
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('beforeunload', handleScroll);
         };
-    }, [saveScrollPosition]);
+    }, [activeTab, saveContext]);
+
     const backdropBrightness = useBackdropBrightness();
     const [movie, setMovie] = useState<MovieDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -516,14 +566,38 @@ export default function MovieDetailPage() {
     if (loading) {
         return (
             <div className="page">
-                <div className="container" ref={mainRef}>
-                    <div className="movie-detail">
+                <div className="container">
+                    <section className="movie-detail" ref={overviewRef} id="movie-overview">
                         <div className="skeleton" style={{ aspectRatio: '2/3' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                             <div className="skeleton" style={{ height: '48px', width: '60%' }} />
                             <div className="skeleton" style={{ height: '20px', width: '30%' }} />
                             <div className="skeleton" style={{ height: '100px' }} />
                         </div>
+                    </section>
+
+                    <div className="detail-section-tabs" role="tablist" aria-label="Movie sections">
+                        {([
+                            { key: 'overview', label: 'Overview' },
+                            { key: 'cast', label: 'Cast' },
+                            { key: 'reviews', label: 'Reviews' },
+                            { key: 'similar', label: 'Similar' },
+                        ] as const).map((tab) => (
+                            <button
+                                key={tab.key}
+                                role="tab"
+                                type="button"
+                                aria-selected={activeTab === tab.key}
+                                className={`detail-section-tab ${activeTab === tab.key ? 'is-active' : ''}`}
+                                onClick={() => {
+                                    setActiveTab(tab.key);
+                                    saveContext({ tab: tab.key });
+                                    scrollToTab(tab.key);
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -557,8 +631,8 @@ export default function MovieDetailPage() {
             )}
 
             <div className="page" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="container" ref={mainRef}>
-                    <div className="movie-detail">
+                <div className="container">
+                    <section className="movie-detail" ref={overviewRef} id="movie-overview">
                     {/* Poster */}
                     <div
                         className="movie-poster-wrapper"
@@ -882,6 +956,31 @@ export default function MovieDetailPage() {
                             </form>
                         )}
                     </div>
+                    </section>
+
+                    <div className="detail-section-tabs" role="tablist" aria-label="Movie sections">
+                        {([
+                            { key: 'overview', label: 'Overview' },
+                            { key: 'cast', label: 'Cast' },
+                            { key: 'reviews', label: 'Reviews' },
+                            { key: 'similar', label: 'Similar' },
+                        ] as const).map((tab) => (
+                            <button
+                                key={tab.key}
+                                role="tab"
+                                type="button"
+                                aria-selected={activeTab === tab.key}
+                                className={`detail-section-tab ${activeTab === tab.key ? 'is-active' : ''}`}
+                                onClick={() => {
+                                    setActiveTab(tab.key);
+                                    saveContext({ tab: tab.key });
+                                    scrollToTab(tab.key);
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Activity from Friends */}
@@ -910,7 +1009,7 @@ export default function MovieDetailPage() {
 
                 {/* Cast & Crew */}
                 {movie.cast.length > 0 && (
-                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                    <section ref={castRef} id="movie-cast" style={{ marginTop: 'var(--space-3xl)' }}>
                         <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
                             Cast &amp; Crew
                         </h2>
@@ -938,7 +1037,7 @@ export default function MovieDetailPage() {
 
                 {/* Reviews section */}
                 {movie.reviews.length > 0 && (
-                    <section style={{ marginTop: 'var(--space-3xl)' }}>
+                    <section ref={reviewsRef} id="movie-reviews" style={{ marginTop: 'var(--space-3xl)' }}>
                         <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
                             Reviews
                         </h2>
@@ -1094,7 +1193,7 @@ export default function MovieDetailPage() {
                 )}
                 {/* Similar Movies */}
                 {movie.similarMovies.length > 0 && (
-                    <section style={{ marginTop: 'var(--space-3xl)', marginBottom: 'var(--space-3xl)' }}>
+                    <section ref={similarRef} id="movie-similar" style={{ marginTop: 'var(--space-3xl)', marginBottom: 'var(--space-3xl)' }}>
                         <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>
                             More Like This
                         </h2>
@@ -1251,7 +1350,6 @@ export default function MovieDetailPage() {
                     </div>
                 </>
             )}
-        </div>
 
         {/* Trailer Modal */}
         {showTrailerModal && movie.trailerKey && (

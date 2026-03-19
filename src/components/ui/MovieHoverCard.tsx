@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Film } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 interface MovieHoverCardProps {
     id: string;           // TMDB ID (used for the preview fetch)
@@ -20,19 +21,35 @@ interface PreviewData {
     description: string | null;
 }
 
+interface UserRating {
+    rating: number | null;
+}
+
 // Module-level cache — persists across component re-renders
 const cache = new Map<string, PreviewData>();
+const ratingCache = new Map<string, UserRating>();
+
+function formatTenthRating(value: number): string {
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
 
 export default function MovieHoverCard({
     id, href, title, year, posterUrl, averageRating, badge,
 }: MovieHoverCardProps) {
+    const { data: session } = useSession();
+    const [isHovered, setIsHovered] = useState(false);
     const [showPanel, setShowPanel] = useState(false);
     const [preview, setPreview] = useState<PreviewData | null>(null);
+    const [userRating, setUserRating] = useState<number | null>(null);
+    const [hoverRating, setHoverRating] = useState<number | null>(null);
+    const [isRatingLoading, setIsRatingLoading] = useState(false);
+    const [ratingFeedback, setRatingFeedback] = useState('');
     const [side, setSide] = useState<'right' | 'left'>('right');
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     const handleMouseEnter = useCallback(() => {
+        setIsHovered(true);
         if (wrapperRef.current) {
             const rect = wrapperRef.current.getBoundingClientRect();
             setSide(window.innerWidth - rect.right >= 280 ? 'right' : 'left');
@@ -42,7 +59,9 @@ export default function MovieHoverCard({
 
     const handleMouseLeave = useCallback(() => {
         if (timerRef.current) clearTimeout(timerRef.current);
+        setIsHovered(false);
         setShowPanel(false);
+        setHoverRating(null);
     }, []);
 
     // Fetch preview data once the panel is visible
@@ -62,7 +81,58 @@ export default function MovieHoverCard({
         return () => { cancelled = true; };
     }, [showPanel, id]);
 
+    useEffect(() => {
+        if (!session?.user?.id || !isHovered) return;
+        if (ratingCache.has(id)) {
+            setUserRating(ratingCache.get(id)?.rating ?? null);
+            return;
+        }
+
+        let cancelled = false;
+        fetch(`/api/movies/${id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (cancelled || !data?.success) return;
+                const rating = data.data?.userInteraction?.rating ?? null;
+                ratingCache.set(id, { rating });
+                setUserRating(rating);
+            })
+            .catch(() => {});
+
+        return () => { cancelled = true; };
+    }, [id, isHovered, session?.user?.id]);
+
+    const handleQuickRate = async (value: number) => {
+        if (!session?.user || isRatingLoading) return;
+        setIsRatingLoading(true);
+        setRatingFeedback('');
+
+        try {
+            if (userRating === value) {
+                await fetch(`/api/movies/${id}/rating`, { method: 'DELETE' });
+                setUserRating(null);
+                ratingCache.set(id, { rating: null });
+                setRatingFeedback('Removed');
+            } else {
+                await fetch(`/api/movies/${id}/rating`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value }),
+                });
+                setUserRating(value);
+                ratingCache.set(id, { rating: value });
+                setRatingFeedback(`${formatTenthRating(value)}/10`);
+            }
+        } catch {
+            setRatingFeedback('Try again');
+        } finally {
+            setIsRatingLoading(false);
+            setTimeout(() => setRatingFeedback(''), 1400);
+        }
+    };
+
     const stars = averageRating ? averageRating / 2 : null;
+    const currentQuickRating = hoverRating ?? userRating ?? 0;
 
     return (
         <div
@@ -92,6 +162,44 @@ export default function MovieHoverCard({
                     <div className="movie-card-year">{year}</div>
                 </div>
             </Link>
+
+            {session && isHovered && (
+                <div
+                    className="movie-card-quick-rate"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }}
+                    onMouseLeave={() => setHoverRating(null)}
+                >
+                    <div className="movie-card-quick-rate-stars">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                            const value = star * 2;
+                            return (
+                                <button
+                                    key={star}
+                                    type="button"
+                                    className={`movie-card-quick-rate-btn ${currentQuickRating >= value ? 'is-on' : ''}`}
+                                    disabled={isRatingLoading}
+                                    onMouseEnter={() => setHoverRating(value)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleQuickRate(value);
+                                    }}
+                                    aria-label={`Rate ${value} out of 10`}
+                                    title={`${value}/10`}
+                                >
+                                    ★
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <span className="movie-card-quick-rate-value">
+                        {ratingFeedback || (currentQuickRating > 0 ? `${formatTenthRating(currentQuickRating)}/10` : 'Rate')}
+                    </span>
+                </div>
+            )}
 
             {/* ── Hover preview panel ─────────────────────── */}
             {showPanel && (
