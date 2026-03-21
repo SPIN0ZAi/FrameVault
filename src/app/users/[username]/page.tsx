@@ -20,6 +20,7 @@ interface UserProfile {
     averageRating: number | null;
     isFollowing?: boolean;
     profile: {
+        displayName: string | null;
         bio: string | null;
         location: string | null;
         bannerUrl: string | null;
@@ -1441,7 +1442,10 @@ export default function UserProfilePage() {
                     </div>
                     <div className="profile-info">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-                            <h1 className="profile-username">{user.username}</h1>
+                            <h1 className="profile-username">{user.profile?.displayName || user.username}</h1>
+                            {user.profile?.displayName && (
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', fontWeight: 600 }}>@{user.username}</span>
+                            )}
                             {user.role === 'owner' && (
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 5,

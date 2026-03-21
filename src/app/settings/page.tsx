@@ -56,6 +56,7 @@ export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     // Profile
+    const [displayName, setDisplayName] = useState('');
     const [bio, setBio] = useState('');
     const [location, setLocation] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export default function SettingsPage() {
                 const data = await res.json();
                 if (data.success && data.data) {
                     const u = data.data;
+                    setDisplayName(u.profile?.displayName || '');
                     setBio(u.profile?.bio || '');
                     setLocation(u.profile?.location || '');
                     setAvatarUrl(u.avatarUrl || null);
@@ -172,7 +174,7 @@ export default function SettingsPage() {
             const res = await fetch('/api/users/me', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bio, location, themeColor, backdropBrightness, avatarUrl: finalAvatar, bannerUrl: finalBanner, avatarPosition, bannerPosition }),
+                body: JSON.stringify({ displayName, bio, location, themeColor, backdropBrightness, avatarUrl: finalAvatar, bannerUrl: finalBanner, avatarPosition, bannerPosition }),
             });
             const data = await res.json();
             if (data.success) {
@@ -303,6 +305,7 @@ export default function SettingsPage() {
     ];
 
     const username = session?.user?.username ?? '';
+    const shownDisplayName = displayName.trim() || username;
     const email = (session?.user as { email?: string })?.email ?? '';
 
     const card: React.CSSProperties = {
@@ -404,7 +407,8 @@ export default function SettingsPage() {
                                 )}
                             </div>
                             <div style={{ overflow: 'hidden' }}>
-                                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{username}</p>
+                                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shownDisplayName}</p>
+                                <p style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{username}</p>
                                 <p style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
                             </div>
                         </div>
@@ -472,6 +476,16 @@ export default function SettingsPage() {
                                         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>Shown on your public profile</p>
                                     </div>
                                     <div style={cardBody}>
+                                        <div>
+                                            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <span>Display Name</span>
+                                                <span style={{ fontWeight: 400, color: displayName.length > 45 ? 'var(--warning)' : 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>{displayName.length} / 50</span>
+                                            </label>
+                                            <input className="input" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value.slice(0, 50))} placeholder="How your name appears publicly" style={{ width: '100%', maxWidth: 420 }} />
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 6 }}>
+                                                Leave blank to show @{username}.
+                                            </p>
+                                        </div>
                                         <div>
                                             <label style={labelStyle}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><MapPin size={13} /> Location</span>
@@ -550,7 +564,8 @@ export default function SettingsPage() {
                                                         {username.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: themeColor }}>@{username}</p>
+                                                        <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: themeColor }}>{shownDisplayName}</p>
+                                                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>@{username}</p>
                                                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Film lover</p>
                                                     </div>
                                                 </div>
@@ -620,6 +635,13 @@ export default function SettingsPage() {
                                         <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Account Details</h2>
                                     </div>
                                     <div style={cardBody}>
+                                        <div>
+                                            <label style={labelStyle}>Display Name</label>
+                                            <input className="input" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value.slice(0, 50))} placeholder="How your name appears publicly" style={{ maxWidth: 360, width: '100%' }} />
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 6 }}>
+                                                Public label shown on your profile. Leave blank to use @{username}.
+                                            </p>
+                                        </div>
                                         <div>
                                             <label style={labelStyle}>Username</label>
                                             <div className="input" style={{ opacity: 0.55, cursor: 'not-allowed', maxWidth: 360 }}>@{username}</div>

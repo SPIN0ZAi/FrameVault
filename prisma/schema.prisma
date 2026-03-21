@@ -67,6 +67,7 @@ model Account {
 model UserProfile {
   id         String  @id @default(cuid())
   userId     String  @unique
+  displayName String?
   bio        String? @db.Text
   location   String?
   bannerUrl  String?

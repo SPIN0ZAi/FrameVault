@@ -5,6 +5,7 @@ import { successResponse, unauthorizedError, serverError, validationError } from
 import { z } from 'zod';
 
 const updateMeSchema = z.object({
+    displayName: z.string().trim().max(50, 'Display name must be at most 50 characters').optional().nullable(),
     bio: z.string().max(500, 'Bio must be at most 500 characters').optional(),
     location: z.string().max(100, 'Location must be at most 100 characters').optional(),
     avatarUrl: z.string().url('Invalid avatar URL').max(2048).optional().nullable(),
@@ -52,15 +53,16 @@ export async function PATCH(req: Request) {
         if (!parsed.success) {
             return validationError(parsed.error.issues[0].message);
         }
-        const { bio, location, avatarUrl, bannerUrl, themeColor, themeMode, bannerPosition, avatarPosition, backdropBrightness, traktUsername } = parsed.data;
+        const { displayName, bio, location, avatarUrl, bannerUrl, themeColor, themeMode, bannerPosition, avatarPosition, backdropBrightness, traktUsername } = parsed.data;
 
         const userId = session.user.id;
 
         // Update User Profile (bio, location, banner, theme, trakt)
-        if (bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined || bannerPosition !== undefined || avatarPosition !== undefined || backdropBrightness !== undefined || traktUsername !== undefined) {
+        if (displayName !== undefined || bio !== undefined || location !== undefined || bannerUrl !== undefined || themeColor !== undefined || themeMode !== undefined || bannerPosition !== undefined || avatarPosition !== undefined || backdropBrightness !== undefined || traktUsername !== undefined) {
             await prisma.userProfile.upsert({
                 where: { userId },
                 update: {
+                    ...(displayName !== undefined && { displayName: displayName?.trim() || null }),
                     ...(bio !== undefined && { bio }),
                     ...(location !== undefined && { location }),
                     ...(bannerUrl !== undefined && { bannerUrl }),
@@ -73,6 +75,7 @@ export async function PATCH(req: Request) {
                 },
                 create: {
                     userId,
+                    displayName: displayName?.trim() || null,
                     bio,
                     location,
                     bannerUrl,
