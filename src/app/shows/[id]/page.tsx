@@ -560,7 +560,7 @@ export default function ShowDetailPage() {
             <div className="page">
                 <div className="container" style={{ paddingTop: 'var(--space-3xl)' }}>
                     <div style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap' }}>
-                        <div className="skeleton" style={{ width: 260, height: 390, borderRadius: 'var(--radius-xl)', flexShrink: 0 }} />
+                        <div className="skeleton" style={{ width: 300, height: 450, borderRadius: 'var(--radius-xl)', flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                             <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 8 }} />
                             <div className="skeleton" style={{ height: 20, width: '40%', borderRadius: 6 }} />
@@ -612,7 +612,7 @@ export default function ShowDetailPage() {
                 <section ref={overviewRef} id="show-overview" style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', paddingTop: 'var(--space-3xl)' }}>
                     {/* Poster */}
                     <div
-                        style={{ flexShrink: 0, width: 220, position: 'relative' }}
+                        style={{ flexShrink: 0, width: 300, position: 'relative' }}
                         onMouseEnter={() => setPosterHover(true)}
                         onMouseLeave={() => setPosterHover(false)}
                     >

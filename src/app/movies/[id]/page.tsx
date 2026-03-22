@@ -6,7 +6,6 @@ import { useParams, useRouter } from 'next/navigation';
 
 import Link from 'next/link';
 import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown, RefreshCw } from 'lucide-react';
-import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
 
 interface MovieDetail {
@@ -313,6 +312,11 @@ export default function MovieDetailPage() {
     const [tmdbPosters, setTmdbPosters] = useState<{ thumb: string | null; full: string | null }[]>([]);
     const [tmdbPostersLoading, setTmdbPostersLoading] = useState(false);
     const [applyingPoster, setApplyingPoster] = useState<string | null>(null);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const uploadInputRef = useRef<HTMLInputElement>(null);
     const [posterHover, setPosterHover] = useState(false);
     const [showWatchPrompt, setShowWatchPrompt] = useState(false);
     const [showTrailerModal, setShowTrailerModal] = useState(false);
@@ -334,6 +338,13 @@ export default function MovieDetailPage() {
         watched: { user: { id: string; username: string; avatarUrl: string | null }; rating: number | null }[];
         watchlisted: { user: { id: string; username: string; avatarUrl: string | null } }[];
     } | null>(null);
+
+    const closePosterModal = () => {
+        setShowPosterModal(false);
+        setUploadFile(null);
+        setUploadPreview(null);
+        setUploadError(null);
+    };
 
     const fetchMovie = useCallback(async () => {
         try {
@@ -1221,135 +1232,134 @@ export default function MovieDetailPage() {
             </div>
             </div>
 
-            {/* Poster Side Drawer */}
+            {/* Poster Change Modal */}
             {showPosterModal && (
                 <>
-                    {/* Backdrop */}
-                    <div
-                        onClick={() => setShowPosterModal(false)}
-                        style={{
-                            position: 'fixed', inset: 0, zIndex: 199,
-                            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
-                            animation: 'fadeInBackdrop 0.2s ease',
-                        }}
-                    />
-                    {/* Drawer */}
-                    <div style={{
-                        position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 200,
-                        width: posterTab === 'pick' ? 420 : 360,
-                        background: 'var(--bg-primary)',
-                        borderRight: '1px solid var(--border-subtle)',
-                        boxShadow: '4px 0 32px rgba(0,0,0,0.5)',
-                        display: 'flex', flexDirection: 'column',
-                        animation: 'slideInLeft 0.25s cubic-bezier(0.4,0,0.2,1)',
-                        overflowY: 'auto',
-                    }}>
-                        {/* Drawer Header */}
-                        <div style={{
-                            padding: '16px 20px',
-                            borderBottom: '1px solid var(--border-subtle)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            flexShrink: 0,
-                            position: 'sticky', top: 0,
-                            background: 'var(--bg-primary)', zIndex: 1,
-                        }}>
+                    <div onClick={closePosterModal} style={{ position: 'fixed', inset: 0, zIndex: 199, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }} />
+                    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 440, zIndex: 200, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+                        <div style={{ padding: 'var(--space-lg)', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <ImagePlus size={18} style={{ color: 'var(--brand)' }} />
                                 <h3 style={{ fontWeight: 800, fontSize: 'var(--text-base)', margin: 0 }}>Change Poster</h3>
                             </div>
-                            <button onClick={() => setShowPosterModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4, borderRadius: 'var(--radius-sm)' }}>
-                                <X size={20} />
-                            </button>
+                            <button onClick={closePosterModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4 }}><X size={20} /></button>
                         </div>
 
                         {/* Tabs */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-                            {(['pick', 'upload'] as const).map(tab => (
-                                <button key={tab} onClick={() => setPosterTab(tab)}
-                                    style={{
-                                        flex: 1, padding: '11px 16px',
-                                        fontSize: 'var(--text-sm)', fontWeight: posterTab === tab ? 700 : 500,
-                                        color: posterTab === tab ? 'var(--brand)' : 'var(--text-tertiary)',
-                                        borderBottom: posterTab === tab ? '2px solid var(--brand)' : '2px solid transparent',
-                                        marginBottom: -1, background: 'none', cursor: 'pointer',
-                                        transition: 'color 0.12s',
-                                    }}>
-                                    {tab === 'pick' ? '🎬 Pick from TMDB' : '📁 Upload Your Own'}
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-default)' }}>
+                            {(['pick', 'upload'] as const).map(t => (
+                                <button key={t} onClick={() => { setPosterTab(t); setUploadFile(null); setUploadPreview(null); setUploadError(null); }} style={{ flex: 1, padding: '10px', fontSize: 'var(--text-sm)', fontWeight: 600, background: 'none', cursor: 'pointer', borderBottom: posterTab === t ? '2px solid var(--brand)' : '2px solid transparent', marginBottom: -1, color: posterTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)', transition: 'color 0.12s' }}>
+                                    {t === 'pick' ? 'Pick from TMDB' : 'Upload Image'}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Content */}
-                        {posterTab === 'pick' ? (
-                            <div style={{ padding: '16px 20px', flex: 1 }}>
-                                {tmdbPostersLoading ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
-                                        {Array.from({ length: 12 }).map((_, i) => (
-                                            <div key={i} className="skeleton" style={{ aspectRatio: '2/3', borderRadius: 'var(--radius-sm)' }} />
-                                        ))}
-                                    </div>
-                                ) : tmdbPosters.length === 0 ? (
-                                    <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 'var(--space-xl) 0', fontSize: 'var(--text-sm)' }}>No alternative posters found</p>
-                                ) : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
+                        <div style={{ padding: 'var(--space-lg)', flex: 1 }}>
+                            {posterTab === 'pick' && (
+                                <>
+                                    {tmdbPostersLoading && <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-xl)' }}>Loading posters…</p>}
+                                    {!tmdbPostersLoading && tmdbPosters.length === 0 && <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-xl)' }}>No alternate posters available</p>}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                                         {tmdbPosters.map((p, i) => (
-                                            <button key={i} onClick={() => p.full && handlePickTmdbPoster(p.full)}
-                                                disabled={applyingPoster === p.full}
-                                                style={{ padding: 0, border: applyingPoster === p.full ? '2px solid var(--brand)' : '2px solid transparent', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: 'none', overflow: 'hidden', aspectRatio: '2/3', transition: 'border-color 0.12s, transform 0.1s', transform: 'scale(1)', position: 'relative' }}
-                                                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
-                                                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                                                title="Click to use this poster"
-                                            >
+                                            <div key={i} style={{ position: 'relative', cursor: 'pointer', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: applyingPoster === p.full ? '2px solid var(--brand)' : '2px solid transparent', transition: 'border-color 0.12s', opacity: applyingPoster && applyingPoster !== p.full ? 0.5 : 1 }}
+                                                onClick={() => p.full && handlePickTmdbPoster(p.full)}>
                                                 {p.thumb && <img src={p.thumb} alt="poster option" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                                                {applyingPoster === p.full && (
-                                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>✓</div>
-                                                )}
-                                            </button>
+                                                {applyingPoster === p.full && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 20, height: 20, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>}
+                                            </div>
                                         ))}
                                     </div>
-                                )}
-                                {movie.userInteraction?.customPosterUrl && (
-                                    <button onClick={async () => { await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchMovie(); }}
-                                        style={{ marginTop: 20, width: '100%', fontSize: 'var(--text-xs)', color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', cursor: 'pointer', padding: '8px 0' }}>
-                                        Remove Custom Poster
+                                    {movie.userInteraction?.customPosterUrl && (
+                                        <button onClick={async () => { await fetch(`/api/movies/${id}/custom-poster`, { method: 'DELETE' }); closePosterModal(); fetchMovie(); }}
+                                            style={{ marginTop: 'var(--space-lg)', width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid #ef444455', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                            Revert to TMDB Poster
+                                        </button>
+                                    )}
+                                </>
+                            )}
+
+                            {posterTab === 'upload' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                    <input
+                                        ref={uploadInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        style={{ display: 'none' }}
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            e.target.value = '';
+                                            if (!file) return;
+                                            if (!file.type.startsWith('image/')) { setUploadError('Please select a JPG, PNG or WebP image'); return; }
+                                            if (file.size > 5 * 1024 * 1024) { setUploadError('Image must be under 5MB'); return; }
+                                            setUploadError(null);
+                                            setUploadFile(file);
+                                            setUploadPreview(URL.createObjectURL(file));
+                                        }}
+                                    />
+
+                                    <div
+                                        style={{ position: 'relative', aspectRatio: '2/3', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '2px dashed var(--border-default)', cursor: 'pointer', background: 'var(--bg-primary)' }}
+                                        onClick={() => uploadInputRef.current?.click()}
+                                    >
+                                        {uploadPreview ? (
+                                            <img src={uploadPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-tertiary)' }}>
+                                                <ImagePlus size={32} style={{ opacity: 0.4 }} />
+                                                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Click to choose image</span>
+                                                <span style={{ fontSize: 11, opacity: 0.6 }}>JPG, PNG, WebP · max 5MB</span>
+                                            </div>
+                                        )}
+                                        {uploadPreview && (
+                                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px', background: 'rgba(0,0,0,0.6)', textAlign: 'center', fontSize: 11, color: '#fff' }}>
+                                                Click to choose a different image
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {uploadError && <p style={{ fontSize: 'var(--text-sm)', color: '#ef4444', margin: 0 }}>{uploadError}</p>}
+
+                                    <button
+                                        disabled={!uploadFile || uploadLoading}
+                                        onClick={async () => {
+                                            if (!uploadFile) return;
+                                            setUploadLoading(true);
+                                            setUploadError(null);
+                                            try {
+                                                const ext = uploadFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+                                                const presignRes = await fetch('/api/uploads/presign', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ type: 'poster', movieId: movie.id, contentType: uploadFile.type, extension: ext }),
+                                                });
+                                                const presignData = await presignRes.json();
+                                                if (!presignData.success) { setUploadError('Failed to get upload URL'); return; }
+                                                const putRes = await fetch(presignData.data.uploadUrl, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': uploadFile.type } });
+                                                if (!putRes.ok) { setUploadError('Upload failed, please try again'); return; }
+                                                const saveRes = await fetch(`/api/movies/${id}/custom-poster`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ posterUrl: presignData.data.publicUrl }),
+                                                });
+                                                if (!saveRes.ok) { setUploadError('Failed to save poster'); return; }
+                                                closePosterModal();
+                                                fetchMovie();
+                                            } catch { setUploadError('Something went wrong, please try again'); }
+                                            finally { setUploadLoading(false); }
+                                        }}
+                                        style={{ padding: '11px', borderRadius: 'var(--radius-md)', background: uploadFile ? 'var(--brand)' : 'var(--bg-tertiary)', color: uploadFile ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: uploadFile ? 'pointer' : 'not-allowed', transition: 'background 0.15s', opacity: uploadLoading ? 0.7 : 1 }}
+                                    >
+                                        {uploadLoading ? 'Uploading…' : 'Upload & Apply'}
                                     </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div style={{ padding: 24, flex: 1 }}>
-                                <ImageUploader
-                                    type="poster"
-                                    movieId={movie.id}
-                                    label="Upload Custom Artwork"
-                                    aspectRatio="poster"
-                                    currentImageUrl={movie.userInteraction?.customPosterUrl || movie.posterUrl || undefined}
-                                    onFileSelect={async (file) => {
-                                        const ext = file.name.split('.').pop() ?? 'jpg';
-                                        const presignRes = await fetch('/api/uploads/presign', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ type: 'poster', movieId: movie.id, contentType: file.type, extension: ext }),
-                                        });
-                                        const presignData = await presignRes.json();
-                                        if (!presignData.success) return;
-                                        await fetch(presignData.data.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-                                        await fetch(`/api/movies/${movie.id}/custom-poster`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ posterUrl: presignData.data.publicUrl }),
-                                        });
-                                        setShowPosterModal(false);
-                                        fetchMovie();
-                                    }}
-                                />
-                                {movie.userInteraction?.customPosterUrl && (
-                                    <button onClick={async () => { await fetch(`/api/movies/${movie.id}/custom-poster`, { method: 'DELETE' }); setShowPosterModal(false); fetchMovie(); }}
-                                        style={{ marginTop: 16, width: '100%', fontSize: 'var(--text-sm)', color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', cursor: 'pointer', padding: '8px 0' }}>
-                                        Remove Custom Poster
-                                    </button>
-                                )}
-                            </div>
-                        )}
+
+                                    {movie.userInteraction?.customPosterUrl && (
+                                        <button onClick={async () => { await fetch(`/api/movies/${id}/custom-poster`, { method: 'DELETE' }); closePosterModal(); fetchMovie(); }}
+                                            style={{ padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid #ef444455', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                                            Revert to TMDB Poster
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </>
             )}
