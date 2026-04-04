@@ -55,6 +55,11 @@ type WatchlistRow = {
     movie: { title: string; year: number; tmdbId: number | null };
 };
 
+type WatchedShowRow = {
+    watchedAt: Date;
+    title: string;
+};
+
 /**
  * diary.csv — Letterboxd export format
  * Date, Name, Year, Letterboxd URI, Rating, Rewatch, Tags, Watched Date
@@ -144,6 +149,26 @@ function makeWatched(watched: WatchedRow[]): string {
 }
 
 /**
+ * serializd-shows.txt — one show title per line
+ * Compatible with Serializd bulk import text format.
+ */
+function makeSerializdShows(watchedShows: WatchedShowRow[]): string {
+    const seen = new Set<string>();
+    const titles: string[] = [];
+
+    for (const row of watchedShows) {
+        const title = row.title?.trim();
+        if (!title) continue;
+        const key = title.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        titles.push(title);
+    }
+
+    return titles.join('\r\n');
+}
+
+/**
  * letterboxd-import.csv — Letterboxd IMPORT format
  * Uses tmdbID for reliable matching when uploading at letterboxd.com/import/
  */
@@ -194,6 +219,7 @@ function makeReadme(username: string, exportDate: string): string {
         'reviews.csv            — All written reviews',
         'watched.csv            — All films marked as watched',
         'watchlist.csv          — Films saved to your watchlist',
+        'serializd-shows.txt    — TV show titles (one per line) for serializd.com',
         '',
         'RATING SCALE',
         '------------',
@@ -214,7 +240,7 @@ export async function GET() {
         const userId = session.user.id;
 
         // Fetch user info + all data in parallel
-        const [user, watched, ratings, reviews, watchlist] = await Promise.all([
+        const [user, watched, ratings, reviews, watchlist, watchedShows] = await Promise.all([
             prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
             prisma.watchedMovie.findMany({
                 where: { userId },
@@ -235,6 +261,11 @@ export async function GET() {
                 where: { userId },
                 orderBy: { addedAt: 'desc' },
                 include: { movie: { select: { title: true, year: true, tmdbId: true } } },
+            }),
+            prisma.watchedShow.findMany({
+                where: { userId },
+                orderBy: { watchedAt: 'desc' },
+                select: { watchedAt: true, title: true },
             }),
         ]);
 
@@ -262,6 +293,7 @@ export async function GET() {
             'reviews.csv':            strToU8(makeReviews(reviews, ratingByMovieId)),
             'watched.csv':            strToU8(makeWatched(watched)),
             'watchlist.csv':          strToU8(makeWatchlist(watchlist)),
+            'serializd-shows.txt':    strToU8(makeSerializdShows(watchedShows)),
         };
 
         const zipped = zipSync(files, { level: 6 });

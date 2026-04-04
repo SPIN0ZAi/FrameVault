@@ -500,6 +500,7 @@ export default function ShowDetailPage() {
                     },
                 } : prev);
             }
+            await fetchShow();
         } finally { setActionLoading(''); }
     };
 
@@ -522,6 +523,7 @@ export default function ShowDetailPage() {
                     },
                 } : prev);
             }
+            await fetchShow();
         } finally { setActionLoading(''); }
     };
 

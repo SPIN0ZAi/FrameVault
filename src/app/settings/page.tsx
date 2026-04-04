@@ -231,7 +231,7 @@ export default function SettingsPage() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            setExportMsg({ type: 'success', text: 'Export downloaded — upload letterboxd-import.csv at letterboxd.com/import/' });
+            setExportMsg({ type: 'success', text: 'Export downloaded — use letterboxd-import.csv for Letterboxd and serializd-shows.txt for Serializd TV import.' });
         } catch {
             setExportMsg({ type: 'error', text: 'Export failed. Please try again.' });
         } finally {
@@ -841,7 +841,7 @@ export default function SettingsPage() {
                                 <div style={card}>
                                     <div style={cardHead}>
                                         <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Export Data</h2>
-                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>Download your full watch history, ratings, and reviews in Letterboxd-compatible format</p>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>Download your data for Letterboxd (films) and Serializd (TV shows)</p>
                                     </div>
                                     <div style={cardBody}>
                                         {/* What's included */}
@@ -853,6 +853,7 @@ export default function SettingsPage() {
                                                 { file: 'reviews.csv',           desc: 'All your written reviews' },
                                                 { file: 'watched.csv',           desc: 'Complete watched list' },
                                                 { file: 'watchlist.csv',         desc: 'Your saved watchlist' },
+                                                { file: 'serializd-shows.txt',  desc: 'TV show titles, one per line for serializd.com import' },
                                             ].map(({ file, desc, highlight }) => (
                                                 <div key={file} style={{ padding: '10px var(--space-md)', background: highlight ? 'rgba(0,209,193,0.06)' : 'var(--bg-primary)', border: `1px solid ${highlight ? 'rgba(0,209,193,0.25)' : 'var(--border-subtle)'}`, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: highlight ? 'var(--brand)' : 'var(--text-tertiary)', marginTop: 5, flexShrink: 0 }} />

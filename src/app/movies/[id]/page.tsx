@@ -460,6 +460,7 @@ export default function MovieDetailPage() {
                     } : prev.userInteraction,
                 } : prev);
             }
+            await fetchMovie();
         } finally {
             setActionLoading('');
         }
@@ -483,6 +484,7 @@ export default function MovieDetailPage() {
                     } : prev.userInteraction,
                 } : prev);
             }
+            await fetchMovie();
         } finally {
             setActionLoading('');
         }
