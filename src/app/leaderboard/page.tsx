@@ -53,6 +53,17 @@ export default function LeaderboardPage() {
     }, [activeCategory]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const cat = CATEGORIES.find(c => c.key === activeCategory)!;
+    const now = new Date();
+    const monthLabel = now.toLocaleString('en-US', { month: 'long' });
+    const isMonthlyCategory = activeCategory === 'films_month' || activeCategory === 'shows_month';
+    const emptyTitle = isMonthlyCategory
+        ? `No activity logged for ${monthLabel} yet`
+        : 'No data yet';
+    const emptySubtitle = activeCategory === 'shows_month'
+        ? 'Log a TV watch, rating, or review to appear here.'
+        : activeCategory === 'films_month'
+            ? 'Log a movie watch, rating, or review to appear here.'
+            : 'Be the first on the leaderboard!';
     const top3 = data.slice(0, 3);
     const rest = data.slice(3);
 
@@ -94,6 +105,12 @@ export default function LeaderboardPage() {
                     ))}
                 </div>
 
+                {isMonthlyCategory && (
+                    <p style={{ textAlign: 'center', marginTop: '-8px', marginBottom: 'var(--space-xl)', color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>
+                        Showing activity logged since {monthLabel} 1.
+                    </p>
+                )}
+
                 {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                         {Array.from({ length: 10 }).map((_, i) => (
@@ -103,8 +120,8 @@ export default function LeaderboardPage() {
                 ) : data.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 'var(--space-3xl)', color: 'var(--text-tertiary)' }}>
                         <Trophy size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-                        <p style={{ fontWeight: 700 }}>No data yet</p>
-                        <p style={{ fontSize: 'var(--text-sm)', marginTop: 8 }}>Be the first on the leaderboard!</p>
+                        <p style={{ fontWeight: 700 }}>{emptyTitle}</p>
+                        <p style={{ fontSize: 'var(--text-sm)', marginTop: 8 }}>{emptySubtitle}</p>
                     </div>
                 ) : (
                     <>
