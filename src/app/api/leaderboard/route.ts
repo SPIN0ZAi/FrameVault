@@ -41,7 +41,12 @@ export async function GET(req: NextRequest) {
             start.setDate(1); start.setHours(0, 0, 0, 0);
             const rows = await prisma.watchedMovie.groupBy({
                 by: ['userId'],
-                where: { watchedAt: { gte: start } },
+                where: {
+                    OR: [
+                        { watchedAt: { gte: start } },
+                        { lastRewatchedAt: { gte: start } },
+                    ],
+                },
                 _count: { userId: true },
                 orderBy: { _count: { userId: 'desc' } },
                 take: LIMIT,
@@ -82,7 +87,12 @@ export async function GET(req: NextRequest) {
             start.setDate(1); start.setHours(0, 0, 0, 0);
             const rows = await prisma.watchedShow.groupBy({
                 by: ['userId'],
-                where: { watchedAt: { gte: start } },
+                where: {
+                    OR: [
+                        { watchedAt: { gte: start } },
+                        { lastRewatchedAt: { gte: start } },
+                    ],
+                },
                 _count: { userId: true },
                 orderBy: { _count: { userId: 'desc' } },
                 take: LIMIT,

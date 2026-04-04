@@ -168,26 +168,54 @@ export async function GET(
             const tmdbShowId = tmdbShow.id;
             try {
                 const fallbackYear = tmdbShow.first_air_date ? parseInt(tmdbShow.first_air_date.substring(0, 4)) : null;
-                const watchedCandidates = await prisma.watchedShow.findMany({
-                    where: {
-                        userId: session.user.id,
-                        OR: [
-                            { tmdbShowId },
-                            {
-                                title: { equals: tmdbShow.name, mode: 'insensitive' },
-                                ...(fallbackYear ? { year: fallbackYear } : {}),
-                            },
-                        ],
-                    },
-                    select: {
-                        id: true,
-                        tmdbShowId: true,
-                        watchedAt: true,
-                        rewatchCount: true,
-                        lastRewatchedAt: true,
-                    },
-                    orderBy: { watchedAt: 'desc' },
-                }).catch(() => null);
+                const watchedWhere = {
+                    userId: session.user.id,
+                    OR: [
+                        { tmdbShowId },
+                        {
+                            title: { equals: tmdbShow.name, mode: 'insensitive' as const },
+                            ...(fallbackYear ? { year: fallbackYear } : {}),
+                        },
+                    ],
+                };
+
+                let watchedCandidates: {
+                    id: string;
+                    tmdbShowId: number;
+                    watchedAt: Date;
+                    rewatchCount: number;
+                    lastRewatchedAt: Date | null;
+                }[] = [];
+
+                try {
+                    watchedCandidates = await prisma.watchedShow.findMany({
+                        where: watchedWhere,
+                        select: {
+                            id: true,
+                            tmdbShowId: true,
+                            watchedAt: true,
+                            rewatchCount: true,
+                            lastRewatchedAt: true,
+                        },
+                        orderBy: { watchedAt: 'desc' },
+                    });
+                } catch {
+                    // Backward-compatible fallback for databases missing rewatch columns
+                    const fallbackCandidates = await prisma.watchedShow.findMany({
+                        where: watchedWhere,
+                        select: {
+                            id: true,
+                            tmdbShowId: true,
+                            watchedAt: true,
+                        },
+                        orderBy: { watchedAt: 'desc' },
+                    });
+                    watchedCandidates = fallbackCandidates.map(w => ({
+                        ...w,
+                        rewatchCount: 0,
+                        lastRewatchedAt: null,
+                    }));
+                }
 
                 const watched = watchedCandidates?.find(w => w.tmdbShowId === tmdbShowId)
                     ?? watchedCandidates?.[0]

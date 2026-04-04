@@ -13,6 +13,7 @@ import type { LucideIcon } from 'lucide-react';
 
 interface MoodMovie {
     id: number;
+    mediaType: 'movie' | 'show';
     title: string;
     year: number;
     posterUrl: string | null;
@@ -191,7 +192,7 @@ function MovieResultCard({ movie }: { movie: MoodMovie }) {
     const [hovered, setHovered] = useState(false);
     return (
         <Link
-            href={`/movies/${movie.id}`}
+            href={movie.mediaType === 'show' ? `/shows/${movie.id}` : `/movies/${movie.id}`}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{
@@ -225,6 +226,10 @@ function MovieResultCard({ movie }: { movie: MoodMovie }) {
                     </div>
                 )}
 
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 999, padding: '3px 8px', fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                    {movie.mediaType === 'show' ? 'TV' : 'Movie'}
+                </div>
+
                 {/* Title overlay at bottom */}
                 <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -249,7 +254,7 @@ function MovieResultCard({ movie }: { movie: MoodMovie }) {
 
 export default function MoodPage() {
     const [selectedMood, setSelectedMood] = useState<MoodConfig | null>(null);
-    const [movies, setMovies] = useState<MoodMovie[]>([]);
+    const [items, setItems] = useState<MoodMovie[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -257,12 +262,12 @@ export default function MoodPage() {
         setSelectedMood(mood);
         setLoading(true);
         setError(null);
-        setMovies([]);
+        setItems([]);
         try {
             const res = await fetch(`/api/movies/mood?mood=${mood.slug}`);
             const data = await res.json();
             if (data.success) {
-                setMovies(data.data.movies);
+                setItems(data.data.items || []);
             } else {
                 setError('Could not load recommendations. Try again.');
             }
@@ -275,7 +280,7 @@ export default function MoodPage() {
 
     const reset = () => {
         setSelectedMood(null);
-        setMovies([]);
+        setItems([]);
         setError(null);
     };
 
@@ -349,7 +354,7 @@ export default function MoodPage() {
                             </div>
 
                             {/* Refresh button (only when results loaded) */}
-                            {!loading && movies.length > 0 && (
+                            {!loading && items.length > 0 && (
                                 <button
                                     onClick={() => fetchMood(selectedMood)}
                                     title="Shuffle results"
@@ -375,7 +380,7 @@ export default function MoodPage() {
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--space-lg)', color: 'var(--text-tertiary)' }}>
                                     <Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} />
-                                    <span style={{ fontSize: 14, fontWeight: 500 }}>Finding films for you…</span>
+                                    <span style={{ fontSize: 14, fontWeight: 500 }}>Finding movies and TV shows for you…</span>
                                 </div>
                                 <div className="grid grid-movies">
                                     {Array.from({ length: 12 }).map((_, i) => (
@@ -402,23 +407,23 @@ export default function MoodPage() {
                         )}
 
                         {/* Movie grid */}
-                        {!loading && movies.length > 0 && (
+                        {!loading && items.length > 0 && (
                             <>
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-lg)' }}>
-                                    {movies.length} film{movies.length !== 1 ? 's' : ''} picked for you
+                                    {items.length} pick{items.length !== 1 ? 's' : ''} (movies + TV shows)
                                 </p>
                                 <div className="grid grid-movies">
-                                    {movies.map(movie => (
-                                        <MovieResultCard key={movie.id} movie={movie} />
+                                    {items.map(movie => (
+                                        <MovieResultCard key={`${movie.mediaType}-${movie.id}`} movie={movie} />
                                     ))}
                                 </div>
                             </>
                         )}
 
                         {/* Empty state */}
-                        {!loading && !error && movies.length === 0 && (
+                        {!loading && !error && items.length === 0 && (
                             <div style={{ textAlign: 'center', padding: 'var(--space-3xl)', color: 'var(--text-tertiary)' }}>
-                                <p>No films found for this mood. Try shuffling!</p>
+                                <p>No results found for this mood. Try shuffling!</p>
                             </div>
                         )}
                     </>

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { discoverMovies, isAdultContent, getTMDBImageUrl } from '@/lib/tmdb';
+import { discoverMovies, discoverShows, isAdultContent, getTMDBImageUrl } from '@/lib/tmdb';
 import { successResponse, errorResponse, serverError } from '@/lib/api-response';
 
 // Maps mood slugs → TMDB genre IDs (pipe = OR so we get wider results)
@@ -30,17 +30,24 @@ export async function GET(req: NextRequest) {
         // Randomise the page so repeat clicks give fresh results
         const randomPage = Math.floor(Math.random() * 8) + 1;
 
-        const data = await discoverMovies({
-            page: randomPage,
-            genre: mood.genres,
-            sort: mood.sort ?? 'popular',
-        });
+        const [movieData, showData] = await Promise.all([
+            discoverMovies({
+                page: randomPage,
+                genre: mood.genres,
+                sort: mood.sort ?? 'popular',
+            }),
+            discoverShows({
+                page: randomPage,
+                genre: mood.genres,
+                sort: mood.sort ?? 'popular',
+            }),
+        ]);
 
-        const movies = data.results
+        const movies = movieData.results
             .filter(m => !isAdultContent(m) && m.poster_path && m.overview && m.overview.length > 20)
-            .slice(0, 12)
             .map(m => ({
                 id: m.id,
+                mediaType: 'movie' as const,
                 title: m.title,
                 year: m.release_date ? parseInt(m.release_date.substring(0, 4), 10) : 0,
                 posterUrl: getTMDBImageUrl(m.poster_path, 'w500'),
@@ -48,7 +55,23 @@ export async function GET(req: NextRequest) {
                 overview: m.overview,
             }));
 
-        return successResponse({ mood: moodSlug, label: mood.label, movies });
+        const shows = showData.results
+            .filter(s => !s.adult && s.poster_path && s.overview && s.overview.length > 20)
+            .map(s => ({
+                id: s.id,
+                mediaType: 'show' as const,
+                title: s.name,
+                year: s.first_air_date ? parseInt(s.first_air_date.substring(0, 4), 10) : 0,
+                posterUrl: getTMDBImageUrl(s.poster_path, 'w500'),
+                voteAverage: s.vote_average ?? 0,
+                overview: s.overview,
+            }));
+
+        const items = [...movies, ...shows]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 16);
+
+        return successResponse({ mood: moodSlug, label: mood.label, items });
     } catch (err) {
         console.error('[mood] error:', err);
         return serverError();
