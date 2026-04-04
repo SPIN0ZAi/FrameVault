@@ -1189,37 +1189,104 @@ select {
    ═══════════════════════════════════════════════════ */
 
 .footer {
-  border-top: 1px solid var(--border-subtle);
-  padding: var(--space-2xl) 0;
+  border-top: 1px solid var(--border-default);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0%, rgba(0, 0, 0, 0.18) 100%);
+  backdrop-filter: blur(10px);
+  padding: var(--space-2xl) 0 calc(var(--space-2xl) + 8px);
   margin-top: var(--space-3xl);
 }
 
 .footer-inner {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: var(--space-md);
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 var(--space-lg);
+  text-align: center;
 }
 
 .footer-text {
   font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.footer-subtext {
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+.footer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .footer-links {
   display: flex;
-  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.footer-links .footer-link:not(:last-child)::after {
+  content: '•';
+  color: var(--text-tertiary);
+  margin-left: 6px;
 }
 
 .footer-link {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .footer-link:hover {
-  color: var(--text-secondary);
+  color: var(--brand-light);
+}
+
+.footer-attribution {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.footer-dot {
+  color: var(--text-tertiary);
+}
+
+.footer-tmdb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-tmdb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #0d253f;
+  background: linear-gradient(90deg, #90cea1, #01b4e4);
+}
+
+@media (max-width: 640px) {
+  .footer {
+    padding: var(--space-xl) 0;
+  }
+
+  .footer-link {
+    font-size: var(--text-xs);
+  }
 }
 
 /* ═══════════════════════════════════════════════════

@@ -490,6 +490,41 @@ export default async function HomePage() {
                     </section>
                 )}
 
+                {/* ── About the Creator ── */}
+                <section id="about" style={{ marginBottom: 'var(--space-3xl)' }}>
+                    <SectionHead
+                        icon={<Users size={22} />}
+                        title="About the Creator"
+                        subtitle="Built by a movie & TV passionate engineering student"
+                        href="/about"
+                        hrefLabel="Full story →"
+                        accentColor="#00D1C1"
+                    />
+                    <div
+                        style={{
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-xl)',
+                            background: 'linear-gradient(135deg, rgba(0,209,193,0.07) 0%, rgba(59,130,246,0.06) 50%, rgba(139,92,246,0.08) 100%)',
+                            padding: 'var(--space-xl)',
+                            display: 'grid',
+                            gap: 'var(--space-md)',
+                        }}
+                    >
+                        <p style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', lineHeight: 1.8, maxWidth: 860 }}>
+                            Hi, I&apos;m <strong style={{ color: 'var(--text-primary)' }}>Soulaimane Ben Louaret</strong> — a second-year engineering student.
+                            I created FrameVault to combine my passion for movies and TV shows with my love for building products through technology.
+                        </p>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+                            <a href="https://soulaimane-ben-louaret-portolio.vercel.app/" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                                View Portfolio
+                            </a>
+                            <a href="mailto:ssolayman244@gmail.com" className="btn btn-secondary">
+                                Contact: ssolayman244@gmail.com
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
                 {/* ── CTA for guests ── */}
                 {!session && (
                     <section style={{
