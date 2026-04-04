@@ -168,7 +168,7 @@ export async function GET(
             const tmdbShowId = tmdbShow.id;
             try {
                 const fallbackYear = tmdbShow.first_air_date ? parseInt(tmdbShow.first_air_date.substring(0, 4)) : null;
-                const watched = await prisma.watchedShow.findFirst({
+                const watchedCandidates = await prisma.watchedShow.findMany({
                     where: {
                         userId: session.user.id,
                         OR: [
@@ -183,14 +183,21 @@ export async function GET(
                         id: true,
                         tmdbShowId: true,
                         watchedAt: true,
+                        rewatchCount: true,
+                        lastRewatchedAt: true,
                     },
+                    orderBy: { watchedAt: 'desc' },
                 }).catch(() => null);
+
+                const watched = watchedCandidates?.find(w => w.tmdbShowId === tmdbShowId)
+                    ?? watchedCandidates?.[0]
+                    ?? null;
 
                 const candidateTmdbIds = Array.from(new Set([
                     tmdbShowId,
                     parseInt(id),
                     parseInt(resolvedTmdbId),
-                    watched?.tmdbShowId,
+                    ...(watchedCandidates?.map(w => w.tmdbShowId) ?? []),
                 ].filter((v): v is number => typeof v === 'number' && !isNaN(v))));
 
                 const [watchlisted, ratingRecord, customPoster, userReview] = await Promise.all([
@@ -208,10 +215,9 @@ export async function GET(
                     }).catch(() => null),
                 ]);
 
-                const rewatchMeta = await prisma.watchedShow.findFirst({
-                    where: { userId: session.user.id, tmdbShowId: { in: candidateTmdbIds } },
-                    select: { rewatchCount: true, lastRewatchedAt: true },
-                }).catch(() => ({ rewatchCount: 0, lastRewatchedAt: null }));
+                const rewatchMeta = watched
+                    ? { rewatchCount: watched.rewatchCount, lastRewatchedAt: watched.lastRewatchedAt }
+                    : { rewatchCount: 0, lastRewatchedAt: null };
 
                 userInteraction = {
                     watched: !!watched,
