@@ -465,6 +465,29 @@ export default function MovieDetailPage() {
         }
     };
 
+    const handleUndoRewatch = async () => {
+        if (!session) { router.push('/login'); return; }
+        if (!movie?.userInteraction?.rewatchCount) return;
+        setActionLoading('rewatch-remove');
+        try {
+            const res = await fetch(`/api/movies/${id}/rewatch`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                setMovie(prev => prev ? {
+                    ...prev,
+                    userInteraction: prev.userInteraction ? {
+                        ...prev.userInteraction,
+                        watched: true,
+                        rewatchCount: data.data.rewatchCount,
+                        lastRewatchedAt: data.data.lastRewatchedAt,
+                    } : prev.userInteraction,
+                } : prev);
+            }
+        } finally {
+            setActionLoading('');
+        }
+    };
+
     const handleWatchlist = async () => {
         if (!session) { router.push('/login'); return; }
         setActionLoading('watchlist');
@@ -801,20 +824,37 @@ export default function MovieDetailPage() {
 
                             {/* Rewatch button — shown only when the film is already watched */}
                             {session && movie.userInteraction?.watched && (
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={handleRewatch}
-                                    disabled={actionLoading === 'rewatch'}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}
-                                    title={movie.userInteraction.rewatchCount > 0 ? `Rewatched ×${movie.userInteraction.rewatchCount}` : 'Mark as rewatched'}
-                                >
-                                    {actionLoading === 'rewatch'
-                                        ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
-                                        : <RefreshCw size={18} />}
-                                    {movie.userInteraction.rewatchCount > 0
-                                        ? <>Rewatch &nbsp;<span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px', marginLeft: -2 }}>×{movie.userInteraction.rewatchCount}</span></>
-                                        : <>Rewatch</>}
-                                </button>
+                                <>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={handleRewatch}
+                                        disabled={actionLoading === 'rewatch' || actionLoading === 'rewatch-remove'}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}
+                                        title={movie.userInteraction.rewatchCount > 0 ? `Rewatched ×${movie.userInteraction.rewatchCount}` : 'Mark as rewatched'}
+                                    >
+                                        {actionLoading === 'rewatch'
+                                            ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                            : <RefreshCw size={18} />}
+                                        {movie.userInteraction.rewatchCount > 0
+                                            ? <>Rewatch &nbsp;<span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px', marginLeft: -2 }}>×{movie.userInteraction.rewatchCount}</span></>
+                                            : <>Rewatch</>}
+                                    </button>
+
+                                    {movie.userInteraction.rewatchCount > 0 && (
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={handleUndoRewatch}
+                                            disabled={actionLoading === 'rewatch-remove' || actionLoading === 'rewatch'}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            title="Decrease rewatch count"
+                                        >
+                                            {actionLoading === 'rewatch-remove'
+                                                ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                                : <RefreshCw size={18} style={{ transform: 'scaleX(-1)' }} />}
+                                            Undo Rewatch
+                                        </button>
+                                    )}
+                                </>
                             )}
                             <button
                                 className={`btn ${movie.userInteraction?.watchlisted ? 'btn-primary' : 'btn-secondary'}`}

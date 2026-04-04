@@ -486,8 +486,29 @@ export default function ShowDetailPage() {
         if (!show) return;
         setActionLoading('rewatch');
         try {
-            const targetId = show.id || id;
-            const res = await fetch(`/api/shows/${targetId}/rewatch`, { method: 'POST' });
+            const res = await fetch(`/api/shows/${id}/rewatch`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setShow(prev => prev ? {
+                    ...prev,
+                    userInteraction: {
+                        ...prev.userInteraction,
+                        watched: true,
+                        inWatchlist: false,
+                        rewatchCount: data.data.rewatchCount,
+                        lastRewatchedAt: data.data.lastRewatchedAt,
+                    },
+                } : prev);
+            }
+        } finally { setActionLoading(''); }
+    };
+
+    const handleUndoRewatch = async () => {
+        if (!session) { router.push('/login'); return; }
+        if (!show || !show.userInteraction.rewatchCount) return;
+        setActionLoading('rewatch-remove');
+        try {
+            const res = await fetch(`/api/shows/${id}/rewatch`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setShow(prev => prev ? {
@@ -763,10 +784,37 @@ export default function ShowDetailPage() {
                                 {show.userInteraction.watched ? 'Watched' : 'Mark as Watched'}
                             </button>
                             {show.userInteraction.watched && (
-                                <button className="btn" onClick={handleRewatch} disabled={actionLoading === 'rewatch'}>
-                                    {actionLoading === 'rewatch' ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
-                                    Rewatch
-                                </button>
+                                <>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={handleRewatch}
+                                        disabled={actionLoading === 'rewatch' || actionLoading === 'rewatch-remove'}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}
+                                        title={show.userInteraction.rewatchCount > 0 ? `Rewatched ×${show.userInteraction.rewatchCount}` : 'Mark as rewatched'}
+                                    >
+                                        {actionLoading === 'rewatch'
+                                            ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                            : <RefreshCw size={18} />}
+                                        {show.userInteraction.rewatchCount > 0
+                                            ? <>Rewatch &nbsp;<span style={{ background: 'var(--brand)', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 800, padding: '1px 7px', marginLeft: -2 }}>×{show.userInteraction.rewatchCount}</span></>
+                                            : <>Rewatch</>}
+                                    </button>
+
+                                    {show.userInteraction.rewatchCount > 0 && (
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={handleUndoRewatch}
+                                            disabled={actionLoading === 'rewatch-remove' || actionLoading === 'rewatch'}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            title="Decrease rewatch count"
+                                        >
+                                            {actionLoading === 'rewatch-remove'
+                                                ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                                : <RefreshCw size={18} style={{ transform: 'scaleX(-1)' }} />}
+                                            Undo Rewatch
+                                        </button>
+                                    )}
+                                </>
                             )}
                             <button
                                 className={`btn ${show.userInteraction.inWatchlist ? 'btn-primary' : 'btn-secondary'}`}
