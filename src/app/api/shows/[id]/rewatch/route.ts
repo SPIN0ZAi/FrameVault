@@ -3,6 +3,17 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { successResponse, errorResponse, serverError } from '@/lib/api-response';
 
+async function ensureShowRewatchColumns() {
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE watched_shows
+        ADD COLUMN IF NOT EXISTS "rewatchCount" INTEGER NOT NULL DEFAULT 0;
+    `);
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE watched_shows
+        ADD COLUMN IF NOT EXISTS "lastRewatchedAt" TIMESTAMP(3);
+    `);
+}
+
 export async function POST(
     _req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -18,6 +29,8 @@ export async function POST(
         if (isNaN(tmdbShowId)) {
             return errorResponse({ code: 'BAD_REQUEST', message: 'Invalid show id' }, 400);
         }
+
+        await ensureShowRewatchColumns();
 
         const userId = session.user.id;
         const existing = await prisma.watchedShow.findUnique({
@@ -75,6 +88,8 @@ export async function DELETE(
         if (isNaN(tmdbShowId)) {
             return errorResponse({ code: 'BAD_REQUEST', message: 'Invalid show id' }, 400);
         }
+
+        await ensureShowRewatchColumns();
 
         const userId = session.user.id;
         const existing = await prisma.watchedShow.findUnique({
