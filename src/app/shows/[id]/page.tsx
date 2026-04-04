@@ -632,10 +632,10 @@ export default function ShowDetailPage() {
 
             <div className="container" style={{ position: 'relative', zIndex: 1 }}>
                 {/* Hero */}
-                <section ref={overviewRef} id="show-overview" style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', paddingTop: 'var(--space-3xl)' }}>
+                <section ref={overviewRef} id="show-overview" style={{ display: 'flex', gap: 'var(--space-2xl)', flexWrap: 'wrap', alignItems: 'flex-start', paddingTop: 'var(--space-3xl)' }}>
                     {/* Poster */}
                     <div
-                        style={{ flexShrink: 0, width: 300, position: 'relative' }}
+                        style={{ flexShrink: 0, width: 300, position: 'relative', alignSelf: 'flex-start' }}
                         onMouseEnter={() => setPosterHover(true)}
                         onMouseLeave={() => setPosterHover(false)}
                     >
