@@ -167,6 +167,16 @@ function StarRating({ value, showNumber = false }: { value: number; showNumber?:
     );
 }
 
+function formatWatchTime(totalMinutes: number): string {
+    if (!totalMinutes || totalMinutes <= 0) return '0m';
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+}
+
 function RatingHistogramCard({ counts, average, total }: {
     counts: number[];
     average: number | null;
@@ -1154,7 +1164,16 @@ export default function UserProfilePage() {
         monthlyWatches: { month: string; year: number; count: number }[];
         genreBreakdown: { genre: string; count: number }[];
         heatmap: { date: string; count: number; items: { title: string; href: string; type: 'movie' | 'show' }[] }[];
-        summary: { totalWatched: number; totalShows: number; totalRatings: number; totalReviews: number; avgRating: number | null };
+        summary: {
+            totalWatched: number;
+            totalShows: number;
+            totalRatings: number;
+            totalReviews: number;
+            avgRating: number | null;
+            movieWatchMinutes: number;
+            tvWatchMinutes: number;
+            tvEpisodesWatched: number;
+        };
     }
     const [statsData, setStatsData] = useState<StatsData | null>(null);
     const [statsLoaded, setStatsLoaded] = useState(false);
@@ -2322,6 +2341,32 @@ export default function UserProfilePage() {
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</span>
                                             </div>
                                         ))}
+                                    </div>
+                                </section>
+
+                                {/* Watch-time cards */}
+                                <section>
+                                    <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, marginBottom: 'var(--space-lg)' }}>Time Spent Watching</h2>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-md)' }}>
+                                        <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 55%, #06b6d4 100%)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', border: '1px solid rgba(255,255,255,0.16)', boxShadow: '0 10px 25px rgba(0,0,0,0.25)' }}>
+                                            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Time spent watching Movies</p>
+                                            <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 900, color: '#fff', lineHeight: 1.1, marginBottom: 6 }}>
+                                                {formatWatchTime(statsData.summary.movieWatchMinutes)}
+                                            </p>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.78)' }}>Time spent</p>
+                                            <p style={{ marginTop: 10, fontSize: 'var(--text-xl)', fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{statsData.summary.totalWatched.toLocaleString()}</p>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.78)' }}>Films watched</p>
+                                        </div>
+
+                                        <div style={{ background: 'linear-gradient(135deg, #6d1b51 0%, #a33d7a 55%, #c15495 100%)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', border: '1px solid rgba(255,255,255,0.16)', boxShadow: '0 10px 25px rgba(0,0,0,0.25)' }}>
+                                            <p style={{ fontSize: 'var(--text-lg)', fontWeight: 800, color: '#fff', marginBottom: 6 }}>Time spent watching TV</p>
+                                            <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 900, color: '#fff', lineHeight: 1.1, marginBottom: 6 }}>
+                                                {formatWatchTime(statsData.summary.tvWatchMinutes)}
+                                            </p>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.78)' }}>Time spent</p>
+                                            <p style={{ marginTop: 10, fontSize: 'var(--text-xl)', fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{statsData.summary.tvEpisodesWatched.toLocaleString()}</p>
+                                            <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.78)' }}>Episodes watched</p>
+                                        </div>
                                     </div>
                                 </section>
 

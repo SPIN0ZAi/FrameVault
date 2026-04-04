@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, notFoundError, serverError } from '@/lib/api-response';
+import { getMovieDetails, getShowDetails } from '@/lib/tmdb';
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -111,6 +112,48 @@ export async function GET(
             prisma.rating.aggregate({ where: { userId: user.id }, _avg: { value: true } }),
         ]);
 
+        // ── Watch-time metrics (movies + TV) ───────────────────────────────
+        const [watchedMoviesForTime, watchedShowsForTime] = await Promise.all([
+            prisma.watchedMovie.findMany({
+                where: { userId: user.id },
+                select: { movie: { select: { tmdbId: true } } },
+            }),
+            prisma.watchedShow.findMany({
+                where: { userId: user.id },
+                select: { tmdbShowId: true },
+                distinct: ['tmdbShowId'],
+            }),
+        ]);
+
+        const watchedMovieTmdbIds = Array.from(new Set(
+            watchedMoviesForTime
+                .map((row) => row.movie.tmdbId)
+                .filter((id): id is number => typeof id === 'number' && !isNaN(id))
+        ));
+
+        let movieWatchMinutes = 0;
+        const movieDetails = await Promise.allSettled(
+            watchedMovieTmdbIds.map((id) => getMovieDetails(id))
+        );
+        for (const item of movieDetails) {
+            if (item.status !== 'fulfilled') continue;
+            movieWatchMinutes += item.value.runtime ?? 0;
+        }
+
+        let tvEpisodesWatched = 0;
+        let tvWatchMinutes = 0;
+        const tvDetails = await Promise.allSettled(
+            watchedShowsForTime.map((s) => getShowDetails(s.tmdbShowId.toString()))
+        );
+        for (const item of tvDetails) {
+            if (item.status !== 'fulfilled') continue;
+            const show = item.value;
+            const episodes = show.number_of_episodes ?? 0;
+            const runtime = (show as { episode_run_time?: number[] }).episode_run_time?.[0] ?? 45;
+            tvEpisodesWatched += episodes;
+            tvWatchMinutes += episodes * runtime;
+        }
+
         return successResponse({
             monthlyWatches,
             genreBreakdown,
@@ -120,6 +163,9 @@ export async function GET(
                 totalShows,
                 totalRatings,
                 totalReviews,
+                movieWatchMinutes,
+                tvWatchMinutes,
+                tvEpisodesWatched,
                 avgRating: ratingAgg._avg.value != null
                     ? parseFloat(ratingAgg._avg.value.toFixed(2))
                     : null,
