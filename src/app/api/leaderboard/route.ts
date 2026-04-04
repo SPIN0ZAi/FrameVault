@@ -39,18 +39,40 @@ export async function GET(req: NextRequest) {
         if (category === 'films_month') {
             const start = new Date();
             start.setDate(1); start.setHours(0, 0, 0, 0);
-            const rows = await prisma.watchedMovie.groupBy({
-                by: ['userId'],
-                where: {
-                    OR: [
-                        { watchedAt: { gte: start } },
-                        { lastRewatchedAt: { gte: start } },
-                    ],
-                },
-                _count: { userId: true },
-                orderBy: { _count: { userId: 'desc' } },
-                take: LIMIT,
-            });
+
+            const [watchedRows, ratingRows, reviewRows] = await Promise.all([
+                prisma.watchedMovie.groupBy({
+                    by: ['userId'],
+                    where: {
+                        OR: [
+                            { watchedAt: { gte: start } },
+                            { lastRewatchedAt: { gte: start } },
+                        ],
+                    },
+                    _count: { userId: true },
+                }),
+                prisma.rating.groupBy({
+                    by: ['userId'],
+                    where: { createdAt: { gte: start } },
+                    _count: { userId: true },
+                }),
+                prisma.review.groupBy({
+                    by: ['userId'],
+                    where: { createdAt: { gte: start } },
+                    _count: { userId: true },
+                }),
+            ]);
+
+            const scoreMap = new Map<string, number>();
+            for (const row of watchedRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+            for (const row of ratingRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+            for (const row of reviewRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+
+            const rows = Array.from(scoreMap.entries())
+                .map(([userId, value]) => ({ userId, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, LIMIT);
+
             const users = await prisma.user.findMany({
                 where: { id: { in: rows.map(r => r.userId) } },
                 select: userSelect,
@@ -58,8 +80,8 @@ export async function GET(req: NextRequest) {
             const userMap = new Map(users.map(u => [u.id, u]));
             return successResponse(rows.map(r => ({
                 user: userMap.get(r.userId)!,
-                value: r._count.userId,
-                label: 'films this month',
+                value: r.value,
+                label: 'movie activity this month',
             })).filter(r => r.user));
         }
 
@@ -85,18 +107,40 @@ export async function GET(req: NextRequest) {
         if (category === 'shows_month') {
             const start = new Date();
             start.setDate(1); start.setHours(0, 0, 0, 0);
-            const rows = await prisma.watchedShow.groupBy({
-                by: ['userId'],
-                where: {
-                    OR: [
-                        { watchedAt: { gte: start } },
-                        { lastRewatchedAt: { gte: start } },
-                    ],
-                },
-                _count: { userId: true },
-                orderBy: { _count: { userId: 'desc' } },
-                take: LIMIT,
-            });
+
+            const [watchedRows, ratingRows, reviewRows] = await Promise.all([
+                prisma.watchedShow.groupBy({
+                    by: ['userId'],
+                    where: {
+                        OR: [
+                            { watchedAt: { gte: start } },
+                            { lastRewatchedAt: { gte: start } },
+                        ],
+                    },
+                    _count: { userId: true },
+                }),
+                prisma.showRating.groupBy({
+                    by: ['userId'],
+                    where: { createdAt: { gte: start } },
+                    _count: { userId: true },
+                }),
+                prisma.showReview.groupBy({
+                    by: ['userId'],
+                    where: { createdAt: { gte: start } },
+                    _count: { userId: true },
+                }),
+            ]);
+
+            const scoreMap = new Map<string, number>();
+            for (const row of watchedRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+            for (const row of ratingRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+            for (const row of reviewRows) scoreMap.set(row.userId, (scoreMap.get(row.userId) ?? 0) + row._count.userId);
+
+            const rows = Array.from(scoreMap.entries())
+                .map(([userId, value]) => ({ userId, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, LIMIT);
+
             const users = await prisma.user.findMany({
                 where: { id: { in: rows.map(r => r.userId) } },
                 select: userSelect,
@@ -104,8 +148,8 @@ export async function GET(req: NextRequest) {
             const userMap = new Map(users.map(u => [u.id, u]));
             return successResponse(rows.map(r => ({
                 user: userMap.get(r.userId)!,
-                value: r._count.userId,
-                label: 'shows this month',
+                value: r.value,
+                label: 'tv activity this month',
             })).filter(r => r.user));
         }
 
