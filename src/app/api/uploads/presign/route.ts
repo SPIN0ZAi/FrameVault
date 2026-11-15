@@ -6,10 +6,13 @@ import { z } from 'zod';
 
 const presignSchema = z.object({
     type: z.enum(['avatar', 'banner', 'poster', 'list-banner']),
-    movieId: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid movieId').max(50).optional(),
+    movieId: z.union([z.string(), z.number()])
+        .transform(val => String(val))
+        .pipe(z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid movieId').max(50))
+        .optional(),
     listId: z.string().max(100).optional(),
-    contentType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'Only images are allowed'),
-    extension: z.string().regex(/^(jpg|jpeg|png|webp|gif)$/, 'Invalid extension'),
+    contentType: z.string().regex(/^image\/(jpeg|jpg|png|webp|gif)(;.*)?$/i, 'Only images are allowed (JPEG, PNG, WebP, GIF)'),
+    extension: z.string().regex(/^(jpg|jpeg|png|webp|gif)$/i, 'Invalid extension'),
 });
 
 export async function POST(req: Request) {
@@ -24,23 +27,24 @@ export async function POST(req: Request) {
             return validationError(parsed.error.issues[0]?.message ?? 'Invalid input');
         }
 
-        const { type, movieId, listId, contentType, extension } = parsed.data;
+        const { type, movieId, listId, extension } = parsed.data;
 
         if (type === 'poster' && !movieId) {
             return NextResponse.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'movieId is required for poster uploads' } }, { status: 400 });
         }
 
         const userId = session.user.id;
+        const cleanExt = extension.toLowerCase();
         let filePath = '';
 
         if (type === 'avatar') {
-            filePath = `avatars/${userId}-${Date.now()}.${extension}`;
+            filePath = `avatars/${userId}-${Date.now()}.${cleanExt}`;
         } else if (type === 'banner') {
-            filePath = `banners/${userId}-${Date.now()}.${extension}`;
+            filePath = `banners/${userId}-${Date.now()}.${cleanExt}`;
         } else if (type === 'list-banner') {
-            filePath = `list-banners/${listId || userId}-${Date.now()}.${extension}`;
+            filePath = `list-banners/${listId || userId}-${Date.now()}.${cleanExt}`;
         } else if (type === 'poster') {
-            filePath = `posters/custom/${userId}_${movieId}-${Date.now()}.${extension}`;
+            filePath = `posters/custom/${userId}_${movieId}-${Date.now()}.${cleanExt}`;
         }
 
         const supabase = getSupabaseServerClient();
@@ -52,14 +56,16 @@ export async function POST(req: Request) {
 
         if (error || !data) {
             console.error('Supabase Storage Error:', error);
-            return serverError('Failed to generate upload URL. Please ensure your Supabase storage bucket "framevault-media" exists.');
+            return serverError('Failed to generate upload URL. Please ensure your Supabase storage bucket "framevault-media" exists and is public.');
         }
+
+        const supabaseBaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '');
 
         return successResponse({
             uploadUrl: data.signedUrl,
             token: data.token, // Might be present in the returned URL
             path: filePath,
-            publicUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/framevault-media/${filePath}`
+            publicUrl: `${supabaseBaseUrl}/storage/v1/object/public/framevault-media/${filePath}`
         });
 
     } catch (e) {

@@ -49,15 +49,16 @@ interface ListDetail {
 // Upload helper
 async function uploadBanner(file: File, listId: string): Promise<string | null> {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const contentType = file.type || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg');
     const presignRes = await fetch('/api/uploads/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'list-banner', listId, contentType: file.type, extension: ext }),
+        body: JSON.stringify({ type: 'list-banner', listId, contentType, extension: ext }),
     });
     const presignData = await presignRes.json();
     if (!presignData.success) return null;
     const { uploadUrl, publicUrl } = presignData.data;
-    await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+    await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } });
     return publicUrl as string;
 }
 

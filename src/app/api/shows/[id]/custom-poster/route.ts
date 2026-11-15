@@ -12,7 +12,11 @@ function isAllowedPosterUrl(url: string): boolean {
     try {
         const parsed = new URL(url);
         if (parsed.protocol !== 'https:') return false;
-        return ALLOWED_URL_ORIGINS.some(origin => url.startsWith(origin));
+        const normalizedUrl = url.replace(/\/+$/, '');
+        return ALLOWED_URL_ORIGINS.some(origin => {
+            const normalizedOrigin = origin.replace(/\/+$/, '');
+            return normalizedUrl.startsWith(normalizedOrigin);
+        });
     } catch {
         return false;
     }

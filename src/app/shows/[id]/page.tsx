@@ -1287,14 +1287,15 @@ export default function ShowDetailPage() {
                                             setUploadError(null);
                                             try {
                                                 const ext = uploadFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+                                                const contentType = uploadFile.type || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg');
                                                 const presignRes = await fetch('/api/uploads/presign', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ type: 'poster', movieId: `show-${id}`, contentType: uploadFile.type, extension: ext }),
+                                                    body: JSON.stringify({ type: 'poster', movieId: `show-${id}`, contentType, extension: ext }),
                                                 });
                                                 const presignData = await presignRes.json();
-                                                if (!presignData.success) { setUploadError('Failed to get upload URL'); return; }
-                                                const putRes = await fetch(presignData.data.uploadUrl, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': uploadFile.type } });
+                                                if (!presignData.success) { setUploadError(presignData.error?.message || 'Failed to get upload URL'); return; }
+                                                const putRes = await fetch(presignData.data.uploadUrl, { method: 'PUT', body: uploadFile, headers: { 'Content-Type': contentType } });
                                                 if (!putRes.ok) { setUploadError('Upload failed, please try again'); return; }
                                                 const saveRes = await fetch(`/api/shows/${id}/custom-poster`, {
                                                     method: 'POST',

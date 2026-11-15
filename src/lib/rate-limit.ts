@@ -7,15 +7,20 @@ import { Redis } from '@upstash/redis';
  * rate-limit checks will be skipped (fail-open).
  */
 function createLimiter(requests: number, window: `${number} ${'s' | 'm' | 'h' | 'd'}`, prefix: string) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token) return null;
-    return new Ratelimit({
-        redis: new Redis({ url, token }),
-        limiter: Ratelimit.slidingWindow(requests, window),
-        prefix,
-        analytics: false,
-    });
+    const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+    if (!url || !token || !url.startsWith('http')) return null;
+
+    try {
+        return new Ratelimit({
+            redis: new Redis({ url, token, retry: false }),
+            limiter: Ratelimit.slidingWindow(requests, window),
+            prefix,
+            analytics: false,
+        });
+    } catch {
+        return null;
+    }
 }
 
 // 10 login attempts per 15 minutes per IP

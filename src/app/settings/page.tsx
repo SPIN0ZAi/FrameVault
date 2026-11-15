@@ -146,17 +146,18 @@ export default function SettingsPage() {
     }, [router]);
 
     const uploadToSupabase = async (file: File, type: 'avatar' | 'banner') => {
-        const ext = file.name.split('.').pop() || 'jpg';
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const contentType = file.type || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg');
         const res = await fetch('/api/uploads/presign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, contentType: file.type, extension: ext }),
+            body: JSON.stringify({ type, contentType, extension: ext }),
         });
         const d = await res.json();
         if (!d.success) throw new Error(d.error?.message || 'Failed to get upload URL');
         const uploadRes = await fetch(d.data.uploadUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': file.type },
+            headers: { 'Content-Type': contentType },
             body: file,
         });
         if (!uploadRes.ok) throw new Error('Upload failed');
