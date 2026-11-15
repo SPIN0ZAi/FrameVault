@@ -6,8 +6,9 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2, Sparkles,
 } from 'lucide-react';
+import { useTheme } from '@/lib/themes/theme-context';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
 
@@ -52,6 +53,7 @@ function PasswordStrength({ password }: { password: string }) {
 export default function SettingsPage() {
     const router = useRouter();
     const { data: session } = useSession();
+    const { currentTheme, openModal, effectsEnabled, toggleEffects } = useTheme();
     const [activeTab, setActiveTab] = useState<Tab>('profile');
     const [isLoading, setIsLoading] = useState(true);
 
@@ -577,6 +579,71 @@ export default function SettingsPage() {
                                                     ))}
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Immersive Site Theme & Atmosphere ── */}
+                                <div style={card}>
+                                    <div style={cardHead}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                                            <div>
+                                                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span>{currentTheme.icon}</span> Immersive Site Theme & Atmosphere
+                                                </h2>
+                                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
+                                                    Transform FrameVault into seasonal worlds, movie genres, and horror movie aesthetics
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={openModal}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    padding: '8px 18px',
+                                                    borderRadius: 'var(--radius-full)',
+                                                    background: 'var(--brand)',
+                                                    color: '#000',
+                                                    fontSize: 'var(--text-sm)',
+                                                    fontWeight: 700,
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 0 15px var(--shadow-glow)',
+                                                }}
+                                            >
+                                                <Sparkles size={16} /> Open Theme Studio
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{ padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', flexWrap: 'wrap', gap: 10 }}>
+                                            <div>
+                                                <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', margin: 0 }}>
+                                                    Current Active Theme: <span style={{ color: 'var(--brand)' }}>{currentTheme.name}</span>
+                                                </p>
+                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                                                    {currentTheme.description}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={toggleEffects}
+                                                style={{
+                                                    padding: '7px 14px',
+                                                    borderRadius: 'var(--radius-full)',
+                                                    background: effectsEnabled ? 'rgba(0, 209, 193, 0.15)' : 'var(--bg-secondary)',
+                                                    color: effectsEnabled ? 'var(--brand)' : 'var(--text-tertiary)',
+                                                    border: '1px solid var(--border-default)',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer',
+                                                }}
+                                                title="Toggle ambient particles (snow, leaves, fog, embers, rain)"
+                                            >
+                                                {effectsEnabled ? '✨ Ambient Particles: ON' : '⏸️ Ambient Particles: OFF'}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

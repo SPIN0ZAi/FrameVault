@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus, ListPlus, Edit3, Loader2, Pencil, Trash2, Crown, AlertTriangle, Heart, RefreshCw } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
+import AtmosphereButton from '@/components/themes/AtmosphereButton';
 
 interface ShowDetail {
     id: string;
@@ -716,10 +717,11 @@ export default function ShowDetailPage() {
                         </div>
 
                         {/* Genres */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
                             {show.genres.map(g => (
                                 <Link key={g.id} href={`/shows?genre=${g.id}`} className="chip chip-sm">{g.name}</Link>
                             ))}
+                            <AtmosphereButton genres={show.genres} />
                         </div>
 
                         {/* Rating */}

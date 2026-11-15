@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown, RefreshCw } from 'lucide-react';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
+import AtmosphereButton from '@/components/themes/AtmosphereButton';
 
 interface MovieDetail {
     id: string;
@@ -750,10 +751,11 @@ export default function MovieDetailPage() {
                                         {languageName && <span>{languageName}</span>}
                                         {movie.country && <span>{movie.country}</span>}
                                         {movie.genres.length > 0 && (
-                                            <div className="movie-genres">
+                                            <div className="movie-genres" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                                 {movie.genres.map((g) => (
                                                     <span key={g.id} className="badge badge-brand">{g.name}</span>
                                                 ))}
+                                                <AtmosphereButton genres={movie.genres} />
                                             </div>
                                         )}
                                     </div>
