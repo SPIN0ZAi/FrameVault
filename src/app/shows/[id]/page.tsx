@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { Tv, Eye, Check, BookmarkPlus, Star, Play, X, Users, Calendar, Globe, Layers, Clock, ImagePlus, ListPlus, Edit3, Loader2, Pencil, Trash2, Crown, AlertTriangle, Heart, RefreshCw } from 'lucide-react';
 import ImageUploader from '@/components/ui/ImageUploader';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
+import { useTheme } from '@/lib/themes/theme-context';
+import { detectMediaAtmosphere } from '@/lib/themes/registry';
 
 interface ShowDetail {
     id: string;
@@ -253,7 +255,23 @@ export default function ShowDetailPage() {
     }, [activeTab, saveContext]);
 
     const backdropBrightness = useBackdropBrightness();
+    const { setPageAtmosphere, adaptMovieAtmosphere } = useTheme();
     const [show, setShow] = useState<ShowDetail | null>(null);
+
+    // Automatically adapt website theme to this show's genre & atmosphere
+    useEffect(() => {
+        if (!show || !adaptMovieAtmosphere) return;
+        const atmosphere = detectMediaAtmosphere({
+            title: show.title,
+            genres: show.genres,
+            overview: show.description || undefined,
+        });
+        setPageAtmosphere(atmosphere);
+
+        return () => {
+            setPageAtmosphere(null);
+        };
+    }, [show, adaptMovieAtmosphere, setPageAtmosphere]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState('');
     const [hoverRating, setHoverRating] = useState(0);
@@ -716,7 +734,7 @@ export default function ShowDetailPage() {
                         </div>
 
                         {/* Genres */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
                             {show.genres.map(g => (
                                 <Link key={g.id} href={`/shows?genre=${g.id}`} className="chip chip-sm">{g.name}</Link>
                             ))}

@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Clapperboard, BookMarked, LayoutDashboard, Trophy, Sparkles } from 'lucide-react';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Trophy, Sparkles, BookMarked, LayoutDashboard } from 'lucide-react';
+import { useTheme } from '@/lib/themes/theme-context';
+import ThemedLogo from '@/components/themes/ThemedLogo';
 
 type SearchSuggestionType = 'movie' | 'show' | 'actor' | 'list';
 
@@ -28,6 +30,7 @@ export default function Header() {
     const { data: session } = useSession();
     const router = useRouter();
     const pathname = usePathname();
+    const { currentTheme } = useTheme();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -120,13 +123,8 @@ export default function Header() {
         <header className="header">
             <div className="header-inner">
                 {/* Logo */}
-                <Link href="/" className="header-logo" style={{ gap: '10px' }}>
-                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 30L45 15V85L10 70V30Z" fill="#00D1C1" />
-                        <path d="M90 30L55 15V85L90 70V30Z" fill="#00D1C1" />
-                        <path d="M30 40H70V60H30V40Z" fill="#1A1D21" />
-                    </svg>
-                    <span style={{ fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>FrameVault</span>
+                <Link href="/" className="header-logo" style={{ textDecoration: 'none' }}>
+                    <ThemedLogo theme={currentTheme} size={32} />
                 </Link>
 
                 {/* Navigation */}
