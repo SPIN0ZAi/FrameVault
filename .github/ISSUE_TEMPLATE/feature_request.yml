@@ -1,0 +1,49 @@
+name: 🚀 Feature Request
+description: Suggest an enhancement, new social movie feature, or UX improvement
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make FrameVault better? We'd love to hear it!
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      options:
+        - Movies & TV Shows Tracking
+        - Social, Activity & Reviews
+        - Customization & Media Uploads (Posters, Banners, Avatars)
+        - Lists & Watchlists
+        - Import / Export (Letterboxd, Trakt, etc.)
+        - API & Backend Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the limitation or issue is.
+      placeholder: "e.g., I'm frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the Solution You'd Like
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you have considered.
+    validations:
+      required: false

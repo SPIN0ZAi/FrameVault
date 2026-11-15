@@ -1,0 +1,38 @@
+name: 📋 Engineering Task
+description: Track an engineering, refactoring, or infrastructure task
+title: "[TASK]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to track engineering work items, refactoring, or technical debt.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objective & Scope
+      description: What is the goal of this task and why is it needed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: Proposed Implementation / Architecture
+      description: Describe how this task should be implemented.
+    validations:
+      required: false
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance Criteria / Checklist
+      description: What criteria must be met before this task is marked Done?
+      value: |
+        - [ ] Implementation completed
+        - [ ] Typecheck passed (`npx tsc --noEmit`)
+        - [ ] Build verification succeeded (`npm run build`)
+        - [ ] CI workflow passes with green checks
+    validations:
+      required: true
