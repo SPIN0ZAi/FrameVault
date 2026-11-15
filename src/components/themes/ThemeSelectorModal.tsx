@@ -5,13 +5,14 @@ import { useTheme } from '@/lib/themes/theme-context';
 import { THEMES } from '@/lib/themes/registry';
 import { ThemeCategory, ThemeDefinition } from '@/lib/themes/types';
 import ThemedLogo from './ThemedLogo';
-import { X, Sparkles, Check, Eye } from 'lucide-react';
+import ThemedIcon from './ThemedIcon';
+import { X, Sparkles, Check, Eye, Film, Compass, Skull } from 'lucide-react';
 
-const CATEGORIES: { id: ThemeCategory; label: string; icon: string }[] = [
-    { id: 'all', label: 'All Themes', icon: '✨' },
-    { id: 'seasonal', label: 'Seasonal & Holidays', icon: '🎄' },
-    { id: 'genre', label: 'Movie Genres', icon: '🎬' },
-    { id: 'horror', label: 'Horror Cinema', icon: '🩸' },
+const CATEGORIES: { id: ThemeCategory; label: string; iconNode: React.ReactNode }[] = [
+    { id: 'all', label: 'All Themes', iconNode: <Sparkles size={14} /> },
+    { id: 'seasonal', label: 'Seasonal & Holidays', iconNode: <ThemedIcon themeId="thanksgiving" size={14} /> },
+    { id: 'genre', label: 'Movie Genres', iconNode: <Film size={14} /> },
+    { id: 'horror', label: 'Horror Cinema', iconNode: <Skull size={14} /> },
 ];
 
 export default function ThemeSelectorModal() {
@@ -195,7 +196,7 @@ export default function ThemeSelectorModal() {
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                <span>{cat.icon}</span>
+                                {cat.iconNode}
                                 <span>{cat.label}</span>
                             </button>
                         );
@@ -289,8 +290,8 @@ export default function ThemeSelectorModal() {
                                     </div>
 
                                     {/* Title & Tagline */}
-                                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: theme.colors.textPrimary, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span>{theme.icon}</span>
+                                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: theme.colors.textPrimary, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <ThemedIcon themeId={theme.id} size={22} primaryColor={theme.colors.brand} secondaryColor={theme.colors.brandLight} />
                                         <span>{theme.name}</span>
                                     </h3>
                                     <p style={{ fontSize: '0.75rem', fontWeight: 700, color: theme.colors.brand, marginTop: '2px', marginBottom: '8px' }}>

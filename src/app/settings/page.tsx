@@ -6,10 +6,11 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
     Loader2, User as UserIcon, Palette, Lock, Trash2,
-    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2, Sparkles,
+    Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2, Sparkles, Pin,
 } from 'lucide-react';
 import { useTheme } from '@/lib/themes/theme-context';
 import { THEMES, getCurrentSeasonalTheme } from '@/lib/themes/registry';
+import ThemedIcon from '@/components/themes/ThemedIcon';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
 
@@ -600,8 +601,9 @@ export default function SettingsPage() {
                                     <div style={cardHead}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                                             <div>
-                                                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <span>{currentTheme.icon}</span> Immersive Themes & Atmosphere
+                                                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <ThemedIcon themeId={currentTheme.id} size={22} primaryColor={currentTheme.colors.brand} secondaryColor={currentTheme.colors.brandLight} />
+                                                    <span>Immersive Themes & Atmosphere</span>
                                                 </h2>
                                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
                                                     Transform FrameVault into dynamic seasonal worlds, movie genres, and cult horror cinema atmospheres
@@ -651,8 +653,9 @@ export default function SettingsPage() {
                                                 }}
                                             >
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 6 }}>
-                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <span>🍂</span> Auto Seasonal Mode
+                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <ThemedIcon themeId={seasonalTheme.id} size={18} />
+                                                        <span>Auto Seasonal Mode</span>
                                                     </span>
                                                     {themeMode === 'auto' && (
                                                         <span style={{ fontSize: '0.7rem', fontWeight: 800, background: 'var(--brand)', color: '#000', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
@@ -663,8 +666,10 @@ export default function SettingsPage() {
                                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                                                     Automatically mirrors real-world seasons across the site (Autumn in Nov, Christmas in Dec, Halloween in Oct).
                                                 </p>
-                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--brand)', fontWeight: 600 }}>
-                                                    Current season: {seasonalTheme.icon} {seasonalTheme.name}
+                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--brand)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span>Current season:</span>
+                                                    <ThemedIcon themeId={seasonalTheme.id} size={14} />
+                                                    <span>{seasonalTheme.name}</span>
                                                 </div>
                                             </button>
 
@@ -682,8 +687,9 @@ export default function SettingsPage() {
                                                 }}
                                             >
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 6 }}>
-                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <span>📌</span> Pinned Custom Theme
+                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <Pin size={16} color="var(--brand)" />
+                                                        <span>Pinned Custom Theme</span>
                                                     </span>
                                                     {themeMode === 'custom' && (
                                                         <span style={{ fontSize: '0.7rem', fontWeight: 800, background: 'var(--brand)', color: '#000', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
@@ -694,8 +700,16 @@ export default function SettingsPage() {
                                                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                                                     Lock your favorite theme everywhere on the site (e.g. Bloodbath: 1984, Room 237, Nostromo).
                                                 </p>
-                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: themeMode === 'custom' ? 'var(--brand)' : 'var(--text-tertiary)', fontWeight: 600 }}>
-                                                    {themeMode === 'custom' ? `Active: ${currentTheme.icon} ${currentTheme.name}` : 'Select a theme from the collection below'}
+                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: themeMode === 'custom' ? 'var(--brand)' : 'var(--text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    {themeMode === 'custom' ? (
+                                                        <>
+                                                            <span>Active:</span>
+                                                            <ThemedIcon themeId={currentTheme.id} size={14} primaryColor={currentTheme.colors.brand} secondaryColor={currentTheme.colors.brandLight} />
+                                                            <span>{currentTheme.name}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span>Select a theme from the collection below</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -807,7 +821,7 @@ export default function SettingsPage() {
                                                                 transition: 'all 0.15s ease',
                                                             }}
                                                         >
-                                                            <span style={{ fontSize: 20, flexShrink: 0 }}>{t.icon}</span>
+                                                            <ThemedIcon themeId={t.id} size={22} primaryColor={t.colors.brand} secondaryColor={t.colors.brandLight} />
                                                             <div style={{ minWidth: 0, flex: 1 }}>
                                                                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                     {t.name}

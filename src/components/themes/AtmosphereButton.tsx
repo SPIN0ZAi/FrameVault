@@ -2,6 +2,7 @@
 
 import { useTheme } from '@/lib/themes/theme-context';
 import { findThemeByGenre } from '@/lib/themes/registry';
+import ThemedIcon from './ThemedIcon';
 import { Sparkles, Check } from 'lucide-react';
 
 interface AtmosphereButtonProps {
@@ -79,7 +80,7 @@ export default function AtmosphereButton({ genres }: AtmosphereButtonProps) {
             }}
             title={isCurrentTheme ? `Theme active: ${matchedTheme.name}` : `Match movie atmosphere: ${matchedTheme.name}`}
         >
-            <span>{matchedTheme.icon}</span>
+            <ThemedIcon themeId={matchedTheme.id} size={15} primaryColor={matchedTheme.colors.brand} secondaryColor={matchedTheme.colors.brandLight} />
             <span>{isCurrentTheme ? `Atmosphere: ${matchedTheme.name}` : `Atmosphere: ${matchedTheme.name}`}</span>
             {isCurrentTheme ? <Check size={14} color={matchedTheme.colors.brand} strokeWidth={3} /> : <Sparkles size={14} color="var(--brand)" />}
         </button>
