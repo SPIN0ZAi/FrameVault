@@ -1,5 +1,7 @@
 export type ThemeCategory = 'all' | 'seasonal' | 'genre' | 'horror' | 'default';
 
+export type ThemeMode = 'auto' | 'custom';
+
 export type AmbientEffectType =
     | 'none'
     | 'snow'
@@ -71,7 +73,14 @@ export interface ThemeDefinition {
 export interface ThemeContextValue {
     currentTheme: ThemeDefinition;
     themeId: string;
+    userThemeId: string;
+    themeMode: ThemeMode;
     setTheme: (id: string) => void;
+    setThemeMode: (mode: ThemeMode) => void;
+    adaptMovieAtmosphere: boolean;
+    setAdaptMovieAtmosphere: (enabled: boolean) => void;
+    pageAtmosphere: ThemeDefinition | null;
+    setPageAtmosphere: (theme: ThemeDefinition | null) => void;
     effectsEnabled: boolean;
     setEffectsEnabled: (enabled: boolean) => void;
     toggleEffects: () => void;

@@ -569,3 +569,155 @@ export function findThemeByGenre(genreName: string): ThemeDefinition | undefined
         t.movieGenreMatches?.some((g) => g.toLowerCase() === lower || lower.includes(g.toLowerCase()))
     );
 }
+
+/**
+ * Returns the automatic seasonal theme based on the current calendar month:
+ * - October (Month 9): Halloween (Spooky All Hallows)
+ * - November (Month 10): Thanksgiving / Autumn (Autumn Harvest)
+ * - December & January (Month 11, 0): Christmas / Winter (Winter Wonderland)
+ * - February (Month 1): Romance (Moonlit Velvet)
+ * - Default: FrameVault Classic
+ */
+export function getCurrentSeasonalTheme(): ThemeDefinition {
+    const month = new Date().getMonth();
+    if (month === 9) {
+        return getThemeById('halloween');
+    }
+    if (month === 10) {
+        return getThemeById('thanksgiving');
+    }
+    if (month === 11 || month === 0) {
+        return getThemeById('christmas');
+    }
+    if (month === 1) {
+        return getThemeById('romance');
+    }
+    return getThemeById('default');
+}
+
+export interface MediaVibeInput {
+    title?: string;
+    genres?: Array<{ id?: number | string; name: string }>;
+    overview?: string;
+    tagline?: string;
+}
+
+/**
+ * Detects the most atmospheric theme for a movie or TV show
+ * based on its title, genres, overview, and tagline.
+ */
+export function detectMediaAtmosphere(input: MediaVibeInput): ThemeDefinition {
+    const text = [
+        input.title || '',
+        input.tagline || '',
+        input.overview || '',
+    ].join(' ').toLowerCase();
+
+    const genreNames = (input.genres || []).map((g) => g.name.toLowerCase());
+
+    // ── 1. Specific Horror Icons & Subgenres ──
+    // Vampires & Gothic Horror (e.g. Dracula, Nosferatu, Twilight, Blade, Underworld)
+    if (
+        /\b(vampire|vampires|dracula|nosferatu|undead|transylvania|van helsing|blood-drink|gothic horror|fright night|blade|underworld|midnight mass|what we do in the shadows)\b/.test(text)
+    ) {
+        return getThemeById('horror-vampire');
+    }
+
+    // Slasher / 80s Splatter & Gore (e.g. Bloodbath 1984, Scream, Friday the 13th, Halloween, Texas Chainsaw, Saw)
+    if (
+        /\b(slasher|chainsaw|machete|axe murderer|serial killer|bloodbath|camp crystal lake|jason voorhees|freddy krueger|elm street|michael myers|ghostface|scream|chucky|massacre|saw|jigsaw|gore|gory|splatter|slashed)\b/.test(text)
+    ) {
+        return getThemeById('horror-slasher');
+    }
+
+    // Deep Space Alien / Sci-Fi Horror (e.g. Alien, Aliens, Nostromo, The Thing, Predator)
+    if (
+        /\b(xenomorph|nostromo|weyland|facehugger|chestburster|space horror|the thing|dead space|alien terror)\b/.test(text) ||
+        (genreNames.includes('horror') && /\b(alien|extraterrestrial|spaceship|deep space|predator)\b/.test(text))
+    ) {
+        return getThemeById('horror-alien');
+    }
+
+    // Overlook / Winter Isolation / Psychological Horror (e.g. The Shining, Room 237, Misery)
+    if (
+        /\b(overlook hotel|room 237|haunted hotel|isolated hotel|blizzard isolation|cabin fever|misery|stephen king)\b/.test(text) ||
+        (genreNames.includes('horror') && /\b(hotel|blizzard|isolated cabin|snowbound)\b/.test(text))
+    ) {
+        return getThemeById('horror-shining');
+    }
+
+    // Cosmic Dread / Eldritch Void (e.g. Lovecraft, Cthulhu, The Mist, Annihilation)
+    if (
+        /\b(lovecraft|lovecraftian|cthulhu|eldritch|cosmic horror|cyclopean|ancient entity|abyssal void|dagon)\b/.test(text)
+    ) {
+        return getThemeById('horror-lovecraft');
+    }
+
+    // ── 2. Cinematic Seasons & Atmospheric Settings ──
+    // Autumn / Thanksgiving vibe
+    if (
+        /\b(autumn|fall foliage|thanksgiving|harvest festival|indian summer)\b/.test(text)
+    ) {
+        return getThemeById('thanksgiving');
+    }
+
+    // Christmas / Winter Holiday vibe
+    if (
+        /\b(christmas|xmas|santa claus|north pole|holiday season|home alone|the grinch|winter wonderland|polar express|miracle on 34th)\b/.test(text)
+    ) {
+        return getThemeById('christmas');
+    }
+
+    // Halloween vibe
+    if (
+        /\b(halloween|trick or treat|jack-o-lantern|hocus pocus|beetlejuice|haunted house)\b/.test(text)
+    ) {
+        return getThemeById('halloween');
+    }
+
+    // Cyberpunk aesthetic
+    if (
+        /\b(cyberpunk|blade runner|neuromancer|akira|ghost in the shell|cyborg|dystopian neo|matrix)\b/.test(text)
+    ) {
+        return getThemeById('cyberpunk');
+    }
+
+    // ── 3. Primary Genre Fallback ──
+    for (const genre of genreNames) {
+        if (genre === 'horror') {
+            return getThemeById('horror-slasher'); // Iconic horror atmosphere
+        }
+        if (genre === 'science fiction' || genre === 'sci-fi') {
+            return getThemeById('scifi');
+        }
+        if (genre === 'fantasy') {
+            return getThemeById('fantasy');
+        }
+        if (genre === 'animation') {
+            return getThemeById('animation');
+        }
+        if (genre === 'romance') {
+            return getThemeById('romance');
+        }
+        if (genre === 'action') {
+            return getThemeById('action');
+        }
+        if (genre === 'mystery' || genre === 'thriller' || genre === 'crime') {
+            return getThemeById('mystery');
+        }
+        if (genre === 'adventure' || genre === 'western') {
+            return getThemeById('adventure');
+        }
+        if (genre === 'documentary') {
+            return getThemeById('documentary');
+        }
+        if (genre === 'drama') {
+            return getThemeById('drama');
+        }
+        if (genre === 'comedy') {
+            return getThemeById('animation');
+        }
+    }
+
+    return getCurrentSeasonalTheme();
+}

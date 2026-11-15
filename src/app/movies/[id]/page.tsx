@@ -7,7 +7,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Film, Eye, Edit3, Check, CheckCircle2, BookmarkPlus, AlertTriangle, Star, ImagePlus, X, Play, ListPlus, Loader2, Pencil, Trash2, Crown, RefreshCw } from 'lucide-react';
 import { useBackdropBrightness } from '@/lib/hooks/useBackdropBrightness';
-import AtmosphereButton from '@/components/themes/AtmosphereButton';
+import { useTheme } from '@/lib/themes/theme-context';
+import { detectMediaAtmosphere } from '@/lib/themes/registry';
 
 interface MovieDetail {
     id: string;
@@ -301,7 +302,23 @@ export default function MovieDetailPage() {
     }, [activeTab, saveContext]);
 
     const backdropBrightness = useBackdropBrightness();
+    const { setPageAtmosphere, adaptMovieAtmosphere } = useTheme();
     const [movie, setMovie] = useState<MovieDetail | null>(null);
+
+    // Automatically adapt website theme to this movie's genre & cinematic atmosphere
+    useEffect(() => {
+        if (!movie || !adaptMovieAtmosphere) return;
+        const atmosphere = detectMediaAtmosphere({
+            title: movie.title,
+            genres: movie.genres,
+            overview: movie.description || undefined,
+        });
+        setPageAtmosphere(atmosphere);
+
+        return () => {
+            setPageAtmosphere(null);
+        };
+    }, [movie, adaptMovieAtmosphere, setPageAtmosphere]);
     const [loading, setLoading] = useState(true);
     const [hoverRating, setHoverRating] = useState(0);
     const [actionLoading, setActionLoading] = useState('');
@@ -755,7 +772,6 @@ export default function MovieDetailPage() {
                                                 {movie.genres.map((g) => (
                                                     <span key={g.id} className="badge badge-brand">{g.name}</span>
                                                 ))}
-                                                <AtmosphereButton genres={movie.genres} />
                                             </div>
                                         )}
                                     </div>

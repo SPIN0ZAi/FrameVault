@@ -9,6 +9,7 @@ import {
     Camera, MapPin, FileText, Check, AlertTriangle, Eye, EyeOff, Upload, Download, X, ImagePlus, Move, Link2, Sparkles,
 } from 'lucide-react';
 import { useTheme } from '@/lib/themes/theme-context';
+import { THEMES, getCurrentSeasonalTheme } from '@/lib/themes/registry';
 
 type Tab = 'profile' | 'appearance' | 'account' | 'danger';
 
@@ -53,7 +54,18 @@ function PasswordStrength({ password }: { password: string }) {
 export default function SettingsPage() {
     const router = useRouter();
     const { data: session } = useSession();
-    const { currentTheme, openModal, effectsEnabled, toggleEffects } = useTheme();
+    const {
+        currentTheme,
+        userThemeId,
+        themeMode,
+        setTheme,
+        adaptMovieAtmosphere,
+        setAdaptMovieAtmosphere,
+        effectsEnabled,
+        toggleEffects,
+        openModal,
+    } = useTheme();
+    const seasonalTheme = getCurrentSeasonalTheme();
     const [activeTab, setActiveTab] = useState<Tab>('profile');
     const [isLoading, setIsLoading] = useState(true);
 
@@ -589,10 +601,10 @@ export default function SettingsPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                                             <div>
                                                 <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <span>{currentTheme.icon}</span> Immersive Site Theme & Atmosphere
+                                                    <span>{currentTheme.icon}</span> Immersive Themes & Atmosphere
                                                 </h2>
                                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-                                                    Transform FrameVault into seasonal worlds, movie genres, and horror movie aesthetics
+                                                    Transform FrameVault into dynamic seasonal worlds, movie genres, and cult horror cinema atmospheres
                                                 </p>
                                             </div>
                                             <button
@@ -613,37 +625,212 @@ export default function SettingsPage() {
                                                     boxShadow: '0 0 15px var(--shadow-glow)',
                                                 }}
                                             >
-                                                <Sparkles size={16} /> Open Theme Studio
+                                                <Sparkles size={16} /> Theme Studio Preview
                                             </button>
                                         </div>
                                     </div>
-                                    <div style={{ padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', flexWrap: 'wrap', gap: 10 }}>
-                                            <div>
-                                                <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', margin: 0 }}>
-                                                    Current Active Theme: <span style={{ color: 'var(--brand)' }}>{currentTheme.name}</span>
-                                                </p>
-                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                                                    {currentTheme.description}
-                                                </p>
-                                            </div>
+
+                                    <div style={{ padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                                        {/* Mode Switcher Cards */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-md)' }}>
+                                            {/* Auto Seasonal Option */}
                                             <button
                                                 type="button"
-                                                onClick={toggleEffects}
+                                                onClick={() => setTheme('auto')}
                                                 style={{
-                                                    padding: '7px 14px',
-                                                    borderRadius: 'var(--radius-full)',
-                                                    background: effectsEnabled ? 'rgba(0, 209, 193, 0.15)' : 'var(--bg-secondary)',
-                                                    color: effectsEnabled ? 'var(--brand)' : 'var(--text-tertiary)',
-                                                    border: '1px solid var(--border-default)',
-                                                    fontWeight: 700,
-                                                    fontSize: '0.8rem',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'flex-start',
+                                                    textAlign: 'left',
+                                                    padding: '16px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: themeMode === 'auto' ? '2px solid var(--brand)' : '1px solid var(--border-default)',
+                                                    background: themeMode === 'auto' ? 'rgba(0, 209, 193, 0.08)' : 'var(--bg-secondary)',
                                                     cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
                                                 }}
-                                                title="Toggle ambient particles (snow, leaves, fog, embers, rain)"
                                             >
-                                                {effectsEnabled ? '✨ Ambient Particles: ON' : '⏸️ Ambient Particles: OFF'}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 6 }}>
+                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span>🍂</span> Auto Seasonal Mode
+                                                    </span>
+                                                    {themeMode === 'auto' && (
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, background: 'var(--brand)', color: '#000', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
+                                                            ACTIVE
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                                                    Automatically mirrors real-world seasons across the site (Autumn in Nov, Christmas in Dec, Halloween in Oct).
+                                                </p>
+                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--brand)', fontWeight: 600 }}>
+                                                    Current season: {seasonalTheme.icon} {seasonalTheme.name}
+                                                </div>
                                             </button>
+
+                                            {/* Pinned Custom Option */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'flex-start',
+                                                    textAlign: 'left',
+                                                    padding: '16px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: themeMode === 'custom' ? '2px solid var(--brand)' : '1px solid var(--border-default)',
+                                                    background: themeMode === 'custom' ? 'rgba(0, 209, 193, 0.08)' : 'var(--bg-secondary)',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 6 }}>
+                                                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span>📌</span> Pinned Custom Theme
+                                                    </span>
+                                                    {themeMode === 'custom' && (
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, background: 'var(--brand)', color: '#000', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
+                                                            PINNED
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                                                    Lock your favorite theme everywhere on the site (e.g. Bloodbath: 1984, Room 237, Nostromo).
+                                                </p>
+                                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: themeMode === 'custom' ? 'var(--brand)' : 'var(--text-tertiary)', fontWeight: 600 }}>
+                                                    {themeMode === 'custom' ? `Active: ${currentTheme.icon} ${currentTheme.name}` : 'Select a theme from the collection below'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Toggles */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                                            {/* Dynamic Movie Atmosphere Toggle */}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', flexWrap: 'wrap', gap: 10 }}>
+                                                <div style={{ maxWidth: 520 }}>
+                                                    <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', margin: 0 }}>
+                                                        🎬 Dynamic Movie Atmosphere
+                                                    </p>
+                                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+                                                        When visiting a movie or show page, automatically transform the site&apos;s colors and atmosphere to match the film (e.g. Vampires ➔ Nosferatu&apos;s Crypt, Slashers ➔ Bloodbath: 1984, Sci-Fi ➔ Galactic Horizon).
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAdaptMovieAtmosphere(!adaptMovieAtmosphere)}
+                                                    style={{
+                                                        padding: '7px 16px',
+                                                        borderRadius: 'var(--radius-full)',
+                                                        background: adaptMovieAtmosphere ? 'rgba(0, 209, 193, 0.15)' : 'var(--bg-secondary)',
+                                                        color: adaptMovieAtmosphere ? 'var(--brand)' : 'var(--text-tertiary)',
+                                                        border: '1px solid var(--border-default)',
+                                                        fontWeight: 700,
+                                                        fontSize: '0.8rem',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    {adaptMovieAtmosphere ? '✓ Adapt to Movies: ON' : '✕ Adapt to Movies: OFF'}
+                                                </button>
+                                            </div>
+
+                                            {/* Ambient Particles Toggle */}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', flexWrap: 'wrap', gap: 10 }}>
+                                                <div style={{ maxWidth: 520 }}>
+                                                    <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', margin: 0 }}>
+                                                        ✨ Ambient Particle Engine
+                                                    </p>
+                                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+                                                        Falling snow, autumn leaves, rising embers, rose petals, CRT radar sweeps, and bats. Runs smoothly at 60fps and automatically pauses when the tab is hidden.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={toggleEffects}
+                                                    style={{
+                                                        padding: '7px 16px',
+                                                        borderRadius: 'var(--radius-full)',
+                                                        background: effectsEnabled ? 'rgba(0, 209, 193, 0.15)' : 'var(--bg-secondary)',
+                                                        color: effectsEnabled ? 'var(--brand)' : 'var(--text-tertiary)',
+                                                        border: '1px solid var(--border-default)',
+                                                        fontWeight: 700,
+                                                        fontSize: '0.8rem',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    {effectsEnabled ? '✨ Particles: ON' : '⏸️ Particles: OFF'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Theme Quick Picker Grid */}
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                                <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                                                    Choose a Theme to Pin
+                                                </h3>
+                                                {themeMode === 'custom' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTheme('auto')}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--brand)',
+                                                            fontSize: 'var(--text-xs)',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            textDecoration: 'underline',
+                                                        }}
+                                                    >
+                                                        Reset to Auto Seasonal
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+                                                {THEMES.map((t) => {
+                                                    const isSelected = (themeMode === 'custom' && userThemeId === t.id) || (themeMode === 'auto' && currentTheme.id === t.id);
+                                                    return (
+                                                        <button
+                                                            key={t.id}
+                                                            type="button"
+                                                            onClick={() => setTheme(t.id)}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 10,
+                                                                padding: '10px 12px',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                border: isSelected ? `2px solid ${t.colors.brand}` : '1px solid var(--border-default)',
+                                                                background: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-secondary)',
+                                                                color: 'inherit',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                position: 'relative',
+                                                                transition: 'all 0.15s ease',
+                                                            }}
+                                                        >
+                                                            <span style={{ fontSize: 20, flexShrink: 0 }}>{t.icon}</span>
+                                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {t.name}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {t.badge || t.category}
+                                                                </div>
+                                                            </div>
+                                                            {/* Color swatch dot */}
+                                                            <div
+                                                                style={{
+                                                                    width: 10,
+                                                                    height: 10,
+                                                                    borderRadius: '50%',
+                                                                    background: t.colors.brand,
+                                                                    boxShadow: `0 0 6px ${t.colors.brand}`,
+                                                                    flexShrink: 0,
+                                                                }}
+                                                            />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

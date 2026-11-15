@@ -195,38 +195,18 @@ export default function ThemedLogo({ theme, size = 32, showText = true }: Themed
             </div>
 
             {showText && (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span
-                        style={{
-                            fontWeight: 800,
-                            fontSize: '1.125rem',
-                            letterSpacing: '-0.02em',
-                            color: colors.textPrimary,
-                            textShadow: theme.id !== 'default' ? `0 0 16px ${colors.accentGlow}` : undefined,
-                            transition: 'color 0.3s ease',
-                        }}
-                    >
-                        FrameVault
-                    </span>
-                    {theme.id !== 'default' && (
-                        <span
-                            style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                                color: brandColor,
-                                marginTop: -2,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 3,
-                            }}
-                        >
-                            <span>{theme.icon}</span>
-                            <span>{theme.name}</span>
-                        </span>
-                    )}
-                </div>
+                <span
+                    style={{
+                        fontWeight: 800,
+                        fontSize: '1.125rem',
+                        letterSpacing: '-0.02em',
+                        color: colors.textPrimary,
+                        textShadow: theme.id !== 'default' ? `0 0 16px ${colors.accentGlow}` : undefined,
+                        transition: 'color 0.3s ease',
+                    }}
+                >
+                    FrameVault
+                </span>
             )}
         </div>
     );

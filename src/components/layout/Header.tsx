@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Trophy, Sparkles, Palette, BookMarked, LayoutDashboard } from 'lucide-react';
+import { Search, User, ClipboardList, Settings, LogOut, BookOpen, Activity, Tv, Film, List, Users, Trophy, Sparkles, BookMarked, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '@/lib/themes/theme-context';
 import ThemedLogo from '@/components/themes/ThemedLogo';
 
@@ -30,7 +30,7 @@ export default function Header() {
     const { data: session } = useSession();
     const router = useRouter();
     const pathname = usePathname();
-    const { currentTheme, openModal } = useTheme();
+    const { currentTheme } = useTheme();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -277,32 +277,6 @@ export default function Header() {
                         )}
                     </div>
 
-                    {/* Theme Studio Trigger */}
-                    <button
-                        type="button"
-                        onClick={openModal}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-full)',
-                            border: '1px solid var(--border-default)',
-                            background: 'var(--bg-tertiary)',
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                        }}
-                        title="Theme Studio: Change visual theme & atmosphere"
-                        aria-label="Theme Studio"
-                    >
-                        <span style={{ fontSize: '13px', lineHeight: 1 }}>{currentTheme.icon}</span>
-                        <span style={{ color: 'var(--text-primary)' }}>{currentTheme.name}</span>
-                        <Palette size={13} color="var(--brand)" />
-                    </button>
-
                     {session ? (
                         <div ref={dropdownRef} style={{ position: 'relative' }}>
                             <button
@@ -379,17 +353,6 @@ export default function Header() {
                                     >
                                         <Settings size={16} /> Settings
                                     </Link>
-                                    <button
-                                        type="button"
-                                        className="user-dropdown-item"
-                                        onClick={() => {
-                                            setDropdownOpen(false);
-                                            openModal();
-                                        }}
-                                        style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer' }}
-                                    >
-                                        <Palette size={16} /> Theme Studio
-                                    </button>
                                     <div className="divider" style={{ margin: 'var(--space-xs) 0' }} />
                                     <button
                                         className="user-dropdown-item"
