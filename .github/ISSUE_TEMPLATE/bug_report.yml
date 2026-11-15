@@ -1,0 +1,77 @@
+name: 🐛 Bug Report
+description: Report an issue, broken page, upload failure, or unexpected behavior
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue in FrameVault! Please provide as much detail as possible to help reproduce and fix it quickly.
+
+  - type: input
+    id: page_url
+    attributes:
+      label: Page URL / Route
+      description: Where did this occur? (e.g. `/movies/38`, `/settings`, `/api/uploads/presign`, `/lists/top250`)
+      placeholder: "e.g., /movies/38 or /api/uploads/presign"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened and what you expected to happen instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_output
+    attributes:
+      label: Error Log / Network Response / Console Output
+      description: Paste any error messages, HTTP status codes, or console errors (e.g. 500 MIDDLEWARE_INVOCATION_FAILED, failed fetch).
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions on how to trigger the bug.
+      value: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Perform action '...'
+        4. See error '...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser / Client
+      options:
+        - Chrome / Chromium
+        - Firefox
+        - Safari / WebKit
+        - Microsoft Edge
+        - Mobile Chrome
+        - Mobile Safari
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os_version
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - iOS
+        - Android
+        - Other
+    validations:
+      required: true

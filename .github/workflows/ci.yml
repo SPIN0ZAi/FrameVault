@@ -1,0 +1,50 @@
+name: CI Verification (Build & Test)
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+  push:
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, Lint & Typecheck Verification
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/framevault?schema=public"
+      NEXTAUTH_SECRET: "ci-verification-secret-32-chars-minimum-length"
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Typecheck (tsc)
+        run: npx tsc --noEmit
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Build Verification (Next.js)
+        run: npm run build
+        # Note on GitHub Artifact Storage:
+        # We deliberately avoid `actions/upload-artifact` to keep repository
+        # storage usage at 0 bytes and stay well within GitHub Free tier limits.
